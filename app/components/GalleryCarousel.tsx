@@ -26,13 +26,13 @@ function GalleryCarousel() {
 
   if (!mounted) return null;
   return (
-    <section className="relative bg-[#FFFBEB] py-16 overflow-hidden">
+    <section className="relative bg-[#FFFBEB] py-10 overflow-hidden">
       <div ref={emblaRef} className="overflow-hidden cursor-grab">
         <div className="flex">
           {galleryImages.map((imgSrc, index) => (
             <div
               key={index}
-              className="flex-[0_0_60%] sm:flex-[0_0_50%] md:flex-[0_0_40%] lg:flex-[0_0_50%]"
+              className="flex-[0_0_60%] sm:flex-[0_0_35%] md:flex-[0_0_30%] lg:flex-[0_0_25%]"
             >
               <div className="relative aspect-[3/5] w-full overflow-hidden group">
                 <Image

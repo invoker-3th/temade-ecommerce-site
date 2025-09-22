@@ -176,7 +176,7 @@ function CategoryPage({ params }: CategoryPageProps) {
       </div>
 
       {/* Products grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+      <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-6">
         {categoryItems.map((item: CategoryImage) => {
           // Use the first image of the first color variant as the display image
           const firstImage = item.colorVariants[0]?.images[0]

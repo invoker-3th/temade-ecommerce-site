@@ -150,9 +150,9 @@ function NewArrivals() {
                 </div>
 
                 <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-4 transition-transform transform group-hover:translate-y-0 translate-y-full">
-                  <h3 className="text-[16px] font-sans font-normal text-[#2C2C2C]">{item.name}</h3>
+                  <h3 className="md:text-[16px] font-sans font-normal text-[#2C2C2C]">{item.name}</h3>
                   {/* Price */}
-                  <p className="text-lg font-medium text-[#2C2C2C] font-sans">
+                  <p className="text-[16px] font-medium text-[#2C2C2C] font-sans">
                     {typeof item.price === "number"
                       ? `₦${item.price.toLocaleString()}`
                       : item.price
@@ -195,7 +195,7 @@ function NewArrivals() {
                               [item.id]: prev[item.id] === size ? "" : size,
                             }))
                           }
-                          className={`px-2 rounded-[6px] text-sm transition-colors duration-200 ${selectedSizes[item.id] === size
+                          className={`px-2 rounded-[6px] text-[16px] transition-colors duration-200 ${selectedSizes[item.id] === size
                             ? "bg-[#8D2741] text-white border-[#8D2741]"
                             : "text-[#2C2C2C] hover:border-[#8D2741]"
                             }`}

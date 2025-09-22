@@ -197,7 +197,7 @@ export const baseCategoryImages: Record<string, CategoryImage[]> = {
   ],
   JACKETS: [
     {
-      id: "floral-dress-p",
+      id: "floral-dress",
       name: "Floral Dress",
       price: 45.99,
       description: "Comfortable floral dress designed for casual wear with a touch of elegance.",
@@ -220,7 +220,7 @@ export const baseCategoryImages: Record<string, CategoryImage[]> = {
       ],
     },
     {
-      id: "casual-maxi-p",
+      id: "casual-maxi",
       name: "Casual Maxi",
       price: 39.99,
       description: "Classic casual pants suitable for everyday wear with a modern fit.",
