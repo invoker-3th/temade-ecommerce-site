@@ -20,27 +20,17 @@ type UserProfile = {
 
 interface EditProfileProps {
   onSaveComplete: (updatedProfile: UserProfile) => void // Added callback prop to return to account tab
+  initialData: UserProfile
 }
 
-export default function EditProfile({ onSaveComplete }: EditProfileProps) {
-  const [formData, setFormData] = useState<UserProfile>({
-    fullName: "",
-    userName: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    country: "",
-  })
+export default function EditProfile({ onSaveComplete, initialData }: EditProfileProps) {
+  const [formData, setFormData] = useState<UserProfile>(initialData)
 
   useEffect(() => {
-    const storedProfile = localStorage.getItem("userProfile")
-    if (storedProfile) {
-      setFormData(JSON.parse(storedProfile))
+    if (initialData) {
+      setFormData(initialData)
     }
-  }, [])
+  }, [initialData])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target

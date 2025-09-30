@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { LogOut, User as UserIcon, ShoppingCart } from "lucide-react"
+import {useAuth} from "../context/AuthContext"
+import { PanelLeftOpen, PanelRightOpen } from "lucide-react"
+
 
 type SidebarProps = {
   user: {
@@ -14,6 +17,7 @@ type SidebarProps = {
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const {logout} = useAuth()
 
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -27,7 +31,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   }, [isMobileMenuOpen])
 
   const handleLogout = () => {
-    localStorage.removeItem("userProfile")
+    logout()
     window.location.href = "/" // redirect to homepage
   }
 
@@ -37,9 +41,9 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         className={`lg:hidden z-40 bg-white p-2 rounded-r-md shadow-md transition-all duration-400 ease-in-out
-          ${isMobileMenuOpen ? "fixed top-[250px] left-64" : "absolute top-[255px] left-3"}`}
+          ${isMobileMenuOpen ? "fixed top-[250px] left-64" : "absolute top-[250px] left-3"}`}
       >
-        {isMobileMenuOpen ? "←" : "→"}
+        {isMobileMenuOpen ? <PanelRightOpen /> : <PanelLeftOpen />}
       </button>
 
       {isMobileMenuOpen && (
@@ -57,7 +61,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             : "fixed -translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className=" bg-white md:m-4">
+        <div className=" bg-white h-screen md:h-auto md:m-4">
           {/* Nav */}
           <nav>
             <button

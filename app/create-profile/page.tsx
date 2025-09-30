@@ -20,13 +20,13 @@ type UserProfile = {
 
 export default function CreateProfilePage() {
   const router = useRouter()
-  const { user , isLoading } = useAuth() // 👈 get logged-in user from context
+  const { user, isLoading } = useAuth() // 👈 get logged-in user from context
 
-  useEffect(() => {
-      if (!isLoading && !user) {
-        router.push("/auth/login")
-      }
-    }, [user, isLoading, router])
+  // useEffect(() => {
+  //   if (!isLoading && !user) {
+  //     router.push("/auth/login")
+  //   }
+  // }, [user, isLoading, router])
 
   const [formData, setFormData] = useState<UserProfile>({
     fullName: "",
@@ -53,35 +53,39 @@ export default function CreateProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user?._id) {
-      alert("You must be logged in to create a profile.")
-      return
-    }
+    // if (!user?._id) {
+    //   alert("You must be logged in to create a profile.")
+    //   return
+    // }
 
-    try {
-      const res = await fetch("/api/profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          userId: user._id, // 👈 send logged-in user's ID
-        }),
-      })
+    // try {
+    //   const res = await fetch("/api/profile", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //     },
+    //     body: JSON.stringify({
+    //       ...formData,
+    //       userId: user._id, // 👈 send logged-in user's ID
+    //     }),
+    //   })
 
-      if (res.ok) {
-        const data = await res.json()
-        console.log("Profile saved:", data)
-        router.push("/account")
-      } else {
-        const err = await res.json()
-        alert(err.message || "Failed to save profile")
-      }
-    } catch (error) {
-      console.error("Profile save error:", error)
-      alert("Something went wrong.")
-    }
+    //   if (res.ok) {
+    //     const data = await res.json()
+    //     console.log("Profile saved:", data)
+    //     router.push("/account")
+    //   } else {
+    //     const err = await res.json()
+    //     alert(err.message || "Failed to save profile")
+    //   }
+    // } catch (error) {
+    //   console.error("Profile save error:", error)
+    //   alert("Something went wrong.")
+    // }
+    // save profile to local storage
+    localStorage.setItem("userProfile", JSON.stringify(formData))
+    router.push("/account")
+
   }
 
   return (
