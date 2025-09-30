@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Pencil } from "lucide-react"
 import Link from "next/link"
@@ -20,7 +20,13 @@ type UserProfile = {
 
 export default function CreateProfilePage() {
   const router = useRouter()
-  const { user } = useAuth() // 👈 get logged-in user from context
+  const { user , isLoading } = useAuth() // 👈 get logged-in user from context
+
+  useEffect(() => {
+      if (!isLoading && !user) {
+        router.push("/auth/login")
+      }
+    }, [user, isLoading, router])
 
   const [formData, setFormData] = useState<UserProfile>({
     fullName: "",
