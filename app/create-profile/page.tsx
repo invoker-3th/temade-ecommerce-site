@@ -111,7 +111,7 @@ export default function CreateProfilePage() {
                     <input
                       type={field.type}
                       name={field.name}
-                      value={(formData as any)[field.name]}
+                      value={(formData[field.name as keyof UserProfile] || "")}
                       onChange={handleChange}
                       required
                       placeholder={field.placeholder}

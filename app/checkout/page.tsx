@@ -76,7 +76,6 @@ export default function CheckoutPage() {
         })
 
         if (response.ok) {
-          const data = await response.json()
           router.push("/account")
           clearCart()
           setIsOverlayVisible(true)

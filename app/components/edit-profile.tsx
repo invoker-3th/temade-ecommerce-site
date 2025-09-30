@@ -15,7 +15,7 @@ type UserProfile = {
   state: string
   zipCode: string
   country: string
-  
+
 }
 
 interface EditProfileProps {
@@ -52,11 +52,29 @@ export default function EditProfile({ onSaveComplete }: EditProfileProps) {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    localStorage.setItem("userProfile", JSON.stringify(formData))
-    onSaveComplete(formData) // Use callback instead of router.push to switch back to account tab
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to update profile")
+      }
+
+      const updatedProfile = await res.json()
+      onSaveComplete(updatedProfile) // Pass updated profile back to parent
+    } catch (err) {
+      console.error("Profile update error:", err)
+    }
   }
+
 
   return (
     <div className="bg-[#FFFBEB] flex items-center justify-center">
@@ -77,7 +95,7 @@ export default function EditProfile({ onSaveComplete }: EditProfileProps) {
                   <input
                     type={field.type}
                     name={field.name}
-                    value={(formData as any)[field.name]}
+                    value={formData[field.name as keyof UserProfile] || ""}
                     onChange={handleChange}
                     className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
                   />
@@ -90,11 +108,11 @@ export default function EditProfile({ onSaveComplete }: EditProfileProps) {
             <label className="block text-sm font-medium mb-1">Address</label>
             <div className="relative">
               <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
               />
               <Pencil size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8D2741]" />
             </div>

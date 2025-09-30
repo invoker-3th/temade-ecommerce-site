@@ -28,10 +28,12 @@ export default function OrdersTab() {
 
         const data = await res.json()
         setOrders(data.orders || []) // ✅ your API returns { orders: [...] }
-      } catch (err: any) {
-        setError(err.message || "Something went wrong")
-      } finally {
-        setLoading(false)
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError("Something went wrong")
+        }
       }
     }
 
@@ -80,15 +82,14 @@ export default function OrdersTab() {
                     <td className="p-3">{order.date}</td>
                     <td className="p-3">₦{total.toLocaleString()}</td>
                     <td
-                      className={`p-3 font-medium capitalize ${
-                        order.status === "delivered"
+                      className={`p-3 font-medium capitalize ${order.status === "delivered"
                           ? "text-green-600"
                           : order.status === "pending"
-                          ? "text-yellow-600"
-                          : order.status === "shipped"
-                          ? "text-blue-600"
-                          : "text-red-600"
-                      }`}
+                            ? "text-yellow-600"
+                            : order.status === "shipped"
+                              ? "text-blue-600"
+                              : "text-red-600"
+                        }`}
                     >
                       {order.status}
                     </td>
