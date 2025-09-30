@@ -20,11 +20,10 @@ export interface WishlistItem {
 export interface User {
   _id?: ObjectId
   email: string
-  firstName: string
-  lastName: string
+  userName: string
   phone?: string
   address?: {
-    street?: string
+    address?: string,
     city?: string
     state?: string
     zipCode?: string
@@ -47,8 +46,7 @@ export interface Order {
   userId: ObjectId
   items: CartItem[]
   shippingAddress: {
-    firstName: string
-    lastName: string
+    userName: string
     email: string
     phone: string
     city: string
@@ -64,4 +62,17 @@ export interface Order {
   total: number
   createdAt: Date
   updatedAt: Date
+}
+export interface profileData {
+  fullName: string
+  userName: string
+  email: string
+  phone: string
+  address: {
+    address: string
+    city: string
+    state: string
+    zipCode: string
+    country: string
+  }
 }

@@ -8,9 +8,11 @@ import { useState } from "react"
 import { useCart } from "../context/CartContext"
 import { useAuth } from "../context/AuthContext"
 import { useRouter } from "next/navigation"
+import CheckoutOverlay from "../components/CheckoutOverlay"
 
 export default function CheckoutPage() {
-  const { cartItems, getTotal } = useCart()
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false)
+  const { cartItems, getTotal, clearCart } = useCart()
   const { user } = useAuth()
   const router = useRouter()
   const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0)
@@ -19,14 +21,26 @@ export default function CheckoutPage() {
   const shipping = 1000
   const total = subtotal + tax + shipping
 
-  const [formData, setFormData] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
+  const [formData, setFormData] = useState<{
+    firstname: string
+    lastname: string
+    email: string
+    address: string
+    city: string
+    state: string
+    phone: string
+    country: string
+    postalcode: string
+  }>({
+    firstname: "",
+    lastname: "",
     email: user?.email || "",
-    address: user?.address || "",
+    address: typeof user?.address === "string" ? user.address : "",
     city: "",
     state: "",
     phone: user?.phone || "",
+    country: "",
+    postalcode: "",
   })
 
   const [isProcessing, setIsProcessing] = useState(false)
@@ -62,17 +76,14 @@ export default function CheckoutPage() {
         })
 
         if (response.ok) {
-          const data = await response.json()
-          console.log("Order ID:", data.orderId)
           router.push("/account")
+          clearCart()
+          setIsOverlayVisible(true)
         } else {
           throw new Error("Failed to create order")
         }
-      } else {
-        // Guest checkout - just show success message
-        console.log("Guest Order:", formData, cartItems)
-        alert("Order placed successfully!")
       }
+
     } catch (error) {
       console.error("Order error:", error)
       alert("Failed to place order. Please try again.")
@@ -82,7 +93,8 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] py-10 px-4 md:px-16">
+    <div className="min-h-screen bg-[#FFFBEB] py-10 px-4 md:px-16 font-sans">
+      <CheckoutOverlay visible={isOverlayVisible} onClose={() => setIsOverlayVisible(false)} />
       <nav className="text-sm sm:text-base text-gray-600 mb-6">
         <ul className="flex flex-wrap gap-1">
           <li>
@@ -102,7 +114,7 @@ export default function CheckoutPage() {
       </nav>
 
       {!user && (
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6 text-center">
           <p className="text-blue-800">
             <Link href="/auth/login" className="underline font-medium">
               Sign in
@@ -124,13 +136,13 @@ export default function CheckoutPage() {
           </Link>
         </div>
       ) : (
-        <div className="flex flex-col-reverse lg:grid lg:grid-cols-2 gap-10">
+        <div className="">
           {/* Left column: Order summary + form */}
-          <div className="order-2 lg:order-1">
-            <div className="bg-[#F2E5E8] p-6 rounded-[5px] shadow-sm mb-4">
+          <div className="order-2 lg:order-1 flex  flex-col-reverse justify-between items-start gap-4 md:flex-row-reverse">
+            <div className="bg-[#F2E5E8] p-6 rounded-[5px] shadow-sm flex-1 ">
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="text-xl font-semibold text-[#222222]">Order Summary</h2>
-                {totalQuantity > -1 && (
+                {totalQuantity > 0 && (
                   <span className="text-sm md:text-base font-semibold px-3 py-1 bg-[#CA6F86] rounded-full text-white ml-2">
                     {totalQuantity}
                   </span>
@@ -159,54 +171,84 @@ export default function CheckoutPage() {
                   </div>
                 ))}
               </div>
+              <div className="mt-6 border-t pt-4 space-y-2 text-[#475367] text-sm font-medium">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>₦{subtotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax (10%)</span>
+                  <span>₦{tax.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>₦{shipping.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-medium pt-2 border-t">
+                  <span>Total</span>
+                  <span className="text-[#1D2739] text-base font-semibold">₦{total.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                form="checkout-form"
+                disabled={isProcessing}
+                className="w-full bg-[#8D2741] text-white py-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? "Processing..." : `Pay ₦${total.toLocaleString()}`}
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6 p-6 border border-[#D3D3D3]">
+            <form
+              id="checkout-form"
+              onSubmit={handleSubmit}
+              className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg"
+            >
               <h2 className="text-[24px] font-semibold text-[#222222]">Delivery Information</h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-[#333] mb-1">
+                  <label htmlFor="firstname" className="block text-sm font-medium text-[#333] mb-1">
                     First Name
                   </label>
                   <input
                     type="text"
-                    id="firstName"
-                    name="firstName"
+                    id="firstname"
+                    name="firstname"
                     placeholder="Enter your first name"
-                    value={formData.firstName}
+                    value={formData.firstname}
                     onChange={handleChange}
                     required
                     className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
                   />
                 </div>
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-[#333] mb-1">
-                   Last Name
+                  <label htmlFor="lastname" className="block text-sm font-medium text-[#333] mb-1">
+                    Last Name
                   </label>
                   <input
                     type="text"
-                    id="lastName"
-                    name="lastName"
+                    id="lastname"
+                    name="lastname"
                     placeholder="Enter your last name"
-                    value={formData.lastName}
+                    value={formData.lastname}
                     onChange={handleChange}
                     required
                     className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
                   />
                 </div>
               </div>
-
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-[#333] mb-1">
+                <label htmlFor="address" className="block text-sm font-medium text-[#333] mb-1">
                   Address
                 </label>
                 <input
-                  type="address"
+                  type="text"
                   id="address"
                   name="address"
                   placeholder="Enter full address"
-                  value={formData.email}
+                  value={formData.address}
                   onChange={handleChange}
                   required
                   className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
@@ -255,6 +297,42 @@ export default function CheckoutPage() {
                     <option value="Kano City">Kano City</option>
                   </select>
                 </div>
+                {/* select country */}
+                <div>
+                  <label htmlFor="country" className="block text-sm font-medium text-[#333] mb-1">
+                    Country
+                  </label>
+                  <select
+                    id="country"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    required
+                    className="w-full border rounded-md p-3 bg-transparent"
+                  >
+                    <option value="">Select a country</option>
+                    <option value="Nigeria">Nigeria</option>
+                    <option value="Ghana">Ghana</option>
+                    <option value="Kenya">Kenya</option>
+                    <option value="South Africa">South Africa</option>
+                    <option value="Uganda">Uganda</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="postalcode" className="block text-sm font-medium text-[#333] mb-1">
+                    Postalcode
+                  </label>
+                  <input
+                    type="text"
+                    id="postalcode"
+                    name="postalcode"
+                    placeholder="Enter your postalcode"
+                    value={formData.postalcode}
+                    onChange={handleChange}
+                    required
+                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -274,7 +352,7 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-[#333] mb-1">
+                  <label htmlFor="email" className="block text-sm font-medium text-[#333] mb-1">
                     Email Address
                   </label>
                   <input
@@ -290,126 +368,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
             </form>
-          </div>
-
-          {/* Right column: Payment section */}
-          <div className="order-1 lg:order-2 p-6 rounded-lg shadow-sm space-y-4 border border-[#D3D3D3]">
-            <h2 className="text-[24px] font-semibold text-[#222222]">Payment Information</h2>
-
-            <div className="space-y-4">
-              <h2 className="text-[15px] font-semibold text-[#222222]">Pay With</h2>
-              <div className="space-y-2 border-y py-5">
-                <label htmlFor="card" className="flex items-center gap-3 cursor-pointer">
-                  <input type="radio" id="card" name="paymentMethod" value="card" className="hidden peer" required />
-                  <div className="w-5 h-5 rounded-full border border-[#D0D5DD] peer-checked:border-[#F56630] flex items-center justify-center peer-checked:bg-[#F56630] transition-all duration-200">
-                    <div className="w-[18px] h-[18px] rounded-full peer-checked:bg-[#F56630] peer-checked:block border-2 border-white"></div>
-                  </div>
-                  <span className="text-sm text-[#222222]">Debit or Credit Card</span>
-                </label>
-
-                <label htmlFor="paypal" className="flex items-center gap-3 cursor-pointer">
-                  <input type="radio" id="paypal" name="paymentMethod" value="paypal" className="hidden peer" />
-                  <div className="w-5 h-5 rounded-full border border-[#D0D5DD] peer-checked:border-[#F56630] flex items-center justify-center peer-checked:bg-[#F56630] transition-all duration-200">
-                    <div className="w-[18px] h-[18px] rounded-full peer-checked:bg-[#F56630] peer-checked:block border-2 border-white"></div>
-                  </div>
-                  <span className="text-sm text-[#222222]">Pay on Delivery</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-4 mt-4">
-              <h2 className="text-[15px] font-semibold text-[#222222]">Enter Card Information</h2>
-
-              <div>
-                <label htmlFor="cardholder" className="block text-sm text-[#222222] mb-1">
-                  Cardholder Name
-                </label>
-                <input
-                  type="text"
-                  id="cardholder"
-                  name="cardholder"
-                  placeholder="John Doe"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F56630]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="cardNumber" className="block text-sm text-[#222222] mb-1">
-                  Card Number
-                </label>
-                <input
-                  type="text"
-                  id="cardNumber"
-                  name="cardNumber"
-                  placeholder="1234 5678 9012 3456"
-                  maxLength={19}
-                  inputMode="numeric"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F56630]"
-                  required
-                />
-              </div>
-
-              <div className="flex space-x-4">
-                <div className="w-1/2">
-                  <label htmlFor="expiry" className="block text-sm text-[#222222] mb-1">
-                    Expiry Date
-                  </label>
-                  <input
-                    type="text"
-                    id="expiry"
-                    name="expiry"
-                    placeholder="MM/YY"
-                    maxLength={5}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F56630]"
-                    required
-                  />
-                </div>
-
-                <div className="w-1/2">
-                  <label htmlFor="cvc" className="block text-sm text-[#222222] mb-1">
-                    CVC
-                  </label>
-                  <input
-                    type="text"
-                    id="cvc"
-                    name="cvc"
-                    placeholder="123"
-                    maxLength={4}
-                    inputMode="numeric"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F56630]"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 border-t pt-4 space-y-2 text-[#475367] text-sm font-medium">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>₦{subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax (10%)</span>
-                <span>₦{tax.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Shipping</span>
-                <span>₦{shipping.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-medium pt-2 border-t">
-                <span>Total</span>
-                <span className="text-[#1D2739] text-base font-semibold">₦{total.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="w-full bg-[#222222] text-white py-3 rounded-md hover:bg-[#111] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isProcessing ? "Processing..." : `Pay ₦${total.toLocaleString()}`}
-            </button>
           </div>
         </div>
       )}

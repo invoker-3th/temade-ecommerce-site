@@ -4,10 +4,14 @@ import { UserService } from "@/lib/services/userServices"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email } = body
+    const { email, userName } = body
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 })
+    }
+
+    if (!userName) {
+      return NextResponse.json({ error: "Username is required" }, { status: 400 })
     }
 
     // Find user by email

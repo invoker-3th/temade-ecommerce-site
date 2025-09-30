@@ -21,6 +21,7 @@ type CartContextType = {
   increaseQty: (id: string) => void
   decreaseQty: (id: string) => void
   getTotal: () => number
+  clearCart: () => void   // ✅ added
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -60,7 +61,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cartItems))
 
-    // Sync with database if user is logged in
     if (user && user._id) {
       syncCartWithDatabase()
     }
@@ -95,6 +95,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const getTotal = () => cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
 
+  const clearCart = () => {
+    setCartItems([]) // ✅ empty cart state
+    localStorage.removeItem("cart") // ✅ clear localStorage
+  }
+
   return (
     <CartContext.Provider
       value={{
@@ -104,6 +109,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         increaseQty,
         decreaseQty,
         getTotal,
+        clearCart, // ✅ exposed
       }}
     >
       {children}
