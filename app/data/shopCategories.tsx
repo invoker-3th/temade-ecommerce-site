@@ -15,6 +15,9 @@ export type CategoryImage = {
   name: string;
   colorVariants: ColorVariant[];
   price: number;
+  priceUSD?: number;
+  priceGBP?: number;
+  priceNGN?: number;
   description: string;
   sizes: string[];
 };
