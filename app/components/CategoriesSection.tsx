@@ -14,7 +14,7 @@ function CategorySection() {
 
   return (
     <section
-      className=" mt-[40px] bg-[#FFFBEB] md:min-h-[150vh] lg:h-[50vh] overflow-hidden flex flex-col justify-center  relative"
+      className=" my-[40px] bg-[#FFFBEB] md:min-h-[150vh] lg:h-[50vh] overflow-hidden flex flex-col justify-center  relative"
     >
       <div className=" bg-[#FFFBEB] min-h-screen md:min-h-[150vh] bg-center bg-no-repeat sm:mx-8"
         style={{
@@ -24,7 +24,7 @@ function CategorySection() {
 
       </div>
       <div className=' absolute top-[30%] sm:top-[50%] left-0 w-full h-full  text-center z-10'>
-        <div className={`${ebGaramond.className} font-medium sm:flex justify-between items-center w-full mb-[90px]`}>
+        <div className={`${ebGaramond.className} font-medium sm:flex justify-between items-center w-full max-w-[1200px] mb-[90px] mx-auto`}>
           <h2 className='text-responsive text-[#FFFFFF] sm:text-[#CA6F86]'>PANTS</h2>
           <h2 className='text-responsive2 text-[#FFFFFF]'>DRESSES</h2>
           <h2 className='text-responsive text-[#FFFFFF] sm:text-[#CA6F86]'>SKIRTS</h2>

@@ -1,159 +1,169 @@
 "use client"
 
-import { useAuth } from "@/app/context/AuthContext"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
-import type { Order } from "@/lib/models/User"
-import { LogOut, ShoppingCart, Heart } from "lucide-react"
+import { Pencil } from "lucide-react"
+import Sidebar from "../components/Sidebar"
+import EditProfile from "../components/edit-profile"
+import OrdersTab from "../components/orders-tab"
+import { useAuth } from "../context/AuthContext"
+
+type UserProfile = {
+  fullName: string
+  userName: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  state: string
+  zipCode: string
+  country: string
+}
 
 export default function AccountPage() {
-  const { user, logout, isLoading } = useAuth()
   const router = useRouter()
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loadingOrders, setLoadingOrders] = useState(false)
+  const { user, isLoading } = useAuth() // 👈 get from context
+  const [activeTab, setActiveTab] = useState<"account" | "orders" | "edit">("account")
+  const [profile, setProfile] = useState<UserProfile | null>(null)
 
+  // 🔒 Protect route
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/auth/login")
     }
   }, [user, isLoading, router])
 
-  const fetchOrders = useCallback(async () => {
-    if (!user?._id) return
-    setLoadingOrders(true)
-    try {
-      const response = await fetch(`/api/orders?userId=${user._id}`)
-      if (response.ok) {
-        const data = await response.json()
-        setOrders(data.orders)
-      }
-    } catch (error) {
-      console.error("Failed to fetch orders:", error)
-    }
-    setLoadingOrders(false)
-  }, [user?._id])
-
+  // ✅ Fetch profile from backend
   useEffect(() => {
-    if (user?._id) {
-      fetchOrders()
+    const fetchProfile = async () => {
+      if (!user) return
+      try {
+        const res = await fetch(`/api/profile?userId=${user._id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setProfile(data)
+        } else {
+          console.error("No profile found")
+          router.push("/create-profile")
+        }
+      } catch (error) {
+        console.error("Profile fetch error:", error)
+      }
     }
-  }, [user?._id, fetchOrders])
+    fetchProfile()
+  }, [user, router])
 
-  const handleLogout = () => {
-    logout()
-    router.push("/")
+  const handleSaveComplete = (updatedProfile: UserProfile) => {
+    setProfile(updatedProfile)
+    setActiveTab("account")
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FFFBEB]">
-        <div className="text-center text-lg text-gray-600">Loading...</div>
-      </div>
-    )
+    return <p className="p-6">Loading...</p>
   }
 
-  if (!user) return null
+  if (!profile) return null
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] py-8 px-4">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow-md p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#222222] mb-1">Welcome, {user.firstName}!</h1>
-            <p className="text-sm md:text-base text-gray-600">{user.email}</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
-          >
-            <LogOut size={16} />
-            Logout
-          </button>
-        </div>
-
-        {/* Info & Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl shadow-md p-6 space-y-2">
-            <h2 className="text-xl font-semibold text-[#222222] mb-4">Account Information</h2>
-            <p><span className="font-medium">Name:</span> {user.firstName} {user.lastName}</p>
-            <p><span className="font-medium">Email:</span> {user.email}</p>
-            {user.phone && <p><span className="font-medium">Phone:</span> {user.phone}</p>}
-            <p><span className="font-medium">Member since:</span> {new Date(user.createdAt).toLocaleDateString()}</p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-md p-6 space-y-4">
-            <h2 className="text-xl font-semibold text-[#222222] mb-4">Quick Actions</h2>
-            <Link
-              href="/wishlist"
-              className="flex items-center gap-2 text-[#CA6F86] hover:underline text-sm md:text-base"
-            >
-              <Heart size={18} />
-              View Wishlist ({user.wishlist?.length || 0} items)
-            </Link>
-            <Link
-              href="/shop"
-              className="flex items-center gap-2 text-[#CA6F86] hover:underline text-sm md:text-base"
-            >
-              <ShoppingCart size={18} />
-              Continue Shopping
-            </Link>
-          </div>
-        </div>
-
-        {/* Orders */}
-        <div className="bg-white rounded-2xl shadow-md p-6">
-          <h2 className="text-xl font-semibold text-[#222222] mb-4">Order History</h2>
-
-          {loadingOrders ? (
-            <p className="text-gray-600 text-sm">Loading orders...</p>
-          ) : orders.length === 0 ? (
-            <p className="text-gray-600 text-sm">
-              No orders yet.{" "}
-              <Link href="/shop" className="text-[#CA6F86] hover:underline">
-                Start shopping!
+    <>
+      {/* Header */}
+      <div
+        className="w-full bg-[url('/auth-header-image.jpg')] bg-cover bg-center h-[150px] md:h-[223px]"
+        style={{ backgroundPosition: "center 25%" }}
+      >
+        <div className="w-full h-full bg-[#00000066] flex flex-col items-center justify-center px-4 gap-4">
+          <h1 className="text-2xl md:text-4xl lg:text-[64px] font-semibold text-[#FFFFFF] text-center leading-tight">
+            Hi, {profile?.userName ?? "Guest"} Welcome back to Temade.
+          </h1>
+          <ul className="flex items-center gap-2 md:gap-4 mb-4 text-[#E6E6E6] text-sm md:text-base">
+            <li>
+              <Link href="/" className="text-[#CA6F86] hover:underline">
+                Home
               </Link>
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {orders.map((order) => (
-                <div key={order._id?.toString()} className="border rounded-xl p-4 bg-[#fffefc] space-y-2">
-                  <div className="flex justify-between flex-wrap gap-4">
-                    <div>
-                      <p className="font-medium text-sm md:text-base">
-                        Order #{order._id?.toString().slice(-8)}
-                      </p>
-                      <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-sm md:text-base">
-                        ₦{order.total.toLocaleString()}
-                      </p>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-md capitalize ${
-                          order.orderStatus === "delivered"
-                            ? "bg-green-100 text-green-700"
-                            : order.orderStatus === "shipped"
-                              ? "bg-blue-100 text-blue-700"
-                              : order.orderStatus === "processing"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {order.orderStatus}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {order.items.length} item(s) • {order.paymentMethod}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+            </li>
+            <span>/</span>
+            <li>
+              <span className="hover:underline">Account</span>
+            </li>
+          </ul>
         </div>
       </div>
-    </div>
+
+      {/* Layout */}
+      <div className="bg-[#FFFBEB] flex font-sans ">
+        <Sidebar user={profile} activeTab={activeTab} setActiveTab={setActiveTab} />
+
+        {/* Main */}
+        <main className="flex-1 pt-10 md:pt-4 space-y-4 md:space-y-6 p-4">
+          {activeTab === "account" && (
+            <div>
+              <div className="flex justify-between md:items-start mb-6">
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold">Account Information</h1>
+                  <p className="text-[10px] md:text-[16px]">Your entire personal information is here</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("edit")}
+                  className="px-4 py-2 bg-[#8D2741] text-white rounded-md flex items-center"
+                >
+                  <Pencil size={16} className="mr-1" />
+                  Edit
+                </button>
+              </div>
+
+              {/* Personal Info */}
+              <div className="p-4 md:p-6 grid md:grid-cols-2 gap-4 items-center">
+                <div>
+                  <p className="font-medium">Full Name:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.fullName}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Username:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.userName}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Email:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.email}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Phone:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.phone}</p>
+                </div>
+              </div>
+              <div className="p-4 md:p-6">
+                <p className="font-medium">Address:</p>
+                <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.address}</p>
+              </div>
+
+              {/* Delivery Info */}
+              <div className=" p-4 md:p-6 grid md:grid-cols-2 gap-4 items-center">
+                <div>
+                  <p className="font-medium">City/Town:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.city}</p>
+                </div>
+                <div>
+                  <p className="font-medium">State:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.state}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Country:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.country}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Zip Code:</p>
+                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.zipCode}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "orders" && <OrdersTab />}
+          {activeTab === "edit" && (
+            <EditProfile onSaveComplete={handleSaveComplete} />
+          )}
+        </main>
+      </div>
+    </>
   )
 }

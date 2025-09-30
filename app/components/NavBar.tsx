@@ -47,7 +47,7 @@ const NavBar = () => {
   return (
     <>
       {/* Top Nav */}
-      <nav className="sticky top-0 z-30 bg-[#FFFBEB] font-WorkSans  text-[14px] font-medium leading-[100%] tracking-[0]">
+      <nav className="sticky top-0 z-50 bg-[#FFFBEB] font-WorkSans  text-[14px] font-medium leading-[100%] tracking-[0]">
         <div className="max-w-[1280px] m-auto px-8 py-3 flex justify-between items-center">
           <Link href="/">
             <Image
@@ -122,7 +122,7 @@ const NavBar = () => {
 
       {/* Mobile Side Menu */}
       <div
-        className={`fixed top-0 left-0 h-full w-64 bg-[#FFFBEB] shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} lg:hidden`}
+        className={`fixed top-9 left-0 h-full w-64 bg-[#FFFBEB] shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} lg:hidden`}
       >
         <div className="flex justify-between items-center px-4 py-4 border-b">
           <Image src="/temade-icon.png" alt="Logo" width={36} height={36} />
@@ -173,7 +173,7 @@ const NavBar = () => {
       {/* Smooth Backdrop (Mobile menu) */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-30 transition-opacity duration-300"
+          className="fixed inset-0 z-40 top-9 bg-black bg-opacity-30 transition-opacity duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

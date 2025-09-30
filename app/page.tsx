@@ -2,7 +2,6 @@
 // import NavBar from "@/app/components/NavBar";
 import Hero from "@/app/components/Hero";
 import CategorySection from "./components/CategoriesSection";
-import GalleryCarousel from "@/app/components/GalleryCarousel";
 import NewArrivals from "./components/NewArrivals";
 import HeroBanner from "./components/HeroBanner";
 
@@ -11,7 +10,6 @@ export default function Home() {
     <main>
       <Hero />
       <CategorySection />
-      <GalleryCarousel />
       <NewArrivals />
       <HeroBanner />
       

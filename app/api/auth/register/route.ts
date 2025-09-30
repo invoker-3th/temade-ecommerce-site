@@ -21,8 +21,7 @@ export async function POST(request: NextRequest) {
     // Create new user
     const userData: Omit<User, "_id" | "createdAt" | "updatedAt"> = {
       email,
-      firstName,
-      lastName,
+      userName: body.userName,
       phone,
       cart,
       wishlist,

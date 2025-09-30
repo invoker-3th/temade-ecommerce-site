@@ -6,7 +6,7 @@ import type { User } from "@/lib/models/User"
 type AuthContextType = {
   user: User | null
   isLoading: boolean
-  login: (email: string) => Promise<boolean>
+  login: (email: string, userName: string) => Promise<boolean>
   register: (userData: RegisterData) => Promise<boolean>
   logout: () => void
   syncUserData: () => Promise<void>
@@ -14,8 +14,7 @@ type AuthContextType = {
 
 type RegisterData = {
   email: string
-  firstName: string
-  lastName: string
+  userName: string
   phone?: string
 }
 
@@ -34,14 +33,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string): Promise<boolean> => {
+  const login = async (email: string, userName: string): Promise<boolean> => {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, userName }),
       })
 
       if (response.ok) {
