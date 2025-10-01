@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const orderData = {
       userId: new ObjectId(userId),
       // Normalize line items for analytics pipeline
-      items: (items || []).map((it: any) => ({
+      items: (items || []).map((it: { id: string | number; name: string; image?: string; price: number; quantity: number }) => ({
         id: String(it.id),
         name: String(it.name),
         image: String(it.image || ""),
