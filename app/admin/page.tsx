@@ -20,6 +20,7 @@ export default function AdminDashboardPage() {
   const [usersCount, setUsersCount] = useState(0)
   const [totalOrders, setTotalOrders] = useState(0)
   const [totalRevenue, setTotalRevenue] = useState(0)
+  const [totalProducts, setTotalProducts] = useState(0)
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
 
   const isAdmin = useMemo(() => {
@@ -39,6 +40,7 @@ export default function AdminDashboardPage() {
         setUsersCount(data.usersCount || 0)
         setTotalOrders(data.totalOrders || 0)
         setTotalRevenue(data.totalRevenue || 0)
+        setTotalProducts(data.totalProducts || 0)
         setTopProducts(data.topProducts || [])
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Failed to load analytics"
@@ -73,7 +75,7 @@ export default function AdminDashboardPage() {
       ) : (
         <div className="space-y-8">
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl shadow p-5">
               <p className="text-sm text-gray-500">Registered Users</p>
               <p className="text-3xl font-bold">{usersCount.toLocaleString()}</p>
@@ -85,6 +87,10 @@ export default function AdminDashboardPage() {
             <div className="bg-white rounded-xl shadow p-5">
               <p className="text-sm text-gray-500">Total Revenue</p>
               <p className="text-3xl font-bold">₦{totalRevenue.toLocaleString()}</p>
+            </div>
+            <div className="bg-white rounded-xl shadow p-5">
+              <p className="text-sm text-gray-500">Total Products</p>
+              <p className="text-3xl font-bold">{totalProducts.toLocaleString()}</p>
             </div>
           </div>
 

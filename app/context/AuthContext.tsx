@@ -94,6 +94,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null)
     localStorage.removeItem("user")
+    // Clear session data on logout
+    localStorage.removeItem("cart")
+    localStorage.removeItem("wishlist")
   }
 
   const syncUserData = async () => {

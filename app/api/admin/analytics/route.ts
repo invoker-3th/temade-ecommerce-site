@@ -7,8 +7,9 @@ export async function GET() {
 
     const usersCol = db.collection("users")
     const ordersCol = db.collection("orders")
+    const productsCol = db.collection("products")
 
-    const [usersCount, ordersStats, topProducts] = await Promise.all([
+    const [usersCount, ordersStats, topProducts, totalProducts] = await Promise.all([
       usersCol.countDocuments({}),
       ordersCol
         .aggregate([
@@ -35,16 +36,19 @@ export async function GET() {
           { $limit: 10 },
         ])
         .toArray(),
+      productsCol.countDocuments({})
     ])
 
     const totals = ordersStats[0] || { totalOrders: 0, totalRevenue: 0 }
 
     type AggDoc = { _id: { id: string; name: string; image: string }; quantitySold: number; revenue: number }
     const typedTop = topProducts as unknown as AggDoc[]
+    
     return NextResponse.json({
       usersCount,
       totalOrders: totals.totalOrders || 0,
       totalRevenue: totals.totalRevenue || 0,
+      totalProducts,
       topProducts: typedTop.map((p) => ({
         id: p._id.id,
         name: p._id.name,

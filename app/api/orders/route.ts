@@ -15,7 +15,14 @@ export async function POST(request: NextRequest) {
     // Create order
     const orderData = {
       userId: new ObjectId(userId),
-      items,
+      // Normalize line items for analytics pipeline
+      items: (items || []).map((it: any) => ({
+        id: String(it.id),
+        name: String(it.name),
+        image: String(it.image || ""),
+        price: Number(it.price || 0),
+        quantity: Number(it.quantity || 1),
+      })),
       shippingAddress,
       paymentMethod,
       paymentStatus: "pending" as const,

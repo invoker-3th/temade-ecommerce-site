@@ -66,6 +66,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [cartItems, user, syncCartWithDatabase])
 
+  // Clear cart on logout
+  useEffect(() => {
+    if (!user) {
+      setCartItems([])
+    }
+  }, [user])
+
   const addToCart = (item: CartItem) => {
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === item.id && i.size === item.size)
