@@ -7,9 +7,10 @@ import type { User } from "@/lib/models/User"
 type AuthContextType = {
   user: User | null
   isLoading: boolean
+  isLoggingOut: boolean
   login: (email: string, userName: string) => Promise<boolean>
   register: (userData: RegisterData) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   syncUserData: () => Promise<void>
 }
 
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -93,14 +95,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("user")
-    // Clear session data on logout
-    localStorage.removeItem("cart")
-    localStorage.removeItem("wishlist")
-    // Redirect to login page
-    router.push("/auth/login")
+  const logout = async () => {
+    setIsLoggingOut(true)
+    
+    try {
+      // Clear user data
+      setUser(null)
+      localStorage.removeItem("user")
+      localStorage.removeItem("cart")
+      localStorage.removeItem("wishlist")
+      
+      // Wait a moment to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Redirect to login page
+      router.push("/auth/login")
+    } catch (error) {
+      console.error("Logout error:", error)
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   const syncUserData = async () => {
@@ -131,6 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         isLoading,
+        isLoggingOut,
         login,
         register,
         logout,
