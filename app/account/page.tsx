@@ -60,7 +60,7 @@ export default function AccountPage() {
   }
 
   if (isLoading) {
-    return <p className="p-6">Loading...</p>
+    return <p className="p-6 text-center">Loading...</p>
   }
 
   if (!profile) return null
@@ -113,54 +113,57 @@ export default function AccountPage() {
               </div>
 
               {/* Personal Info */}
-              <div className="p-4 md:p-6 grid md:grid-cols-2 gap-4 items-center">
-                <div>
+              <div className=" grid md:grid-cols-2 gap-4 items-center">
+                <div className=" w-full">
                   <p className="font-medium">Full Name:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.fullName}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4 rounded bg-[#FFFDF4] text-[15px] md:text-[16px]">{profile.fullName}</p>
                 </div>
-                <div>
+                <div className="max-w-full">
                   <p className="font-medium">Username:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.userName}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px] md:text-[16px]">{profile.userName}</p>
                 </div>
-                <div>
+                <div className="max-w-full">
                   <p className="font-medium">Email:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.email}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px] md:text-[16px]">{profile.email}</p>
                 </div>
-                <div>
+                <div className="max-w-full">
                   <p className="font-medium">Phone:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.phone}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px] md:text-[16px]">{profile.phone}</p>
                 </div>
               </div>
-              <div className="p-4 md:p-6">
+              <div className="py-2 max-w-full ">
                 <p className="font-medium">Address:</p>
-                <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.address}</p>
+                <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px] md:text-[16px]">{profile.address}</p>
               </div>
 
               {/* Delivery Info */}
-              <div className=" p-4 md:p-6 grid md:grid-cols-2 gap-4 items-center">
-                <div>
+              <div className=" grid md:grid-cols-2 gap-4 items-center">
+                <div className="max-w-full">
                   <p className="font-medium">City/Town:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.city}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px] md:text-[16px]">{profile.city}</p>
                 </div>
-                <div>
+                <div className="max-w-full">
                   <p className="font-medium">State:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.state}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px]">{profile.state}</p>
                 </div>
-                <div>
+                <div className="max-w-full">
                   <p className="font-medium">Country:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.country}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px]">{profile.country}</p>
                 </div>
-                <div>
+                <div className="max-w-full">
                   <p className="font-medium">Zip Code:</p>
-                  <p className="border border-[#D0D5DD] p-4 rounded bg-[#FFFDF4]">{profile.zipCode}</p>
+                  <p className="border border-[#D0D5DD] p-2 md:p-4  rounded bg-[#FFFDF4] text-[15px]">{profile.zipCode}</p>
                 </div>
               </div>
             </div>
           )}
 
           {activeTab === "orders" && <OrdersTab />}
-          {activeTab === "edit" && (
-            <EditProfile onSaveComplete={handleSaveComplete} />
+          {activeTab === "edit" && profile && (
+            <EditProfile
+              onSaveComplete={handleSaveComplete}
+              initialData={profile}
+            />
           )}
         </main>
       </div>
