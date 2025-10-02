@@ -1,10 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { LogOut, User as UserIcon, ShoppingCart } from "lucide-react"
-import {useAuth} from "../context/AuthContext"
-import { PanelLeftOpen, PanelRightOpen } from "lucide-react"
-
+import { LogOut, User as UserIcon, ShoppingCart, PanelLeftOpen, PanelRightOpen } from "lucide-react"
+import { useAuth } from "../context/AuthContext"
 
 type SidebarProps = {
   user: {

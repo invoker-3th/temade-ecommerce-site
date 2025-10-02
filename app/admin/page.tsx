@@ -65,8 +65,8 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10">
-      <h1 className="text-2xl md:text-3xl font-semibold text-[#16161A] mb-6">Admin Analytics</h1>
+    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-['Work_Sans']">
+      <h1 className="text-2xl md:text-3xl font-bold text-[#16161A] mb-6">Admin Analytics</h1>
 
       {loading ? (
         <div>Loading analytics...</div>
@@ -77,26 +77,26 @@ export default function AdminDashboardPage() {
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl shadow p-5">
-              <p className="text-sm text-gray-500">Registered Users</p>
-              <p className="text-3xl font-bold">{usersCount.toLocaleString()}</p>
+              <p className="text-sm font-semibold text-gray-600">Registered Users</p>
+              <p className="text-3xl font-bold text-[#16161A]">{usersCount.toLocaleString()}</p>
             </div>
             <div className="bg-white rounded-xl shadow p-5">
-              <p className="text-sm text-gray-500">Total Orders</p>
-              <p className="text-3xl font-bold">{totalOrders.toLocaleString()}</p>
+              <p className="text-sm font-semibold text-gray-600">Total Orders</p>
+              <p className="text-3xl font-bold text-[#16161A]">{totalOrders.toLocaleString()}</p>
             </div>
             <div className="bg-white rounded-xl shadow p-5">
-              <p className="text-sm text-gray-500">Total Revenue</p>
-              <p className="text-3xl font-bold">₦{totalRevenue.toLocaleString()}</p>
+              <p className="text-sm font-semibold text-gray-600">Total Revenue</p>
+              <p className="text-3xl font-bold text-[#16161A]">₦{totalRevenue.toLocaleString()}</p>
             </div>
             <div className="bg-white rounded-xl shadow p-5">
-              <p className="text-sm text-gray-500">Total Products</p>
-              <p className="text-3xl font-bold">{totalProducts.toLocaleString()}</p>
+              <p className="text-sm font-semibold text-gray-600">Total Products</p>
+              <p className="text-3xl font-bold text-[#16161A]">{totalProducts.toLocaleString()}</p>
             </div>
           </div>
 
           {/* Top Products */}
           <div>
-            <h2 className="text-xl font-semibold mb-3">Most Purchased Products</h2>
+            <h2 className="text-xl font-bold mb-3 text-[#16161A]">Most Purchased Products</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {topProducts.map((p) => (
                 <div key={p.id} className="bg-white rounded-xl shadow p-4 flex gap-3 items-center">
@@ -106,9 +106,9 @@ export default function AdminDashboardPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-sm text-gray-600">Sold: {p.quantitySold.toLocaleString()}</p>
-                    <p className="text-sm text-gray-800">Revenue: ₦{p.revenue.toLocaleString()}</p>
+                    <p className="font-bold text-[#16161A]">{p.name}</p>
+                    <p className="text-sm font-semibold text-gray-600">Sold: {p.quantitySold.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-gray-800">Revenue: ₦{p.revenue.toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -117,9 +117,9 @@ export default function AdminDashboardPage() {
 
           {/* Inventory CTA */}
           <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-6">
-            <h2 className="text-xl font-semibold mb-2">Inventory</h2>
-            <p className="text-sm text-gray-600 mb-4">Add or update products to sync with the shop.</p>
-            <Link href="/admin/inventory" className="underline text-[#2C2C2C]">Open Inventory Manager</Link>
+            <h2 className="text-xl font-bold mb-2 text-[#16161A]">Inventory</h2>
+            <p className="text-sm font-semibold text-gray-600 mb-4">Add or update products to sync with the shop.</p>
+            <Link href="/admin/inventory" className="underline font-bold text-[#2C2C2C]">Open Inventory Manager</Link>
           </div>
         </div>
       )}

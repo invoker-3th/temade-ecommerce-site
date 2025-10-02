@@ -8,6 +8,7 @@ import { useState } from "react"
 import { useCart } from "../context/CartContext"
 import { useAuth } from "../context/AuthContext"
 import { useRouter } from "next/navigation"
+import { usePaystackPayment } from "react-paystack"
 import CheckoutOverlay from "../components/CheckoutOverlay"
 
 export default function CheckoutPage() {
@@ -45,6 +46,31 @@ export default function CheckoutPage() {
 
   const [isProcessing, setIsProcessing] = useState(false)
 
+  // Paystack configuration
+  const config = {
+    reference: new Date().getTime().toString(),
+    email: user?.email || formData.email,
+    amount: Math.round(total * 100), // Amount in kobo (multiply by 100)
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
+    currency: "NGN",
+    metadata: {
+      custom_fields: [
+        {
+          display_name: "Full Name",
+          variable_name: "full_name",
+          value: `${formData.firstname} ${formData.lastname}`
+        },
+        {
+          display_name: "Phone",
+          variable_name: "phone",
+          value: formData.phone
+        }
+      ]
+    }
+  }
+
+  const initializePayment = usePaystackPayment(config)
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
@@ -55,41 +81,49 @@ export default function CheckoutPage() {
 
     setIsProcessing(true)
 
-    try {
-      if (user?._id) {
-        // Create order in database
-        const response = await fetch("/api/orders", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: user._id,
-            items: cartItems,
-            shippingAddress: formData,
-            paymentMethod: "card", // You can make this dynamic
-            subtotal,
-            tax,
-            shipping,
-            total,
-          }),
-        })
+    // Initialize Paystack payment
+    initializePayment({
+      onSuccess: async (reference: any) => {
+        try {
+          if (user?._id) {
+            // Create order in database after successful payment
+            const response = await fetch("/api/orders", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId: user._id,
+                items: cartItems,
+                shippingAddress: formData,
+                paymentMethod: "card",
+                paymentReference: reference.reference,
+                paymentStatus: "completed",
+                subtotal,
+                tax,
+                shipping,
+                total,
+              }),
+            })
 
-        if (response.ok) {
-          router.push("/account")
-          clearCart()
-          setIsOverlayVisible(true)
-        } else {
-          throw new Error("Failed to create order")
+            if (response.ok) {
+              clearCart()
+              setIsOverlayVisible(true)
+            } else {
+              throw new Error("Failed to create order")
+            }
+          }
+        } catch (error) {
+          console.error("Order creation error:", error)
+          alert("Payment successful but order creation failed. Please contact support.")
         }
+        setIsProcessing(false)
+      },
+      onClose: () => {
+        setIsProcessing(false)
+        alert("Payment was cancelled")
       }
-
-    } catch (error) {
-      console.error("Order error:", error)
-      alert("Failed to place order. Please try again.")
-    }
-
-    setIsProcessing(false)
+    })
   }
 
   return (
@@ -194,9 +228,9 @@ export default function CheckoutPage() {
                 type="submit"
                 form="checkout-form"
                 disabled={isProcessing}
-                className="w-full bg-[#8D2741] text-white py-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#8D2741] text-white py-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
               >
-                {isProcessing ? "Processing..." : `Pay ₦${total.toLocaleString()}`}
+                {isProcessing ? "Processing Payment..." : `Pay ₦${total.toLocaleString()} with Paystack`}
               </button>
             </div>
 

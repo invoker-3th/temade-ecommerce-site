@@ -67,6 +67,15 @@ export default function InventoryManagerPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
+  const [isUploading, setIsUploading] = useState(false)
+  const sizeOptions = [
+    { key: "S", label: "Small (S)" },
+    { key: "M", label: "Medium (M)" },
+    { key: "L", label: "Large (L)" },
+    { key: "XL", label: "X-Large (XL)" },
+    { key: "XXL", label: "XX-Large (XXL)" },
+  ]
   
   const [productForm, setProductForm] = useState<ProductForm>({ 
     name: "", sku: "", description: "", categoryId: "", price: 0, 
@@ -131,14 +140,55 @@ export default function InventoryManagerPage() {
 
   // Image upload functions
   const onUpload = async (file: File) => {
-    const fd = new FormData()
-    fd.append("file", file)
-    const res = await fetch("/api/admin/upload", { method: "POST", body: fd })
-    const data = await res.json()
-    if (res.ok) {
-      setProductForm((f) => ({ ...f, images: [...f.images, data.url] }))
-    } else {
-      alert(data.error || "Upload failed")
+    const fileId = Math.random().toString(36).substr(2, 9)
+    setIsUploading(true)
+    setUploadProgress(prev => ({ ...prev, [fileId]: 0 }))
+    
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      
+      // Simulate progress (since fetch doesn't provide upload progress easily)
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => ({
+          ...prev,
+          [fileId]: Math.min((prev[fileId] || 0) + Math.random() * 20, 90)
+        }))
+      }, 200)
+      
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      
+      clearInterval(progressInterval)
+      setUploadProgress(prev => ({ ...prev, [fileId]: 100 }))
+      
+      if (res.ok) {
+        setProductForm((f) => ({ ...f, images: [...f.images, data.url] }))
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev }
+            delete newProgress[fileId]
+            return newProgress
+          })
+        }, 1000)
+      } else {
+        alert(data.error || "Upload failed")
+        setUploadProgress(prev => {
+          const newProgress = { ...prev }
+          delete newProgress[fileId]
+          return newProgress
+        })
+      }
+    } catch (error) {
+      console.error("Upload error:", error)
+      alert("Upload failed. Please try again.")
+      setUploadProgress(prev => {
+        const newProgress = { ...prev }
+        delete newProgress[fileId]
+        return newProgress
+      })
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -313,10 +363,10 @@ export default function InventoryManagerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10">
+    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-['Work_Sans']">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl md:text-3xl font-semibold text-[#16161A]">Inventory Management</h1>
-        <Link href="/admin" className="underline text-[#2C2C2C]">Back to Analytics</Link>
+        <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Inventory Management</h1>
+        <Link href="/admin" className="underline font-bold text-[#2C2C2C]">Back to Analytics</Link>
       </div>
 
       {/* Tab Navigation */}
@@ -352,136 +402,249 @@ export default function InventoryManagerPage() {
             </h2>
             
             <div className="grid md:grid-cols-2 gap-4">
-              <input 
-                className="border p-3 rounded" 
-                placeholder="SKU" 
-                value={productForm.sku} 
-                onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} 
-              />
-              <input 
-                className="border p-3 rounded" 
-                placeholder="Product Name" 
-                value={productForm.name} 
-                onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} 
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">SKU</label>
+                <input 
+                  className="border p-3 rounded w-full" 
+                  placeholder="Product SKU" 
+                  value={productForm.sku} 
+                  onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Product Name</label>
+                <input 
+                  className="border p-3 rounded w-full" 
+                  placeholder="Enter product name" 
+                  value={productForm.name} 
+                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} 
+                />
+              </div>
               
-              <select 
-                className="border p-3 rounded" 
-                value={productForm.categoryId} 
-                onChange={(e) => setProductForm({ ...productForm, categoryId: e.target.value })}
-              >
-                <option value="">Select Category</option>
-                {staticCategories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-                {categories.map((c) => (
-                  <option key={c._id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                <select 
+                  className="border p-3 rounded w-full" 
+                  value={productForm.categoryId} 
+                  onChange={(e) => setProductForm({ ...productForm, categoryId: e.target.value })}
+                >
+                  <option value="">Select Category</option>
+                  {staticCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                  {categories.map((c) => (
+                    <option key={c._id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
               
-              <input 
-                className="border p-3 rounded" 
-                placeholder="Sizes (comma separated)" 
-                value={productForm.sizes} 
-                onChange={(e) => setProductForm({ ...productForm, sizes: e.target.value })} 
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Available Sizes</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <button
+                    type="button"
+                    className="px-3 py-1 border rounded text-sm hover:bg-gray-50"
+                    onClick={() => setProductForm({ ...productForm, sizes: "One Size" })}
+                  >
+                    One Size
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1 border rounded text-sm hover:bg-gray-50"
+                    onClick={() => setProductForm({ ...productForm, sizes: sizeOptions.map(s => s.key).join(',') })}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1 border rounded text-sm hover:bg-gray-50"
+                    onClick={() => setProductForm({ ...productForm, sizes: "" })}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {sizeOptions.map((opt) => {
+                    const current = (productForm.sizes || "").split(',').map(s => s.trim()).filter(Boolean)
+                    const checked = current.includes(opt.key)
+                    const toggle = () => {
+                      if (productForm.sizes === "One Size") {
+                        // moving from One Size to explicit sizes
+                        setProductForm({ ...productForm, sizes: opt.key })
+                        return
+                      }
+                      const next = checked
+                        ? current.filter(s => s !== opt.key)
+                        : Array.from(new Set([...current, opt.key]))
+                      setProductForm({ ...productForm, sizes: next.join(',') })
+                    }
+                    return (
+                      <label key={opt.key} className="flex items-center gap-2 text-sm border rounded px-2 py-2 hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={toggle}
+                        />
+                        <span>{opt.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Stored as: {productForm.sizes || 'None selected'}</p>
+              </div>
               
-              <input 
-                type="number" 
-                className="border p-3 rounded" 
-                placeholder="Price (NGN)" 
-                value={productForm.price} 
-                onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })} 
-              />
-              <input 
-                type="number" 
-                className="border p-3 rounded" 
-                placeholder="Price (USD)" 
-                value={productForm.priceUSD ?? ""} 
-                onChange={(e) => setProductForm({ ...productForm, priceUSD: Number(e.target.value) })} 
-              />
-              <input 
-                type="number" 
-                className="border p-3 rounded" 
-                placeholder="Price (GBP)" 
-                value={productForm.priceGBP ?? ""} 
-                onChange={(e) => setProductForm({ ...productForm, priceGBP: Number(e.target.value) })} 
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Price (₦ Naira)</label>
+                <input 
+                  type="number" 
+                  className="border p-3 rounded w-full" 
+                  placeholder="e.g., 25000" 
+                  value={productForm.price || ""} 
+                  onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) || 0 })} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Price ($ Dollar) - Optional</label>
+                <input 
+                  type="number" 
+                  className="border p-3 rounded w-full" 
+                  placeholder="e.g., 50" 
+                  value={productForm.priceUSD || ""} 
+                  onChange={(e) => setProductForm({ ...productForm, priceUSD: Number(e.target.value) || undefined })} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Price (£ Pounds) - Optional</label>
+                <input 
+                  type="number" 
+                  className="border p-3 rounded w-full" 
+                  placeholder="e.g., 40" 
+                  value={productForm.priceGBP || ""} 
+                  onChange={(e) => setProductForm({ ...productForm, priceGBP: Number(e.target.value) || undefined })} 
+                />
+              </div>
               
-              <input 
-                className="border p-3 rounded" 
-                placeholder="Color Name" 
-                value={productForm.colorName} 
-                onChange={(e) => setProductForm({ ...productForm, colorName: e.target.value })} 
-              />
-              <input 
-                className="border p-3 rounded" 
-                placeholder="#hex (optional)" 
-                value={productForm.colorHex ?? ""} 
-                onChange={(e) => setProductForm({ ...productForm, colorHex: e.target.value })} 
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Color Name</label>
+                <input 
+                  className="border p-3 rounded w-full" 
+                  placeholder="e.g., Navy Blue, Red" 
+                  value={productForm.colorName} 
+                  onChange={(e) => setProductForm({ ...productForm, colorName: e.target.value })} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Color Hex Code (Optional)</label>
+                <input 
+                  className="border p-3 rounded w-full" 
+                  placeholder="#000000" 
+                  value={productForm.colorHex ?? ""} 
+                  onChange={(e) => setProductForm({ ...productForm, colorHex: e.target.value })} 
+                />
+              </div>
               
-              <textarea 
-                className="border p-3 rounded md:col-span-2" 
-                placeholder="Product Description" 
-                rows={3}
-                value={productForm.description} 
-                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} 
-              />
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Product Description</label>
+                <textarea 
+                  className="border p-3 rounded w-full" 
+                  placeholder="Enter detailed product description" 
+                  rows={3}
+                  value={productForm.description} 
+                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} 
+                />
+              </div>
             </div>
             
             {/* Image Upload Section */}
-            <div className="mt-4">
-              <h3 className="text-md font-medium mb-2">Product Images</h3>
+            <div className="mt-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Product Images</label>
               
               {/* Drag and Drop Area */}
               <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                  dragOver ? 'border-[#CA6F86] bg-pink-50' : 'border-gray-300'
-                }`}
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+                  dragOver 
+                    ? 'border-[#CA6F86] bg-pink-50 scale-105' 
+                    : 'border-gray-300 hover:border-gray-400'
+                } ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
-                <p className="text-gray-600 mb-2">Drag and drop images here, or</p>
-                <input 
-                  ref={fileInput} 
-                  type="file" 
-                  multiple
-                  accept="image/*"
-                  className="hidden" 
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      Array.from(e.target.files).forEach(file => onUpload(file))
-                    }
-                  }} 
-                />
-                <button 
-                  className="px-4 py-2 bg-[#CA6F86] text-white rounded hover:bg-[#B85A75]" 
-                  onClick={() => fileInput.current?.click()} 
-                  disabled={creating}
-                >
-                  Choose Files
-                </button>
+                <div className="flex flex-col items-center">
+                  <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="text-gray-600 mb-2 font-medium">
+                    {isUploading ? 'Uploading...' : 'Drag and drop images here, or'}
+                  </p>
+                  <input 
+                    ref={fileInput} 
+                    type="file" 
+                    multiple
+                    accept="image/*"
+                    className="hidden" 
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        Array.from(e.target.files).forEach(file => onUpload(file))
+                      }
+                    }} 
+                  />
+                  <button 
+                    className="px-6 py-3 bg-[#CA6F86] text-white rounded-lg hover:bg-[#B85A75] disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors" 
+                    onClick={() => fileInput.current?.click()} 
+                    disabled={creating || isUploading}
+                  >
+                    {isUploading ? 'Uploading...' : 'Choose Files'}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Supports: JPG, PNG, GIF, WebP (Max 10MB each)
+                  </p>
+                </div>
               </div>
+
+              {/* Upload Progress */}
+              {Object.keys(uploadProgress).length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Upload Progress:</p>
+                  {Object.entries(uploadProgress).map(([fileId, progress]) => (
+                    <div key={fileId} className="bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-[#CA6F86] h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      />
+                      <p className="text-xs text-gray-600 mt-1">{Math.round(progress)}% Complete</p>
+                    </div>
+                  ))}
+                </div>
+              )}
               
               {/* Image Previews */}
               {productForm.images.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600 mb-2">Uploaded Images:</p>
-                  <div className="flex gap-2 flex-wrap">
+                <div className="mt-6">
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    Uploaded Images ({productForm.images.length}):
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                     {productForm.images.map((src, index) => (
-                      <div key={src} className="relative w-20 h-20 group">
-                        <Image src={src} alt="preview" fill className="object-cover rounded border" />
-                        <button
-                          onClick={() => setProductForm(f => ({ 
-                            ...f, 
-                            images: f.images.filter((_, i) => i !== index) 
-                          }))}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ×
-                        </button>
+                      <div key={src} className="relative group">
+                        <div className="aspect-square relative overflow-hidden rounded-lg border-2 border-gray-200 hover:border-[#CA6F86] transition-colors">
+                          <Image src={src} alt={`Product image ${index + 1}`} fill className="object-cover" />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                            <button
+                              onClick={() => setProductForm(f => ({ 
+                                ...f, 
+                                images: f.images.filter((_, i) => i !== index) 
+                              }))}
+                              className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              title="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 text-center truncate">
+                          Image {index + 1}
+                        </p>
                       </div>
                     ))}
                   </div>
