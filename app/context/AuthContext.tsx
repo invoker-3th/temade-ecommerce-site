@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import type { User } from "@/lib/models/User"
 
 type AuthContextType = {
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     // Check if user is logged in on app start
@@ -94,6 +96,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null)
     localStorage.removeItem("user")
+    // Clear session data on logout
+    localStorage.removeItem("cart")
+    localStorage.removeItem("wishlist")
+    // Redirect to login page
+    router.push("/auth/login")
   }
 
   const syncUserData = async () => {

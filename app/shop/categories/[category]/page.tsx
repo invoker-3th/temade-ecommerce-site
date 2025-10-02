@@ -17,6 +17,19 @@ interface CategoryPageProps {
   }>
 }
 
+type DbProduct = {
+  _id: string
+  name: string
+  sku: string
+  description: string
+  category: string
+  priceNGN: number
+  priceUSD?: number
+  priceGBP?: number
+  sizes: string[]
+  colorVariants: Array<{ colorName: string; images: Array<{ src: string; alt: string }> }>
+}
+
 function CategoryPage({ params }: CategoryPageProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [selectedSizes, setSelectedSizes] = useState<{ [key: string]: string }>({})
@@ -27,6 +40,7 @@ function CategoryPage({ params }: CategoryPageProps) {
   const { addToCart } = useCart()
   const [category, setCategory] = useState<string>("")
   const [categoryItems, setCategoryItems] = useState<CategoryImage[]>([])
+  const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
 
   useEffect(() => {
     const loadCategory = async () => {
@@ -41,6 +55,20 @@ function CategoryPage({ params }: CategoryPageProps) {
     }
     loadCategory()
   }, [params])
+
+  useEffect(() => {
+    const loadDb = async () => {
+      try {
+        const res = await fetch("/api/admin/products", { cache: "no-store" })
+        if (res.ok) {
+          const data = await res.json()
+          const items: DbProduct[] = Array.isArray(data) ? data : (data.items || [])
+          setDbProducts(items.filter((p) => p.category?.toUpperCase() === category))
+        }
+      } catch {}
+    }
+    if (category) loadDb()
+  }, [category])
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -175,8 +203,79 @@ function CategoryPage({ params }: CategoryPageProps) {
         <p className="text-gray-600 mt-2">{categoryItems.length} items</p>
       </div>
 
-      {/* Products grid */}
+      {/* Products grid (DB + Static) */}
       <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-6">
+        {/* DB products */}
+        {dbProducts.map((p) => {
+          const firstImage = p.colorVariants[0]?.images[0]
+          return (
+            <div
+              key={p._id}
+              className="flex-[0_0_80%] sm:flex-[0_0_60%] md:flex-[0_0_40%] lg:flex-[0_0_30%] group relative overflow-hidden rounded-md"
+              onMouseEnter={() => setHoveredItem(p._id)}
+              onMouseLeave={() => setHoveredItem(null)}
+              role="listitem"
+            >
+              <div className="relative aspect-[2/3]">
+                <Link href={`/shop/${p.sku || p._id}`} className="block relative aspect-[2/3]">
+                  <Image
+                    src={firstImage?.src || "/placeholder.svg"}
+                    alt={firstImage?.alt || p.name}
+                    fill
+                    className="object-cover rounded-md"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
+                </Link>
+                <button
+                  onClick={() => {
+                    const first = p.colorVariants[0]?.images[0]
+                    const exists = wishlist.some((w) => w.id === (p._id))
+                    if (exists) {
+                      removeFromWishlist(p._id)
+                      setToastType("error")
+                      setToastMessage(`${p.name} removed from wishlist`)
+                    } else {
+                      addToWishlist({ id: p._id, name: p.name, image: first?.src || "", price: p.priceNGN || 0 })
+                      setToastType("success")
+                      setToastMessage(`${p.name} added to wishlist`)
+                    }
+                  }}
+                  aria-label="Add to wishlist"
+                  className={`absolute top-4 right-4 p-2 rounded-full bg-white/80 backdrop-blur-sm transition-opacity ${
+                    hoveredItem === p._id ? "opacity-100" : "opacity-0"
+                  }`}
+                  type="button"
+                >
+                  <Heart
+                    className={`w-6 h-6 ${
+                      wishlist.some((w) => w.id === p._id)
+                        ? "fill-[#8D2741] text-[#8D2741]"
+                        : "text-[#8D2741]"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-2 transition-transform transform group-hover:translate-y-0 translate-y-full">
+                <h3 className="text-[16px] font-sans font-normal text-[#2C2C2C]">{p.name}</h3>
+                <p className="text-lg font-medium text-[#2C2C2C] font-sans">₦{(p.priceNGN ?? 0).toLocaleString()}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const first = p.colorVariants[0]?.images[0]
+                    addToCart({ id: p._id, name: p.name, image: first?.src || "", price: p.priceNGN ?? 0, quantity: 1, size: "Default", color: p.colorVariants[0]?.colorName || "Default" })
+                    setToastType("success")
+                    setToastMessage(`Added ${p.name} to cart`)
+                  }}
+                  className="underline font-semibold text-[16px] font-sans text-[#2C2C2C] hover:text-[#701d34] transition-colors"
+                >
+                  ADD TO CART
+                </button>
+              </div>
+            </div>
+          )
+        })}
+        {/* Static products */}
         {categoryItems.map((item: CategoryImage) => {
           // Use the first image of the first color variant as the display image
           const firstImage = item.colorVariants[0]?.images[0]
