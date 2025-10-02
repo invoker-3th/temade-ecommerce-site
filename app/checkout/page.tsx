@@ -4,18 +4,21 @@ import type React from "react"
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useCart } from "../context/CartContext"
 import { useAuth } from "../context/AuthContext"
-import { useRouter } from "next/navigation"
-import { usePaystackPayment } from "react-paystack"
+import dynamic from "next/dynamic"
 import CheckoutOverlay from "../components/CheckoutOverlay"
 
-export default function CheckoutPage() {
+const PaystackCheckout = dynamic(
+  () => import("../components/PaystackCheckout"),
+  { ssr: false }
+)
+
+const CheckoutPage = () => {
   const [isOverlayVisible, setIsOverlayVisible] = useState(false)
   const { cartItems, getTotal, clearCart } = useCart()
   const { user } = useAuth()
-  const router = useRouter()
   const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = getTotal()
   const tax = subtotal * 0.1
@@ -46,8 +49,8 @@ export default function CheckoutPage() {
 
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // Paystack configuration
-  const config = {
+  // Paystack configuration - memoized to prevent recreation on every render
+  const config = useMemo(() => ({
     reference: new Date().getTime().toString(),
     email: user?.email || formData.email,
     amount: Math.round(total * 100), // Amount in kobo (multiply by 100)
@@ -67,9 +70,7 @@ export default function CheckoutPage() {
         }
       ]
     }
-  }
-
-  const initializePayment = usePaystackPayment(config)
+  }), [user?.email, formData.email, total, formData.firstname, formData.lastname, formData.phone])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -79,51 +80,72 @@ export default function CheckoutPage() {
     e.preventDefault()
     if (cartItems.length === 0) return
 
+    // Validate required fields
+    const requiredFields = ['firstname', 'lastname', 'email', 'address', 'city', 'state', 'phone', 'country', 'postalcode']
+    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]?.trim())
+    
+    if (missingFields.length > 0) {
+      alert(`Please fill in all required fields: ${missingFields.join(', ')}`)
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      alert('Please enter a valid email address')
+      return
+    }
+
+    // Check if Paystack public key is available
+    if (!process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY === "pk_test_your_public_key") {
+      alert('Payment system is not configured. Please contact support.')
+      return
+    }
+
     setIsProcessing(true)
 
     // Initialize Paystack payment
-    initializePayment({
-      onSuccess: async (reference: any) => {
-        try {
-          if (user?._id) {
-            // Create order in database after successful payment
-            const response = await fetch("/api/orders", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                userId: user._id,
-                items: cartItems,
-                shippingAddress: formData,
-                paymentMethod: "card",
-                paymentReference: reference.reference,
-                paymentStatus: "completed",
-                subtotal,
-                tax,
-                shipping,
-                total,
-              }),
-            })
+    // ...existing code for Paystack initialization...
+  }
 
-            if (response.ok) {
-              clearCart()
-              setIsOverlayVisible(true)
-            } else {
-              throw new Error("Failed to create order")
-            }
-          }
-        } catch (error) {
-          console.error("Order creation error:", error)
-          alert("Payment successful but order creation failed. Please contact support.")
-        }
-        setIsProcessing(false)
-      },
-      onClose: () => {
-        setIsProcessing(false)
-        alert("Payment was cancelled")
+  const handlePaystackSuccess = async (reference: { reference: string }) => {
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user?._id || null,
+          items: cartItems,
+          shippingAddress: formData,
+          paymentMethod: "card",
+          paymentReference: reference.reference,
+          paymentStatus: "completed",
+          subtotal,
+          tax,
+          shipping,
+          total,
+        }),
+      })
+
+      if (response.ok) {
+        clearCart()
+        setIsOverlayVisible(true)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Failed to create order")
       }
-    })
+    } catch (error) {
+      console.error("Order creation error:", error)
+      alert(`Payment successful but order creation failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please contact support with your payment reference: ${reference.reference}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handlePaystackClose = () => {
+    setIsProcessing(false)
   }
 
   return (
@@ -224,14 +246,15 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                form="checkout-form"
-                disabled={isProcessing}
-                className="w-full bg-[#8D2741] text-white py-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-              >
-                {isProcessing ? "Processing Payment..." : `Pay ₦${total.toLocaleString()} with Paystack`}
-              </button>
+              {/* Replace the existing button with: */}
+              <PaystackCheckout 
+                config={config}
+                onSuccess={handlePaystackSuccess}
+                onClose={handlePaystackClose}
+                disabled={isProcessing || cartItems.length === 0}
+                isProcessing={isProcessing}
+              />
+
             </div>
 
             <form
@@ -408,3 +431,5 @@ export default function CheckoutPage() {
     </div>
   )
 }
+
+export default CheckoutPage

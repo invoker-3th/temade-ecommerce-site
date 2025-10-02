@@ -4,8 +4,7 @@ import { ChevronDown, Heart, CheckCircle2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { categoryImages } from "../data/shopCategories"
-import type { CategoryImage } from "../data/shopCategories"
+// Removed static data imports - using only admin-created data
 import { useCart } from "../context/CartContext"
 import { useWishlist } from "../context/WishlistContext"
 
@@ -39,8 +38,7 @@ function Shop() {
     fetchDb()
   }, [])
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
-  const [selectedSizes, setSelectedSizes] = useState<{ [key: string]: string }>({})
-  const [selectedColors, setSelectedColors] = useState<{ [key: string]: string }>({})
+  // Removed unused state variables
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastType, setToastType] = useState<ToastType>("success")
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist()
@@ -54,55 +52,6 @@ function Shop() {
     }
   }, [toastMessage])
 
-  const handleAddToCart = (item: CategoryImage) => {
-    const selectedSize = selectedSizes[item.id]
-    const selectedColor = selectedColors[item.id]
-    const firstImage = item.colorVariants[0]?.images[0]
-
-    if (!selectedSize && item.sizes && item.sizes.length > 0) {
-      setToastType("error")
-      setToastMessage("Please select a size first")
-      return
-    }
-    if (!selectedColor && item.colorVariants && item.colorVariants.length > 0) {
-      setToastType("error")
-      setToastMessage("Please select a color first")
-      return
-    }
-
-    addToCart({
-      id: item.id.toString(),
-      name: item.name,
-      image: firstImage?.src || "",
-      price: item.price || 0,
-      quantity: 1,
-      size: selectedSize || "Default",
-      color: selectedColor || "Default",
-    })
-
-    setToastType("success")
-    setToastMessage(`Added ${item.name} to cart`)
-  }
-
-  const toggleWishlist = (item: CategoryImage) => {
-    const firstImage = item.colorVariants[0]?.images[0]
-    const exists = wishlist.some((w) => w.id === item.id.toString())
-
-    if (exists) {
-      removeFromWishlist(item.id.toString())
-      setToastType("error")
-      setToastMessage(`${item.name} removed from wishlist`)
-    } else {
-      addToWishlist({
-        id: item.id.toString(),
-        name: item.name,
-        image: firstImage?.src || "",
-        price: item.price || 0,
-      })
-      setToastType("success")
-      setToastMessage(`${item.name} added to wishlist`)
-    }
-  }
 
   function Toast({ message, type }: { message: string; type: ToastType }) {
     return (
@@ -219,12 +168,37 @@ function Shop() {
 
               <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-2 transition-transform transform group-hover:translate-y-0 translate-y-full">
                 <h3 className="text-[16px] font-sans font-normal text-[#2C2C2C]">{p.name}</h3>
+                
+                {/* Available Sizes */}
+                {p.sizes && p.sizes.length > 0 && (
+                  <div className="mb-1">
+                    <p className="text-xs text-gray-600">Sizes: {p.sizes.join(", ")}</p>
+                  </div>
+                )}
+                
+                {/* Available Colors */}
+                {p.colorVariants && p.colorVariants.length > 0 && (
+                  <div className="mb-1">
+                    <p className="text-xs text-gray-600">
+                      Colors: {p.colorVariants.map(cv => cv.colorName).join(", ")}
+                    </p>
+                  </div>
+                )}
+                
                 <p className="text-lg font-medium text-[#2C2C2C] font-sans">₦{(p.priceNGN ?? 0).toLocaleString()}</p>
                 <button
                   type="button"
                   onClick={() => {
                     const first = p.colorVariants[0]?.images[0]
-                    addToCart({ id: p._id, name: p.name, image: first?.src || "", price: p.priceNGN ?? 0, quantity: 1, size: "Default", color: p.colorVariants[0]?.colorName || "Default" })
+                    addToCart({ 
+                      id: p._id, 
+                      name: p.name, 
+                      image: first?.src || "", 
+                      price: p.priceNGN ?? 0, 
+                      quantity: 1, 
+                      size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size", 
+                      color: p.colorVariants[0]?.colorName || "Default" 
+                    })
                     setToastType("success")
                     setToastMessage(`Added ${p.name} to cart`)
                   }}

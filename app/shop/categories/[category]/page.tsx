@@ -4,7 +4,7 @@ import { ChevronDown, Heart, CheckCircle2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { baseCategoryImages, CategoryImage } from "../../../data/shopCategories"
+// Removed static data import - using only admin-created data
 import { useCart } from "../../../context/CartContext"
 import { useWishlist } from "../../../context/WishlistContext"
 import { notFound } from "next/navigation"
@@ -32,43 +32,42 @@ type DbProduct = {
 
 function CategoryPage({ params }: CategoryPageProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
-  const [selectedSizes, setSelectedSizes] = useState<{ [key: string]: string }>({})
-  const [selectedColors, setSelectedColors] = useState<{ [key: string]: string }>({})
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastType, setToastType] = useState<ToastType>("success")
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
   const [category, setCategory] = useState<string>("")
-  const [categoryItems, setCategoryItems] = useState<CategoryImage[]>([])
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadCategory = async () => {
       const resolvedParams = await params
       const categoryName = resolvedParams.category.toUpperCase()
       setCategory(categoryName)
-      const items = baseCategoryImages[categoryName as keyof typeof baseCategoryImages]
-      if (!items) {
-        notFound()
-      }
-      setCategoryItems(items)
-    }
-    loadCategory()
-  }, [params])
-
-  useEffect(() => {
-    const loadDb = async () => {
+      
+      // Load products from admin-created data
       try {
         const res = await fetch("/api/admin/products", { cache: "no-store" })
         if (res.ok) {
           const data = await res.json()
           const items: DbProduct[] = Array.isArray(data) ? data : (data.items || [])
-          setDbProducts(items.filter((p) => p.category?.toUpperCase() === category))
+          const filteredProducts = items.filter((p) => p.category?.toUpperCase() === categoryName)
+          setDbProducts(filteredProducts)
+          
+          // If no products found for this category, show 404
+          if (filteredProducts.length === 0) {
+            notFound()
+          }
         }
-      } catch {}
+      } catch (error) {
+        console.error('Failed to load products:', error)
+        notFound()
+      }
+      setLoading(false)
     }
-    if (category) loadDb()
-  }, [category])
+    loadCategory()
+  }, [params])
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -79,7 +78,7 @@ function CategoryPage({ params }: CategoryPageProps) {
   }, [toastMessage])
 
   // Show loading state while category is being loaded
-  if (!category || categoryItems.length === 0) {
+  if (loading) {
     return (
       <div className="max-w-[1280px] m-auto px-8 py-4">
         <div className="flex justify-center items-center min-h-[400px]">
@@ -89,55 +88,6 @@ function CategoryPage({ params }: CategoryPageProps) {
     )
   }
 
-  const handleAddToCart = (item: CategoryImage) => {
-    const selectedSize = selectedSizes[item.id]
-    const selectedColor = selectedColors[item.id]
-    const firstImage = item.colorVariants[0]?.images[0]
-
-    if (!selectedSize && item.sizes && item.sizes.length > 0) {
-      setToastType("error")
-      setToastMessage("Please select a size first")
-      return
-    }
-    if (!selectedColor && item.colorVariants && item.colorVariants.length > 0) {
-      setToastType("error")
-      setToastMessage("Please select a color first")
-      return
-    }
-
-    addToCart({
-      id: item.id.toString(),
-      name: item.name,
-      image: firstImage?.src || "",
-      price: item.price || 0,
-      quantity: 1,
-      size: selectedSize || "Default",
-      color: selectedColor || "Default",
-    })
-
-    setToastType("success")
-    setToastMessage(`Added ${item.name} to cart`)
-  }
-
-  const toggleWishlist = (item: CategoryImage) => {
-    const firstImage = item.colorVariants[0]?.images[0]
-    const exists = wishlist.some((w) => w.id === item.id.toString())
-
-    if (exists) {
-      removeFromWishlist(item.id.toString())
-      setToastType("error")
-      setToastMessage(`${item.name} removed from wishlist`)
-    } else {
-      addToWishlist({
-        id: item.id.toString(),
-        name: item.name,
-        image: firstImage?.src || "",
-        price: item.price || 0,
-      })
-      setToastType("success")
-      setToastMessage(`${item.name} added to wishlist`)
-    }
-  }
 
   function Toast({ message, type }: { message: string; type: ToastType }) {
     return (
@@ -258,12 +208,37 @@ function CategoryPage({ params }: CategoryPageProps) {
 
               <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-2 transition-transform transform group-hover:translate-y-0 translate-y-full">
                 <h3 className="text-[16px] font-sans font-normal text-[#2C2C2C]">{p.name}</h3>
+                
+                {/* Available Sizes */}
+                {p.sizes && p.sizes.length > 0 && (
+                  <div className="mb-1">
+                    <p className="text-xs text-gray-600">Sizes: {p.sizes.join(", ")}</p>
+                  </div>
+                )}
+                
+                {/* Available Colors */}
+                {p.colorVariants && p.colorVariants.length > 0 && (
+                  <div className="mb-1">
+                    <p className="text-xs text-gray-600">
+                      Colors: {p.colorVariants.map(cv => cv.colorName).join(", ")}
+                    </p>
+                  </div>
+                )}
+                
                 <p className="text-lg font-medium text-[#2C2C2C] font-sans">₦{(p.priceNGN ?? 0).toLocaleString()}</p>
                 <button
                   type="button"
                   onClick={() => {
                     const first = p.colorVariants[0]?.images[0]
-                    addToCart({ id: p._id, name: p.name, image: first?.src || "", price: p.priceNGN ?? 0, quantity: 1, size: "Default", color: p.colorVariants[0]?.colorName || "Default" })
+                    addToCart({ 
+                      id: p._id, 
+                      name: p.name, 
+                      image: first?.src || "", 
+                      price: p.priceNGN ?? 0, 
+                      quantity: 1, 
+                      size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size", 
+                      color: p.colorVariants[0]?.colorName || "Default" 
+                    })
                     setToastType("success")
                     setToastMessage(`Added ${p.name} to cart`)
                   }}
