@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/app/context/AuthContext"
 import { baseCategoryImages } from "@/app/data/shopCategories"
+import FileUploadZone from "@/app/components/FileUploadZone"
 
 type ProductForm = {
   name: string
@@ -358,6 +359,17 @@ export default function InventoryManagerPage() {
     }
   }
 
+  const handleUploadSuccess = (urls: string[]) => {
+    setProductForm(prev => ({
+      ...prev,
+      images: [...prev.images, ...urls]
+    }))
+  }
+
+  const handleUploadError = (error: string) => {
+    alert(`Upload failed: ${error}`)
+  }
+
   if (loading) {
     return <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading inventory...</div>
   }
@@ -560,47 +572,11 @@ export default function InventoryManagerPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">Product Images</label>
               
               {/* Drag and Drop Area */}
-              <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-                  dragOver 
-                    ? 'border-[#CA6F86] bg-pink-50 scale-105' 
-                    : 'border-gray-300 hover:border-gray-400'
-                } ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <div className="flex flex-col items-center">
-                  <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="text-gray-600 mb-2 font-medium">
-                    {isUploading ? 'Uploading...' : 'Drag and drop images here, or'}
-                  </p>
-                  <input 
-                    ref={fileInput} 
-                    type="file" 
-                    multiple
-                    accept="image/*"
-                    className="hidden" 
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        Array.from(e.target.files).forEach(file => onUpload(file))
-                      }
-                    }} 
-                  />
-                  <button 
-                    className="px-6 py-3 bg-[#CA6F86] text-white rounded-lg hover:bg-[#B85A75] disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors" 
-                    onClick={() => fileInput.current?.click()} 
-                    disabled={creating || isUploading}
-                  >
-                    {isUploading ? 'Uploading...' : 'Choose Files'}
-                  </button>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Supports: JPG, PNG, GIF, WebP (Max 10MB each)
-                  </p>
-                </div>
-              </div>
+              <FileUploadZone
+                onUploadSuccess={handleUploadSuccess}
+                onUploadError={handleUploadError}
+                maxFiles={5}
+              />
 
               {/* Upload Progress */}
               {Object.keys(uploadProgress).length > 0 && (

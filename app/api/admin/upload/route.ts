@@ -1,39 +1,59 @@
 import { NextResponse } from "next/server"
-import { createWriteStream } from "fs"
-import { mkdir, stat } from "fs/promises"
-import { join } from "path"
+import { v2 as cloudinary } from "cloudinary"
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(request: Request) {
-  const formData = await request.formData()
-  const file = formData.get("file") as unknown as File
-  if (!file) return NextResponse.json({ error: "file is required" }, { status: 400 })
-
-  const buffers: Uint8Array[] = []
-  const stream = file.stream() as unknown as ReadableStream<Uint8Array>
-  const reader = stream.getReader()
-  let res: ReadableStreamReadResult<Uint8Array>
-  while ((res = await reader.read()).done === false) {
-    buffers.push(res.value as Uint8Array)
-  }
-
-  const bytes = Buffer.concat(buffers)
-  const uploadDir = join(process.cwd(), "public", "uploads")
   try {
-    await stat(uploadDir)
-  } catch {
-    await mkdir(uploadDir, { recursive: true })
-  }
-  const filename = `${Date.now()}-${file.name}`.replace(/[^a-zA-Z0-9._-]/g, "-")
-  const filepath = join(uploadDir, filename)
-  await new Promise<void>((resolve, reject) => {
-    const ws = createWriteStream(filepath)
-    ws.on("error", reject)
-    ws.on("finish", () => resolve())
-    ws.write(bytes)
-    ws.end()
-  })
+    const formData = await request.formData()
+    const files = formData.getAll("files") as File[]
+    
+    if (!files || files.length === 0) {
+      return NextResponse.json({ error: "No files received" }, { status: 400 })
+    }
 
-  return NextResponse.json({ url: `/uploads/${filename}` }, { status: 201 })
+    // Upload all files to Cloudinary
+    const uploadPromises = files.map(async (file) => {
+      // Convert file to base64
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const fileStr = `data:${file.type};base64,${buffer.toString('base64')}`
+
+      // Upload to Cloudinary
+      return cloudinary.uploader.upload(fileStr, {
+        folder: "temade-ecommerce", // Optional: organize uploads in folders
+      })
+    })
+
+    // Wait for all uploads to complete
+    const results = await Promise.all(uploadPromises)
+
+    return NextResponse.json({
+      urls: results.map(result => result.secure_url),
+      success: true,
+    })
+
+  } catch (e) {
+    console.error("Upload error:", e)
+    return NextResponse.json({ 
+      error: "Upload failed", 
+      details: e instanceof Error ? e.message : "Unknown error" 
+    }, { 
+      status: 500 
+    })
+  }
+}
+
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: "10mb", // Increase limit for multiple files
+  },
 }
 
 
