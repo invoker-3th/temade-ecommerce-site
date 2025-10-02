@@ -41,7 +41,7 @@ export default function OrdersTab() {
   }, [])
 
   if (loading) {
-    return <p className="p-6">Loading your orders...</p>
+    return <p className="p-6 text-center">Loading your orders...</p>
   }
 
   if (error) {
