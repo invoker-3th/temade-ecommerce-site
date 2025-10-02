@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { LogOut, User as UserIcon, ShoppingCart } from "lucide-react"
 import {useAuth} from "../context/AuthContext"
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 
 type SidebarProps = {
@@ -18,6 +19,7 @@ type SidebarProps = {
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const {logout} = useAuth()
+  const route = useRouter()
 
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -32,7 +34,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
   const handleLogout = () => {
     logout()
-    window.location.href = "/" // redirect to homepage
+    route.push("/auth/login")
   }
 
   return (
