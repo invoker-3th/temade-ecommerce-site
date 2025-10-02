@@ -3,6 +3,7 @@
 import { ArrowRight } from 'lucide-react';
 import { EB_Garamond } from 'next/font/google';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 const ebGaramond = EB_Garamond({
   subsets: ['latin'],
@@ -25,9 +26,15 @@ function CategorySection() {
       </div>
       <div className=' absolute top-[30%] sm:top-[50%] left-0 w-full h-full  text-center z-10'>
         <div className={`${ebGaramond.className} font-medium sm:flex justify-between items-center w-full max-w-[1200px] mb-[90px] mx-auto`}>
-          <h2 className='text-responsive text-[#FFFFFF] sm:text-[#CA6F86]'>PANTS</h2>
-          <h2 className='text-responsive2 text-[#FFFFFF]'>DRESSES</h2>
-          <h2 className='text-responsive text-[#FFFFFF] sm:text-[#CA6F86]'>SKIRTS</h2>
+          <Link href="/shop/categories/pants" className="text-responsive text-[#FFFFFF] sm:text-[#CA6F86] ">
+            PANTS
+          </Link>
+          <Link href="/shop/categories/dresses" className="text-responsive2 text-[#FFFFFF] ">
+            DRESSES
+          </Link>
+          <Link href="/shop/categories/skirts" className="text-responsive text-[#FFFFFF] sm:text-[#CA6F86]">
+            SKIRTS
+          </Link>
         </div>
         {/* Shop Now Button */}
         <Link href="/shop" passHref>
@@ -35,9 +42,12 @@ function CategorySection() {
             className="border-[2px] border-white hover:border-[#701d34] text-white px-8 py-4 rounded-lg hover:bg-[#701d34] transition flex items-center m-auto"
           >
             SHOP NOW
-            <span className="inline-block ml-2">
-              <ArrowRight className="w-5 h-5" />
-            </span>
+             <motion.div
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ArrowRight className="w-5 h-5" />
+              </motion.div>
           </button>
         </Link>
       </div>

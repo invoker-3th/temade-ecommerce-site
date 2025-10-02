@@ -4,6 +4,7 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Work_Sans } from 'next/font/google';
+import {motion} from 'framer-motion';
 
 
 const workSans = Work_Sans({
@@ -37,7 +38,12 @@ export default function HeroBanner() {
             <Link href="/shop">
               <button className={`${workSans.className} mt-8 flex items-center gap-2 border-[2px] border-white px-8 py-3 text-white transition-opacity hover:opacity-80 rounded-[5px] m-auto`}>
                 <span className="text-lg">SHOP TEMADE</span>
-                <ArrowRight className="h-5 w-5" />
+                 <motion.div
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ArrowRight className="w-5 h-5" />
+              </motion.div>
               </button>
             </Link>
           </div>
