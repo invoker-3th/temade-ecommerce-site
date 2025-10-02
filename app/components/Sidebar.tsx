@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { LogOut, User as UserIcon, ShoppingCart } from "lucide-react"
 import {useAuth} from "../context/AuthContext"
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 
 type SidebarProps = {
@@ -18,8 +17,7 @@ type SidebarProps = {
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const {logout} = useAuth()
-  const route = useRouter()
+  const { logout, isLoggingOut } = useAuth()
 
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -32,9 +30,8 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     }
   }, [isMobileMenuOpen])
 
-  const handleLogout = () => {
-    logout()
-    route.push("/auth/login")
+  const handleLogout = async () => {
+    await logout()
   }
 
   return (
@@ -96,10 +93,11 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
           <div>
             <button
               onClick={handleLogout}
-              className="w-full text-left px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 flex items-center space-x-3"
+              disabled={isLoggingOut}
+              className="w-full text-left px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 flex items-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut className="w-5 h-5" />
-              <span>Logout</span>
+              <span>{isLoggingOut ? "Logging out..." : "Logout"}</span>
             </button>
           </div>
         </div>
