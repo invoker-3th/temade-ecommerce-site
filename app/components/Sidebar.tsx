@@ -38,9 +38,9 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         className={`lg:hidden z-40 bg-white p-2 rounded-r-md shadow-md transition-all duration-400 ease-in-out
-          ${isMobileMenuOpen ? "fixed top-[250px] left-64" : "absolute top-[255px] left-3"}`}
+          ${isMobileMenuOpen ? "fixed top-[250px] left-64" : "absolute top-[250px] left-3"}`}
       >
-        {isMobileMenuOpen ? "←" : "→"}
+        {isMobileMenuOpen ? <PanelRightOpen /> : <PanelLeftOpen />}
       </button>
 
       {isMobileMenuOpen && (
@@ -58,7 +58,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             : "fixed -translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className=" bg-white md:m-4">
+        <div className=" bg-white h-screen md:h-auto md:m-4">
           {/* Nav */}
           <nav>
             <button
