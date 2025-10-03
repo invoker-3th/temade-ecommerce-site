@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/app/context/AuthContext"
@@ -35,7 +35,6 @@ type Product = {
   sku: string
   description: string
   category: string
-  subCategory?: string
   priceNGN: number
   priceUSD?: number
   priceGBP?: number
@@ -45,8 +44,6 @@ type Product = {
     hexCode?: string
     images: Array<{ src: string; alt: string }>
   }>
-  createdAt: string
-  updatedAt: string
 }
 
 type Category = {
@@ -56,27 +53,26 @@ type Category = {
   description: string
   parentCategory?: string
   image?: string
-  createdAt: string
-  updatedAt: string
 }
+
+const sizeOptions = [
+  { key: "S", label: "Small (S)" },
+  { key: "M", label: "Medium (M)" },
+  { key: "L", label: "Large (L)" },
+  { key: "XL", label: "Extra Large (XL)" },
+  { key: "XXL", label: "Double XL (XXL)" },
+  { key: "One Size", label: "One Size Fits All" },
+] as const;
 
 export default function InventoryManagerPage() {
   const { user, isLoading } = useAuth()
+  const categoryFileInput = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products')
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
-  const [isUploading, setIsUploading] = useState(false)
-  const sizeOptions = [
-    { key: "S", label: "Small (S)" },
-    { key: "M", label: "Medium (M)" },
-    { key: "L", label: "Large (L)" },
-    { key: "XL", label: "X-Large (XL)" },
-    { key: "XXL", label: "XX-Large (XXL)" },
-  ]
   
   const [productForm, setProductForm] = useState<ProductForm>({ 
     name: "", sku: "", description: "", categoryId: "", price: 0, 
@@ -86,10 +82,6 @@ export default function InventoryManagerPage() {
   const [categoryForm, setCategoryForm] = useState<CategoryForm>({ 
     name: "", slug: "", description: "", image: "" 
   })
-  
-  const fileInput = useRef<HTMLInputElement>(null)
-  const categoryFileInput = useRef<HTMLInputElement>(null)
-  const [dragOver, setDragOver] = useState(false)
 
   const isAdmin = useMemo(() => {
     if (!user?.email) return false
@@ -97,7 +89,6 @@ export default function InventoryManagerPage() {
     return allow.includes(user.email.toLowerCase())
   }, [user?.email])
 
-  // Fetch data on component mount
   useEffect(() => {
     if (isAdmin) {
       fetchData()
@@ -127,104 +118,24 @@ export default function InventoryManagerPage() {
     setLoading(false)
   }
 
-  if (isLoading) return <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading...</div>
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-[#FFFBEB] flex flex-col items-center justify-center gap-3">
-        <p className="text-lg">Access denied</p>
-        <Link href="/" className="text-[#CA6F86] underline">Go home</Link>
-      </div>
-    )
+  const handleUploadSuccess = (urls: string[]) => {
+    setProductForm(prev => ({
+      ...prev,
+      images: [...prev.images, ...urls]
+    }))
   }
 
-  const staticCategories = Object.keys(baseCategoryImages)
+  const handleUploadError = (error: string) => {
+    alert(`Upload failed: ${error}`)
+  }
 
-  // Image upload functions
-  const onUpload = async (file: File) => {
-    const fileId = Math.random().toString(36).substr(2, 9)
-    setIsUploading(true)
-    setUploadProgress(prev => ({ ...prev, [fileId]: 0 }))
-    
-    try {
-      const fd = new FormData()
-      fd.append("file", file)
-      
-      // Simulate progress (since fetch doesn't provide upload progress easily)
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => ({
-          ...prev,
-          [fileId]: Math.min((prev[fileId] || 0) + Math.random() * 20, 90)
-        }))
-      }, 200)
-      
-      const res = await fetch("/api/admin/upload", { method: "POST", body: fd })
-      const data = await res.json()
-      
-      clearInterval(progressInterval)
-      setUploadProgress(prev => ({ ...prev, [fileId]: 100 }))
-      
-      if (res.ok) {
-        setProductForm((f) => ({ ...f, images: [...f.images, data.url] }))
-        setTimeout(() => {
-          setUploadProgress(prev => {
-            const newProgress = { ...prev }
-            delete newProgress[fileId]
-            return newProgress
-          })
-        }, 1000)
-      } else {
-        alert(data.error || "Upload failed")
-        setUploadProgress(prev => {
-          const newProgress = { ...prev }
-          delete newProgress[fileId]
-          return newProgress
-        })
-      }
-    } catch (error) {
-      console.error("Upload error:", error)
-      alert("Upload failed. Please try again.")
-      setUploadProgress(prev => {
-        const newProgress = { ...prev }
-        delete newProgress[fileId]
-        return newProgress
-      })
-    } finally {
-      setIsUploading(false)
+  const handleCategoryUploadSuccess = (urls: string[]) => {
+    if (urls.length > 0) {
+      setCategoryForm(prev => ({
+        ...prev,
+        image: urls[0]
+      }))
     }
-  }
-
-  const onCategoryUpload = async (file: File) => {
-    const fd = new FormData()
-    fd.append("file", file)
-    const res = await fetch("/api/admin/upload", { method: "POST", body: fd })
-    const data = await res.json()
-    if (res.ok) {
-      setCategoryForm((f) => ({ ...f, image: data.url }))
-    } else {
-      alert(data.error || "Upload failed")
-    }
-  }
-
-  // Drag and drop handlers
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(true)
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    const files = Array.from(e.dataTransfer.files)
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        onUpload(file)
-      }
-    })
   }
 
   // Product CRUD functions
@@ -270,37 +181,6 @@ export default function InventoryManagerPage() {
     setCreating(false)
   }
 
-  const onEditProduct = (product: Product) => {
-    setEditing(product._id)
-    setProductForm({
-      name: product.name,
-      sku: product.sku,
-      description: product.description,
-      categoryId: product.category,
-      price: product.priceNGN,
-      priceUSD: product.priceUSD,
-      priceGBP: product.priceGBP,
-      sizes: product.sizes.join(', '),
-      colorName: product.colorVariants[0]?.colorName || '',
-      colorHex: product.colorVariants[0]?.hexCode || '',
-      images: product.colorVariants[0]?.images.map(img => img.src) || []
-    })
-  }
-
-  const onDeleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return
-    
-    try {
-      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete product')
-      
-      alert('Product deleted successfully')
-      fetchData()
-    } catch (e) {
-      alert((e as Error)?.message || 'Delete failed')
-    }
-  }
-
   // Category CRUD functions
   const onSubmitCategory = async () => {
     setCreating(true)
@@ -334,48 +214,140 @@ export default function InventoryManagerPage() {
     setCreating(false)
   }
 
-  const onEditCategory = (category: Category) => {
+  async function deleteCloudinaryUrls(urls: string[] | string) {
+    const list = Array.isArray(urls) ? urls.filter(Boolean) : [urls].filter(Boolean)
+    if (list.length === 0) return { success: false, message: "no urls" }
+    try {
+      const res = await fetch("/api/admin/delete-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls: list }),
+      })
+      return await res.json()
+    } catch (e) {
+      console.error("deleteCloudinaryUrls error:", e)
+      return { success: false, error: (e as Error).message }
+    }
+  }
+
+  async function onDeleteProduct(id: string) {
+    if (!confirm("Delete product? This will also delete associated images.")) return
+    try {
+      const product = products.find((p) => p._id === id)
+      const imageUrls = product?.colorVariants.flatMap(v => v.images.map(img => img.src)) ?? []
+      if (imageUrls.length > 0) {
+        await deleteCloudinaryUrls(imageUrls)
+      }
+
+      const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed deleting product")
+      await fetchData()
+    } catch (e) {
+      console.error("onDeleteProduct error:", e)
+      alert((e as Error).message || "Delete failed")
+    }
+  }
+
+  async function onDeleteCategory(id: string) {
+    if (!confirm("Delete category? This will delete the category image if any.")) return
+    try {
+      const category = categories.find((c) => c._id === id)
+      if (category?.image) {
+        await deleteCloudinaryUrls([category.image])
+      }
+
+      const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed deleting category")
+      await fetchData()
+    } catch (e) {
+      console.error("onDeleteCategory error:", e)
+      alert((e as Error).message || "Delete failed")
+    }
+  }
+
+  // call this when removing an image from the product form (either saved or pending)
+  async function onRemoveImageFromProduct(imageUrl: string) {
+    if (!confirm("Remove this image? It will be deleted from cloud storage.")) return
+    try {
+      // remove from local UI state first
+      setProductForm(prev => ({ ...prev, images: prev.images.filter(s => s !== imageUrl) }))
+      // if image is already uploaded to Cloudinary, delete it
+      await deleteCloudinaryUrls([imageUrl])
+    } catch (e) {
+      console.error("onRemoveImageFromProduct error:", e)
+      alert("Failed to remove image")
+    }
+  }
+
+  if (isLoading || loading) {
+    return <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading...</div>
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#FFFBEB] flex flex-col items-center justify-center gap-3">
+        <p className="text-lg">Access denied</p>
+        <Link href="/" className="text-[#CA6F86] underline">Go home</Link>
+      </div>
+    )
+  }
+
+  const staticCategories = Object.keys(baseCategoryImages)
+
+  function onEditProduct(product: Product): void {
+    setEditing(product._id)
+    setProductForm({
+      name: product.name,
+      sku: product.sku,
+      description: product.description,
+      categoryId: product.category,
+      price: product.priceNGN,
+      priceUSD: product.priceUSD,
+      priceGBP: product.priceGBP,
+      sizes: product.sizes.join(','),
+      colorName: product.colorVariants[0]?.colorName || '',
+      colorHex: product.colorVariants[0]?.hexCode,
+      images: product.colorVariants[0]?.images.map(img => img.src) || []
+    })
+  }
+
+  async function onCategoryUpload(file: File): Promise<void> {
+    if (!file) return
+    
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!res.ok) throw new Error('Upload failed')
+      
+      const { urls } = await res.json()
+      if (urls && urls.length > 0) {
+        handleCategoryUploadSuccess(urls)
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      handleUploadError(error instanceof Error ? error.message : 'Failed to upload image')
+    }
+  }
+
+  function onEditCategory(category: Category): void {
     setEditing(category._id)
     setCategoryForm({
       name: category.name,
       slug: category.slug,
       description: category.description,
-      parentCategory: category.parentCategory || '',
-      image: category.image || ''
+      parentCategory: category.parentCategory,
+      image: category.image || ""
     })
   }
 
-  const onDeleteCategory = async (categoryId: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) return
-    
-    try {
-      const res = await fetch(`/api/admin/categories/${categoryId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete category')
-      
-      alert('Category deleted successfully')
-      fetchData()
-    } catch (e) {
-      alert((e as Error)?.message || 'Delete failed')
-    }
-  }
-
-  const handleUploadSuccess = (urls: string[]) => {
-    setProductForm(prev => ({
-      ...prev,
-      images: [...prev.images, ...urls]
-    }))
-  }
-
-  const handleUploadError = (error: string) => {
-    alert(`Upload failed: ${error}`)
-  }
-
-  if (loading) {
-    return <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading inventory...</div>
-  }
-
   return (
-    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-['Work_Sans']">
+    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Inventory Management</h1>
         <Link href="/admin" className="underline font-bold text-[#2C2C2C]">Back to Analytics</Link>
@@ -502,7 +474,7 @@ export default function InventoryManagerPage() {
                     )
                   })}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Stored as: {productForm.sizes || 'None selected'}</p>
+                <p className="text-xs text-gray-500 mt-2">Selected sizes: {productForm.sizes || 'None selected'}</p>
               </div>
               
               <div>
@@ -578,52 +550,25 @@ export default function InventoryManagerPage() {
                 maxFiles={5}
               />
 
-              {/* Upload Progress */}
-              {Object.keys(uploadProgress).length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Upload Progress:</p>
-                  {Object.entries(uploadProgress).map(([fileId, progress]) => (
-                    <div key={fileId} className="bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#CA6F86] h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                      />
-                      <p className="text-xs text-gray-600 mt-1">{Math.round(progress)}% Complete</p>
+              {/* Previews for images already added to the product form */}
+              {productForm.images.length > 0 && (
+                <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {productForm.images.map((src) => (
+                    <div key={src} className="relative group border rounded overflow-hidden">
+                      <div className="relative w-full h-24 bg-gray-100">
+                        <Image src={src} alt="preview" fill className="object-cover" />
+                      </div>
+
+                      {/* Remove button (visible on hover) */}
+                      <button
+                        type="button"
+                        onClick={() => onRemoveImageFromProduct(src)}
+                        className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
-                </div>
-              )}
-              
-              {/* Image Previews */}
-              {productForm.images.length > 0 && (
-                <div className="mt-6">
-                  <p className="text-sm font-semibold text-gray-700 mb-3">
-                    Uploaded Images ({productForm.images.length}):
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                    {productForm.images.map((src, index) => (
-                      <div key={src} className="relative group">
-                        <div className="aspect-square relative overflow-hidden rounded-lg border-2 border-gray-200 hover:border-[#CA6F86] transition-colors">
-                          <Image src={src} alt={`Product image ${index + 1}`} fill className="object-cover" />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
-                            <button
-                              onClick={() => setProductForm(f => ({ 
-                                ...f, 
-                                images: f.images.filter((_, i) => i !== index) 
-                              }))}
-                              className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                              title="Remove image"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 text-center truncate">
-                          Image {index + 1}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
