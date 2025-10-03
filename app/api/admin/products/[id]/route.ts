@@ -13,27 +13,46 @@ export async function PUT(
     // Use getDatabase() instead of connecting directly
     const db = await getDatabase()
     
-    // Convert sizes string to array if needed
-    const sizes = typeof body.sizes === 'string' 
-      ? body.sizes.split(',').map((s: string) => s.trim()).filter(Boolean)
-      : body.sizes
+    // Normalize sizes
+    const sizes = Array.isArray(body.sizes)
+      ? body.sizes
+      : typeof body.sizes === 'string'
+        ? body.sizes.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : []
 
-    // Prepare update data
-    const updateData = {
+    // Prefer already structured colorVariants if provided; otherwise, derive from flat fields
+    const colorVariants = Array.isArray(body.colorVariants) && body.colorVariants.length > 0
+      ? body.colorVariants
+      : (body.colorName || body.images)
+        ? [{
+            colorName: body.colorName,
+            hexCode: body.colorHex,
+            images: (Array.isArray(body.images) ? body.images : []).map((src: string) => ({ src, alt: body.name }))
+          }]
+        : []
+
+    // Normalize price and category inputs
+    const priceNGN = body.priceNGN != null ? Number(body.priceNGN) : (body.price != null ? Number(body.price) : undefined)
+    const priceUSD = body.priceUSD != null ? Number(body.priceUSD) : undefined
+    const priceGBP = body.priceGBP != null ? Number(body.priceGBP) : undefined
+    const category = body.category ?? body.categoryId
+
+    // Build update payload and remove undefined keys
+    const updateDataRaw = {
       name: body.name,
       sku: body.sku,
       description: body.description,
-      category: body.categoryId,
-      priceNGN: Number(body.price),
-      priceUSD: body.priceUSD ? Number(body.priceUSD) : undefined,
-      priceGBP: body.priceGBP ? Number(body.priceGBP) : undefined,
+      category,
+      priceNGN,
+      priceUSD,
+      priceGBP,
       sizes,
-      colorVariants: [{
-        colorName: body.colorName,
-        hexCode: body.colorHex,
-        images: body.images.map((src: string) => ({ src, alt: body.name }))
-      }]
+      colorVariants,
+      updatedAt: new Date(),
     }
+    const updateData = Object.fromEntries(
+      Object.entries(updateDataRaw).filter(([, v]) => v !== undefined)
+    )
 
     const result = await db.collection("products").updateOne(
       { _id: new ObjectId(id) },
@@ -53,6 +72,27 @@ export async function PUT(
     console.error('Update product error:', error)
     return NextResponse.json(
       { error: "Failed to update product" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params
+    const db = await getDatabase()
+    const result = await db.collection("products").deleteOne({ _id: new ObjectId(id) })
+    if (!result.deletedCount) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 })
+    }
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete product error:', error)
+    return NextResponse.json(
+      { error: "Failed to delete product" },
       { status: 500 }
     )
   }
