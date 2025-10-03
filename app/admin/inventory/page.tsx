@@ -296,6 +296,10 @@ export default function InventoryManagerPage() {
 
   function onEditProduct(product: Product): void {
     setEditing(product._id)
+    const variant = product.colorVariants?.[0]
+    const imgs = variant?.images ?? []
+    const normalizedImages = imgs.map((img: any) => (typeof img === "string" ? img : img?.src)).filter(Boolean)
+
     setProductForm({
       name: product.name,
       sku: product.sku,
@@ -304,28 +308,31 @@ export default function InventoryManagerPage() {
       price: product.priceNGN,
       priceUSD: product.priceUSD,
       priceGBP: product.priceGBP,
-      sizes: product.sizes.join(','),
-      colorName: product.colorVariants[0]?.colorName || '',
-      colorHex: product.colorVariants[0]?.hexCode,
-      images: product.colorVariants[0]?.images.map(img => img.src) || []
+      sizes: Array.isArray(product.sizes) ? product.sizes.join(",") : String(product.sizes || ""),
+      colorName: variant?.colorName || "",
+      colorHex: variant?.hexCode,
+      images: normalizedImages || []
     })
   }
 
   async function onCategoryUpload(file: File): Promise<void> {
     if (!file) return
-    
+
     const formData = new FormData()
-    formData.append('file', file)
-    
+    // server upload expects 'files' entries
+    formData.append('files', file)
+
     try {
-      const res = await fetch('/api/upload', {
+      const res = await fetch('/api/admin/upload', {
         method: 'POST',
         body: formData
       })
-      
+
       if (!res.ok) throw new Error('Upload failed')
-      
-      const { urls } = await res.json()
+
+      const data = await res.json()
+      // server returns { urls: [...] } (ensure your upload route does this)
+      const urls = data.urls || data.urls?.length ? data.urls : []
       if (urls && urls.length > 0) {
         handleCategoryUploadSuccess(urls)
       }
@@ -606,12 +613,12 @@ export default function InventoryManagerPage() {
                   <div key={product._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex gap-3">
                       <div className="relative w-16 h-16 rounded overflow-hidden bg-gray-100">
-                        {product.colorVariants[0]?.images[0] && (
-                          <Image 
-                            src={product.colorVariants[0].images[0].src} 
-                            alt={product.colorVariants[0].images[0].alt} 
-                            fill 
-                            className="object-cover" 
+                        {product.colorVariants?.[0]?.images?.[0] && (
+                          <Image
+                            src={typeof product.colorVariants[0].images[0] === "string" ? product.colorVariants[0].images[0] : product.colorVariants[0].images[0]?.src}
+                            alt={typeof product.colorVariants[0].images[0] === "string" ? product.name : product.colorVariants[0].images[0]?.alt || product.name}
+                            fill
+                            className="object-cover"
                           />
                         )}
                       </div>
