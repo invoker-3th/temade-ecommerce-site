@@ -49,7 +49,7 @@ export default function FileUploadZone({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': acceptedFileTypes
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
     },
     maxFiles,
     multiple: true
