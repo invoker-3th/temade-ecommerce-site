@@ -6,63 +6,8 @@ import Image from "next/image"
 import { useAuth } from "@/app/context/AuthContext"
 import { baseCategoryImages } from "@/app/data/shopCategories"
 import FileUploadZone from "@/app/components/FileUploadZone"
-
-type ProductForm = {
-  name: string
-  sku: string
-  description: string
-  categoryId: string
-  price: number
-  priceUSD?: number
-  priceGBP?: number
-  sizes: string
-  colorName: string
-  colorHex?: string
-  images: string[]
-}
-
-type CategoryForm = {
-  name: string
-  slug: string
-  description: string
-  parentCategory?: string
-  image: string
-}
-
-type Product = {
-  _id: string
-  name: string
-  sku: string
-  description: string
-  category: string
-  priceNGN: number
-  priceUSD?: number
-  priceGBP?: number
-  sizes: string[]
-  colorVariants: Array<{
-    colorName: string
-    hexCode?: string
-    images: Array<{ src: string; alt: string }>
-  }>
-}
-
-type Category = {
-  _id: string
-  name: string
-  slug: string
-  description: string
-  parentCategory?: string
-  image?: string
-}
-
-const sizeOptions = [
-  { key: "S", label: "Small (S)" },
-  { key: "M", label: "Medium (M)" },
-  { key: "L", label: "Large (L)" },
-  { key: "XL", label: "Extra Large (XL)" },
-  { key: "XXL", label: "Double XL (XXL)" },
-  { key: "One Size", label: "One Size Fits All" },
-] as const;
+import { sizeOptions, type ProductForm, type CategoryForm, type Product, type Category } from "./modules"
+import { fetchInventoryLists, createOrUpdateProduct, createOrUpdateCategory, deleteProduct } from "./modules"
 
 export default function InventoryManagerPage() {
   const { user, isLoading } = useAuth()
@@ -98,20 +43,9 @@ export default function InventoryManagerPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [productsRes, categoriesRes] = await Promise.all([
-        fetch('/api/admin/products'),
-        fetch('/api/admin/categories')
-      ])
-      
-      if (productsRes.ok) {
-        const productsData = await productsRes.json()
-        setProducts(Array.isArray(productsData) ? productsData : (productsData.items || []))
-      }
-      
-      if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json()
-        setCategories(Array.isArray(categoriesData) ? categoriesData : (categoriesData.items || []))
-      }
+      const { products, categories } = await fetchInventoryLists()
+      setProducts(products)
+      setCategories(categories)
     } catch (error) {
       console.error('Failed to fetch data:', error)
     }
@@ -142,35 +76,7 @@ export default function InventoryManagerPage() {
   const onSubmitProduct = async () => {
     setCreating(true)
     try {
-      const body = {
-        sku: productForm.sku,
-        name: productForm.name,
-        description: productForm.description,
-        category: productForm.categoryId,
-        sizes: productForm.sizes.split(",").map((s) => s.trim()),
-        colorVariants: [
-          {
-            colorName: productForm.colorName,
-            hexCode: productForm.colorHex,
-            images: productForm.images.map((src) => ({ src, alt: productForm.name })),
-          },
-        ],
-        priceNGN: productForm.price,
-        priceUSD: productForm.priceUSD,
-        priceGBP: productForm.priceGBP,
-      }
-      
-      const url = editing ? `/api/admin/products/${editing}` : '/api/admin/products'
-      const method = editing ? 'PUT' : 'POST'
-      
-      const res = await fetch(url, { 
-        method, 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify(body) 
-      })
-      
-      if (!res.ok) throw new Error(`Failed to ${editing ? 'update' : 'create'} product`)
-      
+      await createOrUpdateProduct(editing, productForm)
       alert(`Product ${editing ? 'updated' : 'created'} successfully`)
       setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "S,M,L,XL", colorName: "", images: [] })
       setEditing(null)
@@ -239,8 +145,7 @@ export default function InventoryManagerPage() {
         await deleteCloudinaryUrls(imageUrls)
       }
 
-      const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Failed deleting product")
+      await deleteProduct(id)
       await fetchData()
     } catch (e) {
       console.error("onDeleteProduct error:", e)
