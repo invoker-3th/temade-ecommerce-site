@@ -32,7 +32,7 @@ const Hero = () => {
   if (!mounted) {
     return (
       <section
-        className="relative w-full min-h-svh md:min-h-[130vh] overflow-hidden bg-cover bg-center bg-no-repeat"
+        className="relative w-full min-h-svh md:min-h-[100vh] overflow-hidden bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: "url('/temade-hero1.jpg')",
           backgroundPosition: "center 15%",
@@ -63,7 +63,7 @@ const Hero = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative w-full min-h-svh md:min-h-[130vh] overflow-hidden bg-cover bg-center bg-no-repeat"
+      className="relative w-full min-h-svh md:min-h-[100vh] overflow-hidden bg-cover bg-center bg-no-repeat"
       style={{
         backgroundImage: "url('/temade-hero1.jpg')",
         backgroundPosition: "center 15%",

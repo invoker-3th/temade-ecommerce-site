@@ -41,9 +41,14 @@ function NewArrivals() {
     const selectedSize = selectedSizes[item.id];
     const selectedColor = selectedColors[item.id];
 
-    if (!selectedSize && !selectedColor) {
+    if (!selectedSize ) {
       setToastType('error');
-      setToastMessage('Please select a size and color first');
+      setToastMessage('Please select a size ');
+      return;
+    }
+    if (!selectedColor) {
+      setToastType('error');
+      setToastMessage('Please select a color');
       return;
     }
 
