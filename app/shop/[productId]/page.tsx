@@ -96,8 +96,8 @@ export default function ProductDetailPage({ params }: Props) {
                         );
                         
                         // Remove duplicates based on colorName
-                        const uniqueColors = allColors.filter((color: { colorName: string; hexCode: string; images: any[] }, index: number, array: { colorName: string; hexCode: string; images: any[] }[]) => 
-                            array.findIndex((c: { colorName: string; hexCode: string; images: any[] }) => c.colorName === color.colorName) === index
+                        const uniqueColors = allColors.filter((color: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }, index: number, array: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }[]) => 
+                            array.findIndex((c: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }) => c.colorName === color.colorName) === index
                         );
                         
                         console.log('All variations:', variations);
@@ -209,11 +209,6 @@ export default function ProductDetailPage({ params }: Props) {
     const allImages = allVariations
         .flatMap(p => p.colorVariants)
         .flatMap(cv => cv.images);
-    
-    // Find the selected color variant from all variations
-    const selectedColorVariant = allVariations
-        .flatMap(p => p.colorVariants)
-        .find(variant => variant.colorName === selectedColor);
     
     const mainImage = allImages[selectedImageIndex] || allImages[0];
 
