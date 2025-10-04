@@ -14,7 +14,6 @@ export default function FileUploadZone({
   onUploadSuccess,
   onUploadError,
   maxFiles = 5,
-  acceptedFileTypes = ['image/jpeg', 'image/png', 'image/webp']
 }: FileUploadZoneProps) {
   const [uploading, setUploading] = useState(false)
 

@@ -7,7 +7,7 @@ import { useAuth } from "@/app/context/AuthContext"
 import { baseCategoryImages } from "@/app/data/shopCategories"
 import FileUploadZone from "@/app/components/FileUploadZone"
 import { sizeOptions, type ProductForm, type CategoryForm, type Product, type Category } from "./modules"
-import { fetchInventoryLists, createOrUpdateProduct, createOrUpdateCategory, deleteProduct } from "./modules"
+import { fetchInventoryLists, createOrUpdateProduct, deleteProduct } from "./modules"
 
 export default function InventoryManagerPage() {
   const { user, isLoading } = useAuth()
@@ -203,7 +203,7 @@ export default function InventoryManagerPage() {
     setEditing(product._id)
     const variant = product.colorVariants?.[0]
     const imgs = variant?.images ?? []
-    const normalizedImages = imgs.map((img: any) => (typeof img === "string" ? img : img?.src)).filter(Boolean)
+    const normalizedImages = imgs.map((img: { src: string; alt: string } | string) => (typeof img === "string" ? img : img?.src)).filter(Boolean)
 
     setProductForm({
       name: product.name,
