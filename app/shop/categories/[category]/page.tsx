@@ -171,7 +171,7 @@ function CategoryPage({ params }: CategoryPageProps) {
               role="listitem"
             >
               <div className="relative aspect-[2/3]">
-                <Link href={`/shop/${p.sku || p._id}`} className="block relative aspect-[2/3]">
+                <Link href={`/shop/${p._id}`} className="block relative aspect-[2/3]">
                   <Image
                     src={firstImage?.src || "/placeholder.svg"}
                     alt={firstImage?.alt || p.name}
