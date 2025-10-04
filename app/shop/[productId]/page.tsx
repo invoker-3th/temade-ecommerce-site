@@ -69,6 +69,7 @@ export default function ProductDetailPage({ params }: Props) {
     const [selectedSize, setSelectedSize] = useState<string>('');
     const [quantity, setQuantity] = useState<number>(1);
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -94,9 +95,21 @@ export default function ProductDetailPage({ params }: Props) {
                             }))
                         );
                         
+                        // Remove duplicates based on colorName
+                        const uniqueColors = allColors.filter((color: { colorName: string; hexCode: string; images: any[] }, index: number, array: { colorName: string; hexCode: string; images: any[] }[]) => 
+                            array.findIndex((c: { colorName: string; hexCode: string; images: any[] }) => c.colorName === color.colorName) === index
+                        );
+                        
+                        console.log('All variations:', variations);
+                        console.log('All colors:', allColors);
+                        console.log('Unique colors:', uniqueColors);
+                        
                         // Set default color and size
-                        if (allColors.length > 0) {
-                            setSelectedColor(allColors[0].colorName);
+                        if (uniqueColors.length > 0) {
+                            setSelectedColor(uniqueColors[0].colorName);
+                        } else if (data.colorVariants && data.colorVariants.length > 0) {
+                            // Fallback to original product colors if no variations found
+                            setSelectedColor(data.colorVariants[0].colorName);
                         }
                         if (data.sizes && data.sizes.length > 0) {
                             setSelectedSize(data.sizes[0]);
@@ -192,12 +205,17 @@ export default function ProductDetailPage({ params }: Props) {
         notFound();
     }
 
+    // Collect all images from all color variations
+    const allImages = allVariations
+        .flatMap(p => p.colorVariants)
+        .flatMap(cv => cv.images);
+    
     // Find the selected color variant from all variations
     const selectedColorVariant = allVariations
         .flatMap(p => p.colorVariants)
         .find(variant => variant.colorName === selectedColor);
     
-    const currentImages = selectedColorVariant?.images || [];
+    const mainImage = allImages[selectedImageIndex] || allImages[0];
 
     return (
         <div className={`px-4 py-8 max-w-7xl mx-auto relative ${workSans.className}`}>
@@ -216,13 +234,18 @@ export default function ProductDetailPage({ params }: Props) {
             <div className="flex flex-col lg:flex-row lg:items-start gap-8">
                 {/* Images */}
                 <div className="flex flex-col lg:flex-row gap-4 w-full lg:w-1/2">
-                    {/* Thumbnails */}
-                    {currentImages.length > 1 && (
+                    {/* Thumbnails - Show all images from all color variations */}
+                    {allImages.length > 1 && (
                         <div className="flex w-full gap-3 max-smb:overflow-x-auto lg:flex-col lg:w-1/3">
-                            {currentImages.map((img, idx) => (
+                            {allImages.map((img, idx) => (
                                 <button
                                     key={idx}
-                                    className="min-w-[5rem] sm:min-w-[7rem] h-28 sm:h-36 rounded-md border-2 border-gray-200 transition-all duration-200 bg-cover bg-center hover:border-[#CA6F86]"
+                                    onClick={() => setSelectedImageIndex(idx)}
+                                    className={`min-w-[5rem] sm:min-w-[7rem] h-28 sm:h-36 rounded-md border-2 transition-all duration-200 bg-cover bg-center ${
+                                        selectedImageIndex === idx 
+                                            ? 'border-[#CA6F86]' 
+                                            : 'border-gray-200 hover:border-[#CA6F86]'
+                                    }`}
                                     style={{ backgroundImage: `url(${img.src})` }}
                                     aria-label="Select image variant"
                                 />
@@ -232,10 +255,10 @@ export default function ProductDetailPage({ params }: Props) {
 
                     {/* Main Image */}
                     <div className="w-full relative aspect-[3/4] max-w-[700px]">
-                        {currentImages[0] && (
+                        {mainImage && (
                             <Image
-                                src={currentImages[0].src}
-                                alt={currentImages[0].alt}
+                                src={mainImage.src}
+                                alt={mainImage.alt}
                                 fill
                                 className="object-cover rounded-lg"
                                 sizes="(min-width: 1024px) 50vw, 100vw"
@@ -275,15 +298,30 @@ export default function ProductDetailPage({ params }: Props) {
                     <div className="space-y-3">
                         <h2 className="font-semibold text-[#16161A]">Color: {selectedColor}</h2>
                         <div className="flex gap-3 flex-wrap">
-                            {allVariations
-                                .flatMap(p => p.colorVariants)
+                            {(allVariations.length > 0 
+                                ? allVariations.flatMap(p => p.colorVariants)
+                                : product.colorVariants
+                            )
                                 .filter((variant, index, array) => 
                                     array.findIndex(v => v.colorName === variant.colorName) === index
                                 )
                                 .map((variant) => (
                                 <button
                                     key={variant.colorName}
-                                    onClick={() => setSelectedColor(variant.colorName)}
+                                    onClick={() => {
+                                        setSelectedColor(variant.colorName);
+                                        // Find the first image of this color variant
+                                        const colorImages = (allVariations.length > 0 
+                                            ? allVariations.flatMap(p => p.colorVariants)
+                                            : product.colorVariants
+                                        ).find(cv => cv.colorName === variant.colorName)?.images || [];
+                                        if (colorImages.length > 0) {
+                                            const imageIndex = allImages.findIndex(img => img.src === colorImages[0].src);
+                                            if (imageIndex !== -1) {
+                                                setSelectedImageIndex(imageIndex);
+                                            }
+                                        }
+                                    }}
                                     className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-all ${
                                         selectedColor === variant.colorName
                                             ? 'border-[#CA6F86] bg-[#CA6F86]/10'
@@ -299,6 +337,9 @@ export default function ProductDetailPage({ params }: Props) {
                                 </button>
                             ))}
                         </div>
+                        {allVariations.length === 0 && (
+                            <p className="text-sm text-gray-500">No color variations found</p>
+                        )}
                     </div>
 
                     {/* Size Selection */}
