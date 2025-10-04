@@ -13,9 +13,9 @@ export class ProductService {
     return c.find({}).sort({ updatedAt: -1 }).toArray()
   }
 
-  static async listByCategory(categoryId: string): Promise<Product[]> {
+  static async listByCategory(category: string): Promise<Product[]> {
     const c = await this.col()
-    return c.find({ categoryId: new ObjectId(categoryId) }).toArray()
+    return c.find({ category: category }).toArray()
   }
 
   static async create(data: Omit<Product, "_id" | "createdAt" | "updatedAt">): Promise<Product> {

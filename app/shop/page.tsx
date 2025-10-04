@@ -20,7 +20,11 @@ type DbProduct = {
   priceUSD?: number
   priceGBP?: number
   sizes: string[]
-  colorVariants: Array<{ colorName: string; images: Array<{ src: string; alt: string }> }>
+  colorVariants: Array<{ 
+    colorName: string
+    hexCode: string
+    images: Array<{ src: string; alt: string }> 
+  }>
 }
 
 function Shop() {
@@ -110,13 +114,21 @@ function Shop() {
       {/* Category title */}
       <div className="mb-8">
         <h2 className="text-2xl md:text-4xl font-medium text-[#16161A] font-sans">ALL PRODUCTS</h2>
-        <p className="text-gray-600 mt-2">{dbProducts.length} items</p>
+        <p className="text-gray-600 mt-2">
+          {dbProducts.filter((p, index, array) => 
+            array.findIndex(product => product.name === p.name) === index
+          ).length} products
+        </p>
       </div>
 
-      {/* All products grid (DB only) */}
+      {/* All products grid (DB only) - Grouped by name */}
       <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-6">
-        {/* DB products */}
-        {dbProducts.map((p) => {
+        {/* DB products - Group by name to show only one instance per product */}
+        {dbProducts
+          .filter((p, index, array) => 
+            array.findIndex(product => product.name === p.name) === index
+          )
+          .map((p) => {
           const firstImage = p.colorVariants[0]?.images[0]
           return (
             <div
@@ -127,7 +139,7 @@ function Shop() {
               role="listitem"
             >
               <div className="relative aspect-[2/3]">
-                <Link href={`/shop/${p.sku || p._id}`} className="block relative aspect-[2/3]">
+                <Link href={`/shop/${p._id}`} className="block relative aspect-[2/3]">
                   <Image
                     src={firstImage?.src || "/placeholder.svg"}
                     alt={firstImage?.alt || p.name}
@@ -176,12 +188,20 @@ function Shop() {
                   </div>
                 )}
                 
-                {/* Available Colors */}
+                {/* Available Colors with Swatches */}
                 {p.colorVariants && p.colorVariants.length > 0 && (
                   <div className="mb-1">
-                    <p className="text-xs text-gray-600">
-                      Colors: {p.colorVariants.map(cv => cv.colorName).join(", ")}
-                    </p>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-gray-600">Colors:</span>
+                      {p.colorVariants.map((cv, idx) => (
+                        <div
+                          key={idx}
+                          className="w-4 h-4 rounded-full border border-gray-300"
+                          style={{ backgroundColor: cv.hexCode }}
+                          title={cv.colorName}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
                 

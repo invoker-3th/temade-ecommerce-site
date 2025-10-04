@@ -8,8 +8,11 @@ export type ProductForm = {
   priceGBP?: number
   sizes: string
   colorName: string
-  colorHex?: string
+  colorHex: string // required hex color code
   images: string[]
+  // New fields for product grouping
+  baseProductId?: string // ID of the base product (for grouping color variations)
+  isBaseProduct?: boolean // true if this is the main product, false if it's a color variation
 }
 
 export type CategoryForm = {
@@ -32,9 +35,12 @@ export type Product = {
   sizes: string[]
   colorVariants: Array<{
     colorName: string
-    hexCode?: string
+    hexCode: string // required hex color code
     images: Array<{ src: string; alt: string }>
   }>
+  // New fields for product grouping
+  baseProductId?: string // ID of the base product (for grouping color variations)
+  isBaseProduct?: boolean // true if this is the main product, false if it's a color variation
 }
 
 export type Category = {

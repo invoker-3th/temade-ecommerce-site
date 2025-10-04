@@ -27,7 +27,11 @@ type DbProduct = {
   priceUSD?: number
   priceGBP?: number
   sizes: string[]
-  colorVariants: Array<{ colorName: string; images: Array<{ src: string; alt: string }> }>
+  colorVariants: Array<{ 
+    colorName: string
+    hexCode: string
+    images: Array<{ src: string; alt: string }> 
+  }>
 }
 
 function CategoryPage({ params }: CategoryPageProps) {
@@ -48,17 +52,17 @@ function CategoryPage({ params }: CategoryPageProps) {
       
       // Load products from admin-created data
       try {
-        const res = await fetch("/api/admin/products", { cache: "no-store" })
+        const res = await fetch(`/api/products/category/${encodeURIComponent(categoryName)}`, { cache: "no-store" })
         if (res.ok) {
-          const data = await res.json()
-          const items: DbProduct[] = Array.isArray(data) ? data : (data.items || [])
-          const filteredProducts = items.filter((p) => p.category?.toUpperCase() === categoryName)
-          setDbProducts(filteredProducts)
+          const items: DbProduct[] = await res.json()
+          setDbProducts(items)
           
           // If no products found for this category, show 404
-          if (filteredProducts.length === 0) {
+          if (items.length === 0) {
             notFound()
           }
+        } else {
+          notFound()
         }
       } catch (error) {
         console.error('Failed to load products:', error)
@@ -216,12 +220,20 @@ function CategoryPage({ params }: CategoryPageProps) {
                   </div>
                 )}
                 
-                {/* Available Colors */}
+                {/* Available Colors with Swatches */}
                 {p.colorVariants && p.colorVariants.length > 0 && (
                   <div className="mb-1">
-                    <p className="text-xs text-gray-600">
-                      Colors: {p.colorVariants.map(cv => cv.colorName).join(", ")}
-                    </p>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-gray-600">Colors:</span>
+                      {p.colorVariants.map((cv, idx) => (
+                        <div
+                          key={idx}
+                          className="w-4 h-4 rounded-full border border-gray-300"
+                          style={{ backgroundColor: cv.hexCode }}
+                          title={cv.colorName}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
                 

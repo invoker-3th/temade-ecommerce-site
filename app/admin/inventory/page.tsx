@@ -21,7 +21,7 @@ export default function InventoryManagerPage() {
   
   const [productForm, setProductForm] = useState<ProductForm>({ 
     name: "", sku: "", description: "", categoryId: "", price: 0, 
-    sizes: "S,M,L,XL", colorName: "", images: [] 
+    sizes: "S,M,L,XL", colorName: "", colorHex: "#000000", images: [] 
   })
   
   const [categoryForm, setCategoryForm] = useState<CategoryForm>({ 
@@ -78,7 +78,7 @@ export default function InventoryManagerPage() {
     try {
       await createOrUpdateProduct(editing, productForm)
       alert(`Product ${editing ? 'updated' : 'created'} successfully`)
-      setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "S,M,L,XL", colorName: "", images: [] })
+      setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "S,M,L,XL", colorName: "", colorHex: "#000000", images: [] })
       setEditing(null)
       fetchData()
     } catch (e) {
@@ -198,6 +198,12 @@ export default function InventoryManagerPage() {
   }
 
   const staticCategories = Object.keys(baseCategoryImages)
+  
+  // Get all available categories (static + dynamic)
+  const allCategories = [
+    ...staticCategories,
+    ...categories.map(c => c.name)
+  ].filter((category, index, array) => array.indexOf(category) === index) // Remove duplicates
 
   function onEditProduct(product: Product): void {
     setEditing(product._id)
@@ -215,7 +221,7 @@ export default function InventoryManagerPage() {
       priceGBP: product.priceGBP,
       sizes: Array.isArray(product.sizes) ? product.sizes.join(",") : String(product.sizes || ""),
       colorName: variant?.colorName || "",
-      colorHex: variant?.hexCode,
+      colorHex: variant?.hexCode || "#000000",
       images: normalizedImages || []
     })
   }
@@ -259,7 +265,7 @@ export default function InventoryManagerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10">
+    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-['Work_Sans']">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Inventory Management</h1>
         <Link href="/admin" className="underline font-bold text-[#2C2C2C]">Back to Analytics</Link>
@@ -288,6 +294,30 @@ export default function InventoryManagerPage() {
           Categories ({categories.length})
         </button>
       </div>
+
+      {/* Instructions */}
+      {activeTab === 'products' && (
+        <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-6 mb-8">
+          <h2 className="text-lg font-bold mb-3 text-[#16161A]">How to Add Products & Color Variations</h2>
+          <div className="space-y-3 text-sm text-gray-700">
+            <div>
+              <p><strong>Categories:</strong> Select from existing categories (TOPS, SKIRTS, PANTS, DRESSES, JACKETS) or create new ones. Products will appear in the selected category in the shop.</p>
+            </div>
+            <div>
+              <p><strong>Color Variations:</strong></p>
+              <p><strong>Step 1:</strong> Create the base product (e.g., &ldquo;Cotton Dress&rdquo;) with the first color (e.g., &ldquo;Blue&rdquo;)</p>
+              <p><strong>Step 2:</strong> To add more colors of the same product, create a new product with:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>Same product name (e.g., &ldquo;Cotton Dress&rdquo;)</li>
+                <li>Different SKU (e.g., &ldquo;COTTON-DRESS-RED&rdquo;)</li>
+                <li>Different color name and hex code (e.g., &ldquo;Red&rdquo;, &ldquo;#FF0000&rdquo;)</li>
+                <li>Same category, sizes and pricing</li>
+              </ul>
+              <p><strong>Result:</strong> All color variations will appear together on the same product detail page, and customers can select their preferred color using the color swatches.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'products' && (
         <>
@@ -325,13 +355,13 @@ export default function InventoryManagerPage() {
                   onChange={(e) => setProductForm({ ...productForm, categoryId: e.target.value })}
                 >
                   <option value="">Select Category</option>
-                  {staticCategories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                  {categories.map((c) => (
-                    <option key={c._id} value={c.name}>{c.name}</option>
+                  {allCategories.map((category) => (
+                    <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Products will appear in the &ldquo;{productForm.categoryId}&rdquo; category in the shop
+                </p>
               </div>
               
               <div>
@@ -430,13 +460,22 @@ export default function InventoryManagerPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Color Hex Code (Optional)</label>
-                <input 
-                  className="border p-3 rounded w-full" 
-                  placeholder="#000000" 
-                  value={productForm.colorHex ?? ""} 
-                  onChange={(e) => setProductForm({ ...productForm, colorHex: e.target.value })} 
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Color Hex Code (Required)</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="color"
+                    className="w-12 h-12 border rounded cursor-pointer" 
+                    value={productForm.colorHex} 
+                    onChange={(e) => setProductForm({ ...productForm, colorHex: e.target.value })} 
+                  />
+                  <input 
+                    className="border p-3 rounded flex-1" 
+                    placeholder="#000000" 
+                    value={productForm.colorHex} 
+                    onChange={(e) => setProductForm({ ...productForm, colorHex: e.target.value })} 
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">This color will be displayed as a swatch in the shop</p>
               </div>
               
               <div className="md:col-span-2">
@@ -498,7 +537,7 @@ export default function InventoryManagerPage() {
                   className="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50" 
                   onClick={() => {
                     setEditing(null)
-                    setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "S,M,L,XL", colorName: "", images: [] })
+                    setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "S,M,L,XL", colorName: "", colorHex: "#000000", images: [] })
                   }}
                 >
                   Cancel

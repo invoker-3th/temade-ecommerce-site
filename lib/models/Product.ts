@@ -6,7 +6,8 @@ export interface ProductImage {
 }
 
 export interface ProductColorVariant {
-  colorName: string // can be hex code as well
+  colorName: string
+  hexCode: string // hex color code for display
   images: ProductImage[]
   price?: number
 }
@@ -16,7 +17,7 @@ export interface Product {
   sku: string
   name: string
   description: string
-  categoryId: ObjectId
+  category: string // Changed from categoryId: ObjectId to category: string
   subCategoryId?: ObjectId | null
   sizes: string[]
   colorVariants: ProductColorVariant[]
@@ -24,6 +25,9 @@ export interface Product {
   priceUSD?: number
   priceGBP?: number
   priceNGN?: number
+  // New fields for product grouping
+  baseProductId?: string // ID of the base product (for grouping color variations)
+  isBaseProduct?: boolean // true if this is the main product, false if it's a color variation
   createdAt: Date
   updatedAt: Date
 }
