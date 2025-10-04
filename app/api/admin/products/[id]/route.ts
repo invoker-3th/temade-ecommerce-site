@@ -4,10 +4,10 @@ import { ObjectId } from "mongodb"
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
 
     // Use getDatabase() instead of connecting directly
@@ -79,10 +79,10 @@ export async function PUT(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const db = await getDatabase()
     const result = await db.collection("products").deleteOne({ _id: new ObjectId(id) })
     if (!result.deletedCount) {
