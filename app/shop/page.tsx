@@ -3,10 +3,11 @@
 import { ChevronDown, Heart, CheckCircle2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 // Removed static data imports - using only admin-created data
 import { useCart } from "../context/CartContext"
 import { useWishlist } from "../context/WishlistContext"
+import { useCategories } from "../hooks/useCategories"
 
 type ToastType = "success" | "error"
 
@@ -29,6 +30,7 @@ type DbProduct = {
 
 function Shop() {
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
+  const { categories: mergedCategories } = useCategories({ pollMs: 15000 })
   useEffect(() => {
     const fetchDb = async () => {
       try {
@@ -72,7 +74,16 @@ function Shop() {
     )
   }
 
-  const categories = ["ALL", "TOPS", "SKIRTS", "PANTS", "DRESSES", "JACKETS"]
+  const categories = useMemo(() => ["ALL", ...mergedCategories], [mergedCategories])
+
+  // Deduplicate products by name using a Map for performance
+  const uniqueProducts = useMemo(() => {
+    const nameToProduct = new Map<string, DbProduct>()
+    for (const p of dbProducts) {
+      if (!nameToProduct.has(p.name)) nameToProduct.set(p.name, p)
+    }
+    return Array.from(nameToProduct.values())
+  }, [dbProducts])
 
   return (
     <div className="max-w-[1280px] m-auto px-8 py-4">
@@ -114,21 +125,13 @@ function Shop() {
       {/* Category title */}
       <div className="mb-8">
         <h2 className="text-2xl md:text-4xl font-medium text-[#16161A] font-sans">ALL PRODUCTS</h2>
-        <p className="text-gray-600 mt-2">
-          {dbProducts.filter((p, index, array) => 
-            array.findIndex(product => product.name === p.name) === index
-          ).length} products
-        </p>
+        <p className="text-gray-600 mt-2">{uniqueProducts.length} products</p>
       </div>
 
       {/* All products grid (DB only) - Grouped by name */}
       <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-6">
         {/* DB products - Group by name to show only one instance per product */}
-        {dbProducts
-          .filter((p, index, array) => 
-            array.findIndex(product => product.name === p.name) === index
-          )
-          .map((p) => {
+        {uniqueProducts.map((p) => {
           const firstImage = p.colorVariants[0]?.images[0]
           return (
             <div
