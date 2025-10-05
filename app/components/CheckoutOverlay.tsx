@@ -15,7 +15,8 @@ export default function CheckoutOverlay({ visible, onClose }: CheckoutOverlayPro
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md mx-auto">
+      <div className="bg-white p-8 rounded-[8px] shadow-lg text-center max-w-md mx-auto">
+        <h1 className="text-[40px] font-bold mb-4 text-[#222222] text-center">Yay!!!</h1>
         <Image src="/checkout.jpg" alt="Order Placed" width={130} height={130} className="block m-auto"/>
         <p className="text-[18px] font-normal text-[#464646] mb-4">Order Placed! has been placed. <br /> <span className="font-semibold">Temade</span> Goodness is on the way to you
         </p>
@@ -25,7 +26,7 @@ export default function CheckoutOverlay({ visible, onClose }: CheckoutOverlayPro
               onClose()
               router.push("/account")
             }}
-            className="bg-[#8D2741] text-white px-6 py-2 rounded-lg hover:bg-[#111]"
+            className="bg-[#8D2741] text-white px-6 py-2 rounded-[8px] font-semibold hover:bg-[#4d1323] transition-all duration-200"
           >
             VIEW ORDERS
           </button>
