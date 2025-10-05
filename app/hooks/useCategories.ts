@@ -19,7 +19,6 @@ export function useCategories(options?: { pollMs?: number }) {
 
   useEffect(() => {
     let cancelled = false
-    let timer: ReturnType<typeof setInterval> | undefined
 
     const load = async () => {
       try {
@@ -35,10 +34,10 @@ export function useCategories(options?: { pollMs?: number }) {
     }
 
     load()
-    timer = setInterval(load, pollMs)
+    const timer = setInterval(load, pollMs)
     return () => {
       cancelled = true
-      if (timer) clearInterval(timer)
+      clearInterval(timer)
     }
   }, [pollMs])
 
