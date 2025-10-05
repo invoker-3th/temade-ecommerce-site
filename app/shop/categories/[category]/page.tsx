@@ -3,7 +3,8 @@
 import { ChevronDown, Heart, CheckCircle2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useCategories } from "@/app/hooks/useCategories"
 // Removed static data import - using only admin-created data
 import { useCart } from "../../../context/CartContext"
 import { useWishlist } from "../../../context/WishlistContext"
@@ -41,6 +42,7 @@ function CategoryPage({ params }: CategoryPageProps) {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
   const [category, setCategory] = useState<string>("")
+  const { categories: mergedCategories } = useCategories({ pollMs: 15000 })
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -81,18 +83,6 @@ function CategoryPage({ params }: CategoryPageProps) {
     }
   }, [toastMessage])
 
-  // Show loading state while category is being loaded
-  if (loading) {
-    return (
-      <div className="max-w-[1280px] m-auto px-8 py-4">
-        <div className="flex justify-center items-center min-h-[400px]">
-          <div className="text-lg">Loading...</div>
-        </div>
-      </div>
-    )
-  }
-
-
   function Toast({ message, type }: { message: string; type: ToastType }) {
     return (
       <div
@@ -108,7 +98,27 @@ function CategoryPage({ params }: CategoryPageProps) {
     )
   }
 
-  const categories = ["ALL", "TOPS", "SKIRTS", "PANTS", "DRESSES", "JACKETS"]
+  const categories = useMemo(() => ["ALL", ...mergedCategories], [mergedCategories])
+
+  // Deduplicate products by name using a Map for performance
+  const uniqueProducts = useMemo(() => {
+    const nameToProduct = new Map<string, DbProduct>()
+    for (const p of dbProducts) {
+      if (!nameToProduct.has(p.name)) nameToProduct.set(p.name, p)
+    }
+    return Array.from(nameToProduct.values())
+  }, [dbProducts])
+
+  // Show loading state while category is being loaded
+  if (loading) {
+    return (
+      <div className="max-w-[1280px] m-auto px-8 py-4">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-lg">Loading...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-[1280px] m-auto px-8 py-4">
@@ -154,13 +164,13 @@ function CategoryPage({ params }: CategoryPageProps) {
       {/* Category title */}
       <div className="mb-8">
         <h2 className="text-2xl md:text-4xl font-medium text-[#16161A] font-sans">{category}</h2>
-        <p className="text-gray-600 mt-2">{dbProducts.length} items</p>
+        <p className="text-gray-600 mt-2">{uniqueProducts.length} products</p>
       </div>
 
       {/* Products grid (DB only) */}
       <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-6">
         {/* DB products */}
-        {dbProducts.map((p) => {
+        {uniqueProducts.map((p) => {
           const firstImage = p.colorVariants[0]?.images[0]
           return (
             <div
