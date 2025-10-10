@@ -56,6 +56,26 @@ export interface Order {
   paymentMethod: string
   paymentStatus: "pending" | "completed" | "failed"
   orderStatus: "processing" | "shipped" | "delivered" | "cancelled"
+  paymentReference?: string
+  invoice?: {
+    number: string
+    issuedAt: Date
+    items: Array<{
+      name: string
+      color?: string
+      size?: string
+      price: number
+      quantity: number
+      total: number
+    }>
+    subtotal: number
+    tax: number
+    shipping: number
+    total: number
+    shippingAddress: Order["shippingAddress"]
+    customer: { name: string; email: string; phone: string }
+    payment: { method: string; reference?: string }
+  }
   subtotal: number
   tax: number
   shipping: number

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { OrderService } from "@/lib/services/orderServices"
 import { UserService } from "@/lib/services/userServices"
 import { ObjectId } from "mongodb"
+// removed unused Order type import
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +48,51 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error("Order creation error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// Webhook to handle Paystack (or other PSP) payment success and attach invoice
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { orderId, reference, paymentMethod, shippingAddress, items, subtotal, tax, shipping, total, customer } = body
+
+    if (!orderId || !reference) {
+      return NextResponse.json({ error: "orderId and reference are required" }, { status: 400 })
+    }
+
+    const invoiceNumber = `INV-${Date.now()}`
+    const invoice = {
+      number: invoiceNumber,
+      issuedAt: new Date(),
+      items: (items || []).map((it: { name: string; color?: string; size?: string; price: number; quantity: number }) => ({
+        name: it.name,
+        color: it.color,
+        size: it.size,
+        price: Number(it.price || 0),
+        quantity: Number(it.quantity || 1),
+        total: Number(it.price || 0) * Number(it.quantity || 1),
+      })),
+      subtotal: Number(subtotal || 0),
+      tax: Number(tax || 0),
+      shipping: Number(shipping || 0),
+      total: Number(total || 0),
+      shippingAddress,
+      customer: {
+        name: customer?.name || shippingAddress?.userName,
+        email: customer?.email || shippingAddress?.email,
+        phone: customer?.phone || shippingAddress?.phone,
+      },
+      payment: { method: paymentMethod || "paystack", reference },
+    }
+
+    const ok = await OrderService.attachInvoice(orderId, invoice)
+    if (!ok) return NextResponse.json({ error: "Failed to attach invoice" }, { status: 400 })
+
+    return NextResponse.json({ ok: true, invoice })
+  } catch (error) {
+    console.error("Invoice attach error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

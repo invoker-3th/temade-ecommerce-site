@@ -86,9 +86,9 @@ function Shop() {
   }, [dbProducts])
 
   return (
-    <div className="max-w-[1280px] m-auto px-8 py-4">
+    <div className="max-w-[1280px] m-auto px-8 py-4 font-WorkSans">
       <div className="flex flex-col justify-center items-center">
-        <h1 className="text-[40px] md:text-[120px] font-medium text-[#16161A] font-sans">SHOP TEMADE</h1>
+        <h1 className="text-[40px] md:text-[120px] font-medium text-[#16161A]">SHOP TEMADE</h1>
         {/* Breadcrumb */}
         <div className="font-WorkSans flex space-x-1">
           <Link href="/" className="text-[16px] font-normal text-[#CA6F86]">
@@ -124,7 +124,7 @@ function Shop() {
 
       {/* Category title */}
       <div className="mb-8">
-        <h2 className="text-2xl md:text-4xl font-medium text-[#16161A] font-sans">ALL PRODUCTS</h2>
+        <h2 className="text-2xl md:text-4xl font-medium text-[#16161A]">ALL PRODUCTS</h2>
         <p className="text-gray-600 mt-2">{uniqueProducts.length} products</p>
       </div>
 
@@ -182,7 +182,7 @@ function Shop() {
               </div>
 
               <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-2 transition-transform transform group-hover:translate-y-0 translate-y-full">
-                <h3 className="text-[16px] font-sans font-normal text-[#2C2C2C]">{p.name}</h3>
+                <h3 className="text-[16px] font-normal text-[#2C2C2C]">{p.name}</h3>
                 
                 {/* Available Sizes */}
                 {p.sizes && p.sizes.length > 0 && (
@@ -208,7 +208,7 @@ function Shop() {
                   </div>
                 )}
                 
-                <p className="text-lg font-medium text-[#2C2C2C] font-sans">₦{(p.priceNGN ?? 0).toLocaleString()}</p>
+                <p className="text-lg font-medium text-[#2C2C2C]">₦{(p.priceNGN ?? 0).toLocaleString()}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -225,7 +225,7 @@ function Shop() {
                     setToastType("success")
                     setToastMessage(`Added ${p.name} to cart`)
                   }}
-                  className="underline font-semibold text-[16px] font-sans text-[#2C2C2C] hover:text-[#701d34] transition-colors"
+                  className="underline font-semibold text-[16px] text-[#2C2C2C] hover:text-[#701d34] transition-colors"
                 >
                   ADD TO CART
                 </button>

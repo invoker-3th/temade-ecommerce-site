@@ -115,12 +115,36 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Inventory CTA */}
-          <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-6">
+      {/* Inventory & Orders CTA */}
+      <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
             <h2 className="text-xl font-bold mb-2 text-[#16161A]">Inventory</h2>
-            <p className="text-sm font-semibold text-gray-600 mb-4">Add or update products to sync with the shop.</p>
-            <Link href="/admin/inventory" className="underline font-bold text-[#2C2C2C]">Open Inventory Manager</Link>
+            <p className="text-sm font-semibold text-gray-600">Add or update products to sync with the shop.</p>
           </div>
+          <Link href="/admin/inventory" className="underline font-bold text-[#2C2C2C]">Open Inventory Manager</Link>
+        </div>
+      </div>
+
+      <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold mb-2 text-[#16161A]">Orders</h2>
+            <p className="text-sm font-semibold text-gray-600">Track paid orders and invoices for shipping.</p>
+          </div>
+          <Link href="/admin/orders" className="underline font-bold text-[#2C2C2C]">View Orders</Link>
+        </div>
+          </div>
+
+      <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold mb-2 text-[#16161A]">Lookbook</h2>
+            <p className="text-sm font-semibold text-gray-600">Add or remove lookbook images hosted on Cloudinary.</p>
+          </div>
+          <Link href="/admin/lookbook" className="underline font-bold text-[#2C2C2C]">Open Lookbook Manager</Link>
+        </div>
+      </div>
         </div>
       )}
     </div>

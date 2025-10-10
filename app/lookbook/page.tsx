@@ -1,9 +1,26 @@
 "use client"
-import React from "react"
+import React, { useEffect, useState } from "react"
 import Image from "next/image"
-import { lookbookData, type LookbookSection } from "../data/lookbookData"
+import { lookbookData as fallbackData, type LookbookSection } from "../data/lookbookData"
 
 function LookbookPage() {
+    const [sections, setSections] = useState<LookbookSection[]>(fallbackData)
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await fetch('/api/lookbook', { cache: 'no-store' })
+                if (res.ok) {
+                    const data = await res.json()
+                    if (Array.isArray(data.sections) && data.sections.length) {
+                        setSections(data.sections)
+                    }
+                }
+            } catch {}
+        }
+        load()
+    }, [])
+
     return (
         <div className="py-10">
             {/* Hero Section */}
@@ -29,7 +46,7 @@ function LookbookPage() {
             </div>
 
             {/* Iterate over each material section */}
-            {lookbookData.map((section: LookbookSection) => (
+            {sections.map((section: LookbookSection) => (
                 <div key={section.material} className="">
                     {/* Material Heading */}
                     <h2 className="text-4xl sm:text-6xl md:text-8xl lg:text-[167px] font-medium text-[#8D2741] font-sans text-center leading-tight my-5">

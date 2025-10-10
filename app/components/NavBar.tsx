@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   CircleUser,
@@ -22,8 +23,14 @@ const NavBar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  type SearchProduct = { _id: string; name: string; category?: string; colorVariants?: Array<{ images: Array<{ src: string; alt: string }> }> };
+  const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const { cartItems } = useCart();
+  const router = useRouter();
 
   const totalCartQuantity = (cartItems || []).reduce((sum, item) => sum + item.quantity, 0);
 
@@ -43,6 +50,28 @@ const NavBar = () => {
       document.body.style.overflow = '';
     };
   }, [isMobileMenuOpen, isCartOpen]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const run = async () => {
+      if (!searchOpen) return;
+      const q = searchQuery.trim();
+      if (!q) { setSearchResults([]); return; }
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/products/search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('search failed');
+        const data = await res.json();
+        setSearchResults((data.results || []).slice(0, 2));
+      } catch {
+        // ignore abort
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    const id = setTimeout(run, 250);
+    return () => { controller.abort(); clearTimeout(id); };
+  }, [searchQuery, searchOpen]);
 
   return (
     <>
@@ -74,10 +103,62 @@ const NavBar = () => {
           </div>
 
           {/* Icons */}
-          <div className="hidden sm:flex items-center space-x-5 text-[#030C26]">
-            <Link href="/search" className="hover:text-[#8D2741] transition-colors">
+          <div className="hidden sm:flex items-center space-x-5 text-[#030C26] relative">
+            <button onClick={() => setSearchOpen((v) => !v)} className="hover:text-[#8D2741] transition-colors">
               <Search />
-            </Link>
+            </button>
+            {searchOpen && (
+              <div className="absolute right-0 top-10 w-80 bg-white border rounded shadow-lg p-3 z-50">
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name or category"
+                  className="w-full border rounded px-3 py-2 mb-2"
+                />
+                <div className="max-h-80 overflow-y-auto">
+                  {searchLoading ? (
+                    <div className="text-sm text-gray-500">Searching...</div>
+                  ) : (
+                    <>
+                      {searchQuery && (
+                        <div className="text-xs text-gray-500 mb-1">Results for: {searchQuery}</div>
+                      )}
+                      {searchResults.length === 0 ? (
+                        <div className="text-sm text-gray-500">No results</div>
+                      ) : (
+                        <ul className="divide-y">
+                          {searchResults.map((p) => (
+                            <li key={p._id} className="py-2">
+                              <Link href={`/shop/${p._id}`} onClick={() => setSearchOpen(false)} className="flex items-center gap-3 hover:bg-gray-50 rounded px-2 py-1">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={p?.colorVariants?.[0]?.images?.[0]?.src || '/placeholder.svg'} alt={p.name} className="w-10 h-10 object-cover rounded" />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium">{p.name}</div>
+                                  <div className="text-xs text-gray-500">{p.category}</div>
+                                </div>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {searchQuery && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => { router.push(`/search?q=${encodeURIComponent(searchQuery)}`); setSearchOpen(false); }}
+                            className="text-sm text-[#8D2741] hover:underline"
+                          >
+                            View all
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="mt-2 text-xs text-gray-500">Tip: type a letter (e.g., T) or a category (e.g., skirts)</div>
+              </div>
+            )}
 
             {/* Wishlist Icon */}
             <Link href="/wishlist" className="relative hover:text-[#8D2741] transition-colors flex">
