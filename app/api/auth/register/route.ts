@@ -5,11 +5,11 @@ import type { User } from "@/lib/models/User"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, firstName, lastName, phone, cart = [], wishlist = [] } = body
+    const { email, userName, phone, cart = [], wishlist = [] } = body
 
     // Validate required fields
-    if (!email || !firstName || !lastName) {
-      return NextResponse.json({ error: "Email, first name, and last name are required" }, { status: 400 })
+    if (!email || !userName) {
+      return NextResponse.json({ error: "Email and userName are required" }, { status: 400 })
     }
 
     // Check if user already exists
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Create new user
     const userData: Omit<User, "_id" | "createdAt" | "updatedAt"> = {
       email,
-      userName: body.userName,
+      userName,
       phone,
       cart,
       wishlist,

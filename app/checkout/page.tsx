@@ -130,6 +130,31 @@ const CheckoutPage = () => {
       })
 
       if (response.ok) {
+        // Attach invoice to the order using PATCH
+        const { order } = await response.json()
+        await fetch("/api/orders", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: order?._id,
+            reference: reference.reference,
+            paymentMethod: "paystack",
+            shippingAddress: {
+              userName: `${formData.firstname} ${formData.lastname}`,
+              email: formData.email,
+              phone: formData.phone,
+              city: formData.city,
+              state: formData.state,
+              address: formData.address,
+            },
+            items: cartItems,
+            subtotal,
+            tax,
+            shipping,
+            total,
+            customer: { name: `${formData.firstname} ${formData.lastname}`, email: formData.email, phone: formData.phone },
+          }),
+        })
         clearCart()
         setIsOverlayVisible(true)
       } else {

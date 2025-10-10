@@ -137,13 +137,19 @@ export default function ProductDetailPage({ params }: Props) {
             return;
         }
 
-        if (!selectedColor) {
-            setNotification({ message: 'Please select a color', type: 'error' });
-            return;
+        // Allow adding to cart even if color is not selected; default to first available
+        let ensuredColor = selectedColor
+        if (!ensuredColor) {
+            const allColors = (allVariations.length > 0 
+                ? allVariations.flatMap(p => p.colorVariants)
+                : product.colorVariants)
+                .filter((variant, index, array) => array.findIndex(v => v.colorName === variant.colorName) === index)
+            ensuredColor = allColors[0]?.colorName || product.colorVariants[0]?.colorName || ''
+            setSelectedColor(ensuredColor)
         }
 
         const selectedColorVariant = product.colorVariants.find(
-            (variant) => variant.colorName === selectedColor
+            (variant) => variant.colorName === (ensuredColor || selectedColor)
         );
 
         if (!selectedColorVariant) {
@@ -157,7 +163,7 @@ export default function ProductDetailPage({ params }: Props) {
             price: product.priceNGN,
             image: selectedColorVariant.images[0]?.src || '',
             size: selectedSize,
-            color: selectedColor,
+            color: ensuredColor,
             quantity,
         });
 

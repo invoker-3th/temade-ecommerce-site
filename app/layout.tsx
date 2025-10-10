@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
 import { EB_Garamond } from "next/font/google"
 import { Work_Sans } from "next/font/google"
 import "./globals.css"
@@ -12,15 +11,7 @@ import { AuthProvider } from "./context/AuthContext"
 import Footer from "./components/Footer"
 import TextMarqueeBar from "./components/TextMarqueeBar"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-})
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-})
 
 const ebGaramond = EB_Garamond({
   subsets: ["latin"],
@@ -49,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${ebGaramond.variable} ${geistSans.variable} ${geistMono.variable} ${workSans.variable} bg-[#FFFBEB] antialiased text-black dark:bg-[#111111] dark:text-white font-garamond`}
+        className={`${ebGaramond.variable} ${workSans.variable} bg-[#FFFBEB] antialiased text-black dark:bg-[#111111] dark:text-white font-garamond`}
       >
         <AuthProvider>
           <WishlistProvider>

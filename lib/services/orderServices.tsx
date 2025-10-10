@@ -21,6 +21,15 @@ export class OrderService {
     return { ...newOrder, _id: result.insertedId }
   }
 
+  static async attachInvoice(orderId: string, invoice: NonNullable<Order["invoice"]>) {
+    const collection = await this.getOrdersCollection()
+    const result = await collection.updateOne(
+      { _id: new ObjectId(orderId) },
+      { $set: { invoice, updatedAt: new Date(), paymentStatus: "completed" } }
+    )
+    return result.modifiedCount > 0
+  }
+
   static async getOrdersByUserId(userId: string): Promise<Order[]> {
     const collection = await this.getOrdersCollection()
     return await collection
