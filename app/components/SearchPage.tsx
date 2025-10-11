@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { useSearchParams, useRouter } from "next/navigation"
+import Image from "next/image"
 
 type Product = {
   _id: string
@@ -29,7 +30,7 @@ export default function SearchPage() {
       setQuery(q)
       setSearchInput(q)
     }
-  }, [searchParams])
+  }, [searchParams, query])
 
   // Fetch products based on query
   useEffect(() => {
@@ -121,9 +122,8 @@ export default function SearchPage() {
 
             {/* 🧩 Product Grid */}
             <div
-              className={`grid gap-4 mt-4 ${
-                isMobile ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
-              }`}
+              className={`grid gap-4 mt-4 ${isMobile ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+                }`}
             >
               <AnimatePresence>
                 {results.length === 0 && !loading && (
@@ -144,10 +144,14 @@ export default function SearchPage() {
                       className="bg-white rounded-xl shadow p-3 hover:shadow-md transition block"
                     >
                       <div className="w-full h-40 bg-gray-100 rounded mb-2 overflow-hidden">
-                        <img
+                        <Image
                           src={p.colorVariants?.[0]?.images?.[0]?.src || "/placeholder.svg"}
                           alt={p.name}
+                          width={0}
+                          height={0}
+                          sizes="100vw"
                           className="w-full h-full object-cover"
+                          priority
                         />
                       </div>
                       <div className="text-sm text-gray-600 truncate">{p.name}</div>
