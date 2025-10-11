@@ -23,7 +23,7 @@ export default function ShippingPolicyModal({ open, onClose }: ShippingPolicyMod
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 50, opacity: 0 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }} // faster transition
-                    className="w-full max-w-2xl sm:rounded-2xl bg-white shadow-xl overflow-hidden font-WorkSans"
+                    className="w-full max-w-2xl sm:rounded-2xl bg-[#FFFBEB] shadow-xl overflow-hidden font-WorkSans"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <DialogHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -34,7 +34,7 @@ export default function ShippingPolicyModal({ open, onClose }: ShippingPolicyMod
 
                     <ScrollArea className="h-[70vh] p-4 text-sm text-gray-700 dark:text-gray-300 space-y-4 font-WorkSans scrollbar-thin scrollbar-thumb-[#8D2741] scrollbar-track-[#FFD7E1]">
                         <p>
-                            Thank you for shopping with <strong>Temade Studios</strong>. We're excited to get your order
+                            Thank you for shopping with <strong>Temade Studios</strong>. We&apos;re excited to get your order
                             to you as soon as possible. Below is our shipping and delivery information.
                         </p>
 

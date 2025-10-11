@@ -22,8 +22,8 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 50, opacity: 0 }}
-          transition={{ duration: 0.15, ease: 'easeOut' }}
-          className="w-full max-w-2xl sm:rounded-2xl bg-white shadow-xl overflow-hidden font-WorkSans"
+          transition={{ duration: 0.15, ease: 'easeOut' }} // ⚡ Faster close speed
+          className="w-full max-w-2xl sm:rounded-2xl bg-[#FFFBEB] shadow-xl overflow-hidden font-WorkSans"
           onClick={(e) => e.stopPropagation()}
         >
           <DialogHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -32,10 +32,10 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="h-[70vh] p-4 text-sm text-gray-700 dark:text-gray-300 space-y-4 font-WorkSans scrollbar-thin scrollbar-thumb-[#8D2741] scrollbar-track-[#FFD7E1]">
+          <ScrollArea className="h-[70vh] p-4 text-sm text-gray-700 dark:text-gray-300 space-y-4 font-WorkSans scrollbar-thin scrollbar-thumb-[#8D2741] scrollbar-track-[#FFD7E1] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#8D2741] [&::-webkit-scrollbar-track]:bg-[#FFD7E1] [&::-webkit-scrollbar]:w-2">
             <p>
               We are <strong>Temade Studios</strong>, and we care deeply about your trust and privacy.
-              This Privacy Policy explains how we collect, use, and protect your information when you interact with us
+              This Privacy Policy explains how we collect, use, and protect your information when you interact with us —
               whether you are visiting our Instagram page, sending us a DM, or making a purchase.
             </p>
 
@@ -76,7 +76,7 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
             </ul>
 
             <p>
-              We will <strong>never sell your personal data</strong> - not now, not ever.
+              We will <strong>never sell your personal data</strong> — not now, not ever.
             </p>
 
             <h3 className="font-semibold text-lg">3. Sharing Your Information</h3>
@@ -90,8 +90,8 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
             </ul>
 
             <p>
-              We only share what's absolutely necessary and ensure your data stays protected.
-              We may also share information if required by law or to prevent fraud — and that's it.
+              We only share what&apos;s absolutely necessary and ensure your data stays protected.
+              We may also share information if required by law or to prevent fraud — and that&apos;s it.
             </p>
 
             <h3 className="font-semibold text-lg">4. Cookies & Similar Tools</h3>
@@ -105,7 +105,7 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
             <p>You are always in control of your information. Depending on where you live, you can:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>Ask to see what data we have about you</li>
-              <li>Request corrections if something's inaccurate</li>
+              <li>Request corrections if something&apos;s inaccurate</li>
               <li>Ask us to delete your data (when possible)</li>
               <li>Opt out of marketing messages anytime</li>
             </ul>
@@ -127,12 +127,12 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
             <h3 className="font-semibold text-lg">8. Updates to This Policy</h3>
             <p>
               We may update this Privacy Policy occasionally if our practices change.
-              When that happens, we'll post the updated version here with a new “last updated” date.
+              When that happens, we&apos;ll post the updated version here with a new “last updated” date.
             </p>
 
             <h3 className="font-semibold text-lg">9. How to Reach Us</h3>
             <p>
-              If you have any questions about this Privacy Policy or how we use your data, please reach out — we'd love to help.
+              If you have any questions about this Privacy Policy or how we use your data, please reach out — we&apos;d love to help.
             </p>
 
             <ul className="list-none space-y-1">

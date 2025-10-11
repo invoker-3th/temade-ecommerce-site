@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { useSearchParams } from "next/navigation"
+import Image from "next/image"
 
 type Product = {
   _id: string
@@ -85,10 +86,11 @@ export default function SearchPage() {
                   className="bg-white rounded shadow p-3 hover:shadow-md transition block"
                 >
                   <div className="w-full h-40 bg-gray-100 rounded mb-2 overflow-hidden">
-                    <img
+                    <Image
                       src={p.colorVariants?.[0]?.images?.[0]?.src || "/placeholder.svg"}
                       alt={p.name}
                       className="w-full h-full object-cover"
+                      fill
                     />
                   </div>
                   <div className="text-sm text-gray-600">{p.name}</div>
