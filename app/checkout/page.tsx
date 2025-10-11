@@ -342,43 +342,36 @@ const CheckoutPage = () => {
                   <label htmlFor="state" className="block text-sm font-medium text-[#333] mb-1">
                     State
                   </label>
-                  <select
+                  <input
+                    type="text"
                     id="state"
                     name="state"
+                    placeholder="Enter your state"
                     value={formData.state}
                     onChange={handleChange}
                     required
-                    className="w-full border rounded-md p-3  bg-transparent"
-                  >
-                    <option value="">Select a state</option>
-                    <option value="Lagos">Lagos</option>
-                    <option value="Abuja">Abuja</option>
-                    <option value="Enugu">Enugu</option>
-                    <option value="Kano">Kano</option>
-                    <option value="Rivers">Rivers</option>
-                  </select>
+                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                  />
                 </div>
 
                 <div>
                   <label htmlFor="city" className="block text-sm font-medium text-[#333] mb-1">
                     Town/City
                   </label>
-                  <select
+                  <input
+                    type="text"
                     id="city"
                     name="city"
+                    placeholder="Enter your city"
                     value={formData.city}
                     onChange={handleChange}
                     required
-                    className="w-full border rounded-md p-3 bg-transparent"
-                  >
-                    <option value="">Select a city</option>
-                    <option value="Ikeja">Ikeja</option>
-                    <option value="Wuse">Wuse</option>
-                    <option value="Nsukka">Nsukka</option>
-                    <option value="Port Harcourt">Port Harcourt</option>
-                    <option value="Kano City">Kano City</option>
-                  </select>
+                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                  />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* select country */}
                 <div>
                   <label htmlFor="country" className="block text-sm font-medium text-[#333] mb-1">
@@ -398,6 +391,8 @@ const CheckoutPage = () => {
                     <option value="Kenya">Kenya</option>
                     <option value="South Africa">South Africa</option>
                     <option value="Uganda">Uganda</option>
+                    <option value="US">US</option>
+                    <option value="UK">UK</option>
                   </select>
                 </div>
                 <div>

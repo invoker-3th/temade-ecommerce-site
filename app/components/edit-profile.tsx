@@ -112,35 +112,35 @@ export default function EditProfile({ onSaveComplete, initialData }: EditProfile
             <div>
               <label className="block text-sm font-medium mb-1">Town/City</label>
               <div className="relative">
-                <select
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
-                >
-                  <option value="">Select Town/City</option>
-                  <option value="Ikeja">Ikeja</option>
-                  <option value="Yaba">Yaba</option>
-                  <option value="Ikorodu">Ikorodu</option>
-                </select>
+                <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    placeholder="Enter your city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                    className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
+                  />
               </div>
+              <Pencil size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8D2741]" />
             </div>
 
             {/* select state */}
             <div>
               <label className="block text-sm font-medium mb-1">State</label>
               <div className="relative">
-                <select
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
-                >
-                  <option value="">Select State</option>
-                  <option value="Lagos">Lagos</option>
-                  <option value="Abuja">Abuja</option>
-                  <option value="Port Harcourt">Port Harcourt</option>
-                </select>
+                 <input
+                    type="text"
+                    id="state"
+                    name="state"
+                    placeholder="Enter your state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    required
+                    className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
+                  />
+                  <Pencil size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8D2741]" />
               </div>
             </div>
 
@@ -158,6 +158,10 @@ export default function EditProfile({ onSaveComplete, initialData }: EditProfile
                   <option value="Nigeria">Nigeria</option>
                   <option value="Ghana">Ghana</option>
                   <option value="Kenya">Kenya</option>
+                  <option value="South Africa">South Africa</option>
+                  <option value="Uganda">Uganda</option>
+                  <option value="US">US</option>
+                  <option value="UK">UK</option>
                 </select>
               </div>
             </div>
