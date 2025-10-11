@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import Image from "next/image"
 import Link from "next/link"
+import AdminNotifications from "../components/AdminNotifications"
 
 type TopProduct = {
   id: string
@@ -65,7 +66,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-['Work_Sans']">
+    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-WorkSans">
       <h1 className="text-2xl md:text-3xl font-bold text-[#16161A] mb-6">Admin Analytics</h1>
 
       {loading ? (
@@ -93,6 +94,9 @@ export default function AdminDashboardPage() {
               <p className="text-3xl font-bold text-[#16161A]">{totalProducts.toLocaleString()}</p>
             </div>
           </div>
+
+          {/* Notifications */}
+          <AdminNotifications />
 
           {/* Top Products */}
           <div>
