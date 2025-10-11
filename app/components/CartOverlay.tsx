@@ -26,9 +26,9 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 md:px-5 py-4 border-b">
                     <div className='flex items-center'>
-                        <h2 className="text-xl md:text-2xl font-semibold text-[#222222]">My Cart</h2>
+                        <h2 className="text-xl md:text-2xl font-WorkSans font-semibold text-[#222222]">My Cart</h2>
                         {totalQuantity > -1 && (
-                            <span className="text-sm md:text-base font-semibold px-3 py-1 bg-[#CA6F86] rounded-full text-white ml-2">
+                            <span className="text-sm md:text-base font-WorkSans font-semibold px-3 py-1 bg-[#CA6F86] rounded-full text-white ml-2">
                                 {totalQuantity}
                             </span>
                         )}
@@ -42,8 +42,8 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                 <div className="p-4 md:p-5 space-y-4 font-WorkSans">
                     {cartItems.length === 0 ? (
                         <>
-                            <p className="text-sm text-gray-500">No items in cart yet.</p>
-                            <Link href="/shop" className="text-sm text-[#CA6F86] hover:underline">
+                            <p className="text-sm font-WorkSans text-gray-500">No items in cart yet.</p>
+                            <Link href="/shop" className="text-sm font-WorkSans text-[#CA6F86] hover:underline">
                                 Start Shopping
                             </Link>
                         </>
@@ -66,15 +66,15 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                                 <div className="flex flex-col justify-between w-full space-y-2">
                                     <div className="space-y-1">
                                         <div className='flex items-center justify-between'>
-                                            <h3 className="text-sm sm:text-base font-medium text-[#222222]">
+                                            <h3 className="text-sm sm:text-base font-WorkSans font-medium text-[#222222]">
                                                 {item.name}
                                             </h3>
-                                            <p className="text-base sm:text-lg font-semibold text-[#222222]">
+                                            <p className="text-base sm:text-lg font-WorkSans font-semibold text-[#222222]">
                                                 ₦{item.price.toLocaleString()}
                                             </p>
                                         </div>
-                                        <p className="text-xs text-gray-500">Color: {item.color}</p>
-                                        <p className="text-xs text-gray-400">Size: {item.size}</p>
+                                        <p className="text-xs font-WorkSans text-gray-500">Color: {item.color}</p>
+                                        <p className="text-xs font-WorkSans text-gray-400">Size: {item.size}</p>
                                     </div>
 
                                     <div className="flex items-center justify-between">
@@ -86,7 +86,7 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                                                 >
                                                     <Minus className="w-4 h-4 text-[#A9A9A9]" />
                                                 </button>
-                                                <span className="text-sm">{item.quantity}</span>
+                                                <span className="text-sm font-WorkSans">{item.quantity}</span>
                                                 <button
                                                     onClick={() => increaseQty(item.id)}
                                                     className="p-1"
@@ -108,13 +108,13 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
 
                 {/* Footer */}
                 <div className="sticky bottom-0 left-0 right-0 bg-[#FFFBEB] border-t px-4 md:px-5 py-4 shadow-inner">
-                    <div className="flex justify-between font-semibold text-[#5A554C] mb-3 text-sm sm:text-base">
+                    <div className="flex justify-between font-WorkSans font-semibold text-[#5A554C] mb-3 text-sm sm:text-base">
                         <span>Total</span>
                         <span>₦{getTotal().toLocaleString()}</span>
                     </div>
                     <Link href="/checkout">
                         <button
-                            className="w-full bg-[#222222] text-white py-2 rounded-md hover:bg-[#111] transition-colors disabled:opacity-60"
+                            className="w-full bg-[#222222] text-white py-2 rounded-md hover:bg-[#111] transition-colors disabled:opacity-60 font-WorkSans font-semibold"
                             disabled={cartItems.length === 0}
                             onClick={onClose}
                         >
