@@ -84,7 +84,7 @@ export default function AdminOrdersPage() {
               <div className="mt-3 flex items-center justify-between">
                 <div className="text-sm text-gray-700">Status: <span className="font-semibold">{o.orderStatus}</span> • Payment: <span className="font-semibold">{o.paymentStatus}</span></div>
                 <div className="flex items-center gap-2">
-                  {["processing","shipped","delivered","cancelled"].map((s) => (
+                  {["pending","processing","shipped","delivered","cancelled"].map((s) => (
                     <button key={s} className={`px-2 py-1 rounded border ${o.orderStatus===s? 'bg-[#CA6F86] text-white':'bg-white'}`} onClick={async () => {
                       await fetch('/api/admin/orders', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ orderId: o._id, status: s }) })
                       // Reload

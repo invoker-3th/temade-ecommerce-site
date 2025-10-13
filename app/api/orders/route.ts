@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { orderId, reference, paymentMethod, shippingAddress, items, subtotal, tax, shipping, total, customer } = body
+    const { orderId, reference, paymentMethod, paymentStatus, orderStatus, shippingAddress, items, subtotal, tax, shipping, total, customer } = body
 
     if (!orderId || !reference) {
       return NextResponse.json({ error: "orderId and reference are required" }, { status: 400 })
@@ -87,12 +87,18 @@ export async function PATCH(request: NextRequest) {
       payment: { method: paymentMethod || "paystack", reference },
     }
 
-    const ok = await OrderService.attachInvoice(orderId, invoice)
-    if (!ok) return NextResponse.json({ error: "Failed to attach invoice" }, { status: 400 })
+    // Update order with payment status and attach invoice
+    const ok = await OrderService.updateOrderStatus(orderId, {
+      paymentStatus: paymentStatus || "completed",
+      orderStatus: orderStatus || "processing",
+      invoice
+    })
+    
+    if (!ok) return NextResponse.json({ error: "Failed to update order" }, { status: 400 })
 
     return NextResponse.json({ ok: true, invoice })
   } catch (error) {
-    console.error("Invoice attach error:", error)
+    console.error("Order update error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -49,7 +49,7 @@ export async function PATCH(request: Request) {
     const body = await request.json()
     const { orderId, status } = body as { orderId?: string; status?: string }
     if (!orderId || !status) return NextResponse.json({ error: "orderId and status required" }, { status: 400 })
-    const allowed = ["processing", "shipped", "delivered", "cancelled", "completed"]
+    const allowed = ["pending", "processing", "shipped", "delivered", "cancelled", "completed"]
     if (!allowed.includes(status)) return NextResponse.json({ error: "invalid status" }, { status: 400 })
 
     const db = await getDatabase()
