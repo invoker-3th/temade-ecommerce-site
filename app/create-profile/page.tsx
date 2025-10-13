@@ -152,7 +152,7 @@ export default function CreateProfilePage() {
               </div>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
-              {/* select town/city */}
+              
               <div>
                 <label className="block text-sm font-medium mb-1">Town/City</label>
                 <div className="relative">
@@ -189,25 +189,23 @@ export default function CreateProfilePage() {
                   />
                 </div>
               </div>
-              {/* select state */}
+              
               <div>
                 <label className="block text-sm font-medium mb-1">State</label>
                 <div className="relative">
-                  <select
+                  <input
+                    type="text"
                     name="state"
                     value={formData.state}
                     onChange={handleChange}
                     required
+                    placeholder="Enter your state"
                     className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
-                  >
-                    <option value="">Select State</option>
-                    <option value="Lagos">Lagos</option>
-                    <option value="Abuja">Abuja</option>
-                    <option value="Rivers">Rivers</option>
-                    <option value="Enugu">Enugu</option>
-                    <option value="Oyo">Oyo</option>
-                  </select>
-
+                  />
+                  <Pencil
+                    size={16}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
                 </div>
               </div>
 
@@ -226,6 +224,8 @@ export default function CreateProfilePage() {
                     <option value="Nigeria">Nigeria</option>
                     <option value="Ghana">Ghana</option>
                     <option value="Kenya">Kenya</option>
+                    <option value="US">US</option>
+                    <option value="UK">UK</option>
                   </select>
                 </div>
               </div>
