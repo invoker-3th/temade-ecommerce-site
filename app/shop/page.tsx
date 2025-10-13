@@ -125,7 +125,7 @@ function Shop() {
       {/* Category title */}
       <div className="mb-8">
         <h2 className="text-2xl md:text-4xl font-medium text-[#16161A]">ALL PRODUCTS</h2>
-        <p className="text-gray-600 mt-2">{uniqueProducts.length} products</p>
+        {/* Removed product count from UI */}
       </div>
 
       {/* All products grid (DB only) - Grouped by name */}

@@ -100,10 +100,6 @@ export default function ProductDetailPage({ params }: Props) {
                             array.findIndex((c: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }) => c.colorName === color.colorName) === index
                         );
                         
-                        console.log('All variations:', variations);
-                        console.log('All colors:', allColors);
-                        console.log('Unique colors:', uniqueColors);
-                        
                         // Set default color and size
                         if (uniqueColors.length > 0) {
                             setSelectedColor(uniqueColors[0].colorName);
@@ -152,16 +148,20 @@ export default function ProductDetailPage({ params }: Props) {
             (variant) => variant.colorName === (ensuredColor || selectedColor)
         );
 
-        if (!selectedColorVariant) {
-            setNotification({ message: 'Selected color not found', type: 'error' });
-            return;
-        }
+        // Fallback image: use selected variant image, else any available main image, else product's first image, else placeholder
+        const allImages = allVariations
+            .flatMap(p => p.colorVariants)
+            .flatMap(cv => cv.images);
+        const fallbackImageSrc = selectedColorVariant?.images[0]?.src 
+            || allImages[0]?.src 
+            || product.colorVariants[0]?.images[0]?.src 
+            || '/placeholder.svg'
 
         addToCart({
             id: product._id,
             name: product.name,
             price: product.priceNGN,
-            image: selectedColorVariant.images[0]?.src || '',
+            image: fallbackImageSrc,
             size: selectedSize,
             color: ensuredColor,
             quantity,
@@ -174,9 +174,18 @@ export default function ProductDetailPage({ params }: Props) {
         if (!product) return;
         
         const exists = wishlist.some((w) => w.id === product._id);
+
+        // Try get image for selected color, else fallback to any image
+        const allImages = allVariations
+            .flatMap(p => p.colorVariants)
+            .flatMap(cv => cv.images);
         const selectedColorVariant = product.colorVariants.find(
             (variant) => variant.colorName === selectedColor
         );
+        const wishlistImage = selectedColorVariant?.images[0]?.src 
+            || allImages[0]?.src 
+            || product.colorVariants[0]?.images[0]?.src 
+            || ''
 
         if (exists) {
             removeFromWishlist(product._id);
@@ -185,7 +194,7 @@ export default function ProductDetailPage({ params }: Props) {
             addToWishlist({
                 id: product._id,
                 name: product.name,
-                image: selectedColorVariant?.images[0]?.src || '',
+                image: wishlistImage,
                 price: product.priceNGN || 0
             });
             setNotification({ message: `${product.name} added to wishlist`, type: 'success' });
@@ -273,14 +282,14 @@ export default function ProductDetailPage({ params }: Props) {
                 <div className="w-full lg:w-1/2 space-y-6">
                     <div>
                         <h1 className="text-3xl sm:text-4xl font-bold text-[#16161A]">{product.name}</h1>
-                        <p className="text-sm text-gray-500 mt-2">SKU: {product.sku}</p>
+                        {/* Removed SKU from UI */}
+                    </div>
 
-                        <div className="flex items-center gap-2 text-yellow-400 mt-4">
-                            {[...Array(4)].map((_, i) => (
-                                <Star key={i} className="w-4 h-4 fill-yellow-400" />
-                            ))}
-                            <span className="text-sm text-gray-500 ml-2">15 reviews</span>
-                        </div>
+                    <div className="flex items-center gap-2 text-yellow-400 mt-4">
+                        {[...Array(4)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-yellow-400" />
+                        ))}
+                        <span className="text-sm text-gray-500 ml-2">15 reviews</span>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -325,7 +334,7 @@ export default function ProductDetailPage({ params }: Props) {
                                     }}
                                     className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-all ${
                                         selectedColor === variant.colorName
-                                            ? 'border-[#CA6F86] bg-[#CA6F86]/10'
+                                            ? 'border[#CA6F86] bg-[#CA6F86]/10'
                                             : 'border-gray-300 hover:border-[#CA6F86]'
                                     }`}
                                 >
@@ -415,10 +424,7 @@ export default function ProductDetailPage({ params }: Props) {
                                 <span className="font-semibold text-[#464646]">Material:</span>
                                 <span className="text-[#626262]">100% Cotton</span>
                             </div>
-                            <div className="flex justify-between py-3">
-                                <span className="font-semibold text-[#464646]">SKU:</span>
-                                <span className="text-[#626262]">{product.sku}</span>
-                            </div>
+                            {/* Removed SKU row from details */}
                         </div>
                     </div>
                 </div>
