@@ -16,10 +16,7 @@ export async function POST(req: NextRequest) {
 
     const profile = await ProfileService.createOrUpdateProfile(userId, profileData)
 
-    return NextResponse.json(
-      { message: "Profile saved successfully", profile },
-      { status: 201 }
-    )
+    return NextResponse.json(profile, { status: 201 })
   } catch (error) {
     console.error("Profile save error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -65,10 +62,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 })
     }
 
-    return NextResponse.json(
-      { message: "Profile updated successfully", profile: updatedProfile },
-      { status: 200 }
-    )
+    return NextResponse.json(updatedProfile, { status: 200 })
   } catch (error) {
     console.error("Profile update error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

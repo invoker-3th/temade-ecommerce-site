@@ -81,7 +81,6 @@ const CheckoutPage = () => {
         ]
       }
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email, formData.email, total, formData.firstname, formData.lastname, formData.phone])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

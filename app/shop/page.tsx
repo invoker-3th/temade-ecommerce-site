@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useCart } from "../context/CartContext"
 import { useWishlist } from "../context/WishlistContext"
 import { useCategories } from "../hooks/useCategories"
+import { useCurrency, pickPrice } from "../context/CurrencyContext"
 
 type ToastType = "success" | "error"
 
@@ -31,6 +32,7 @@ type DbProduct = {
 function Shop() {
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
   const { categories: mergedCategories } = useCategories({ pollMs: 15000 })
+  const { symbol, currency } = useCurrency()
   useEffect(() => {
     const fetchDb = async () => {
       try {
@@ -133,6 +135,7 @@ function Shop() {
         {/* DB products - Group by name to show only one instance per product */}
         {uniqueProducts.map((p) => {
           const firstImage = p.colorVariants[0]?.images[0]
+          const displayPrice = pickPrice(p, currency) ?? p.priceNGN
           return (
             <div
               key={p._id}
@@ -160,7 +163,7 @@ function Shop() {
                       setToastType("error")
                       setToastMessage(`${p.name} removed from wishlist`)
                     } else {
-                      addToWishlist({ id: p._id, name: p.name, image: first?.src || "", price: p.priceNGN || 0 })
+                      addToWishlist({ id: p._id, name: p.name, image: first?.src || "", price: displayPrice || 0 })
                       setToastType("success")
                       setToastMessage(`${p.name} added to wishlist`)
                     }
@@ -208,7 +211,7 @@ function Shop() {
                   </div>
                 )}
                 
-                <p className="text-lg font-medium text-[#2C2C2C]">₦{(p.priceNGN ?? 0).toLocaleString()}</p>
+                <p className="text-lg font-medium text-[#2C2C2C]">{symbol}{(displayPrice || 0).toLocaleString()}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -217,7 +220,7 @@ function Shop() {
                       id: p._id, 
                       name: p.name, 
                       image: first?.src || "", 
-                      price: p.priceNGN ?? 0, 
+                      price: displayPrice || 0, 
                       quantity: 1, 
                       size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size", 
                       color: p.colorVariants[0]?.colorName || "Default" 
