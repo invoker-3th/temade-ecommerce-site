@@ -25,7 +25,7 @@ function CategorySection() {
 
       </div>
       <div className=' absolute top-[30%] sm:top-[50%] left-0 w-full h-full  text-center z-10'>
-        <div className={`${ebGaramond.className} font-medium sm:flex justify-between items-center w-full max-w-[1200px] mb-[90px] mx-auto`}>
+        <div className={`${ebGaramond.className} font-medium flex flex-col sm:flex-row justify-between items-center w-full max-w-[1200px] mb-[90px] mx-auto`}>
           <Link href="/shop/categories/pants" className="text-responsive text-[#FFFFFF] sm:text-[#CA6F86] ">
             PANTS
           </Link>
