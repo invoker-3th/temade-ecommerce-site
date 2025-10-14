@@ -184,7 +184,7 @@ function Shop() {
                 </button>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-2 transition-transform transform group-hover:translate-y-0 translate-y-full">
+              <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-2 transition-transform transform group-hover:translate-y-0 translate-y-full font-WorkSans">
                 <h3 className="text-[16px] font-normal text-[#2C2C2C]">{p.name}</h3>
                 
                 {/* Available Sizes */}

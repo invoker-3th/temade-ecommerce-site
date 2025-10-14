@@ -2,33 +2,70 @@
 
 import { Heart, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useState, useEffect, useMemo } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
-import { newArrivals } from '../data/newArrivals';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useCurrency, pickPrice } from '../context/CurrencyContext';
+
+// Matches backend product shape we use
+type ApiProduct = {
+  _id: string
+  name: string
+  sku: string
+  description: string
+  category: string
+  priceNGN: number
+  priceUSD?: number
+  priceGBP?: number
+  sizes: string[]
+  colorVariants: Array<{ colorName: string; hexCode?: string; images: Array<{ src: string; alt: string }> }>
+}
+
+type ColorSwatch = { name: string; hex?: string }
 
 type NewArrivalItem = {
-  id: number;
+  id: string;
   name: string;
   image: string;
   sizes: string[];
-  price: number | string;
-  colors: string[];
+  price: number;
+  swatches: ColorSwatch[];
 };
 
 type ToastType = 'success' | 'error';
 
-function NewArrivals() {
-  const [hoveredItem, setHoveredItem] = useState<number | null>(null);
-  const [selectedSizes, setSelectedSizes] = useState<{ [key: number]: string }>({});
-  const [selectedColors, setSelectedColors] = useState<{ [key: number]: string }>({});
+type AnalyticsTopProduct = { id: string; name: string; image: string; quantitySold: number; revenue: number };
+
+function firstImageOf(product: ApiProduct): string {
+  const img = product.colorVariants?.[0]?.images?.[0]?.src
+  return img || '/placeholder.svg'
+}
+
+function toItem(product: ApiProduct, currency: 'NGN' | 'USD' | 'GBP'): NewArrivalItem {
+  const price = (pickPrice(product , currency) ?? product.priceNGN ?? 0) as number
+  const swatches: ColorSwatch[] = (product.colorVariants || []).map(v => ({ name: v.colorName, hex: v.hexCode }))
+  return {
+    id: product._id,
+    name: product.name,
+    image: firstImageOf(product),
+    sizes: product.sizes || [],
+    price,
+    swatches,
+  }
+}
+
+export default function NewArrivals() {
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<ToastType>('success');
   const [emblaRef] = useEmblaCarousel({ dragFree: true, loop: false });
+  const [items, setItems] = useState<NewArrivalItem[]>([]);
 
   const { addToCart } = useCart();
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { symbol, currency } = useCurrency();
 
   useEffect(() => {
     if (toastMessage) {
@@ -37,54 +74,93 @@ function NewArrivals() {
     }
   }, [toastMessage]);
 
-  const handleAddToCart = (item: NewArrivalItem) => {
-    const selectedSize = selectedSizes[item.id];
-    const selectedColor = selectedColors[item.id];
+  // Fetch products from backend and build list (top product first, then random per category)
+  useEffect(() => {
+    const build = async () => {
+      try {
+        const res = await fetch('/api/admin/products', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        const products: ApiProduct[] = Array.isArray(data) ? data : (data.items || [])
+        if (!products || products.length === 0) {
+          setItems([])
+          return
+        }
 
-    if (!selectedSize ) {
-      setToastType('error');
-      setToastMessage('Please select a size ');
-      return;
+        const byCategory = new Map<string, ApiProduct[]>()
+        for (const p of products) {
+          const list = byCategory.get(p.category) || []
+          list.push(p)
+          byCategory.set(p.category, list)
+        }
+
+        let topFirst: ApiProduct | undefined
+        try {
+          const ares = await fetch('/api/admin/analytics', { cache: 'no-store' })
+          if (ares.ok) {
+            const adata = await ares.json()
+            const top: AnalyticsTopProduct[] = adata?.topProducts || []
+            const topName = top[0]?.name?.toLowerCase()
+            if (topName) {
+              topFirst = products.find(p => p.name?.toLowerCase() === topName)
+            }
+          }
+        } catch {}
+
+        const reps: ApiProduct[] = []
+        for (const list of byCategory.values()) {
+          if (list.length === 0) continue
+          const pick = list[Math.floor(Math.random() * list.length)]
+          reps.push(pick)
+        }
+
+        const seen = new Set<string>()
+        const ordered: ApiProduct[] = []
+        if (topFirst) {
+          ordered.push(topFirst)
+          seen.add(topFirst._id)
+        }
+        for (const r of reps) {
+          if (!seen.has(r._id)) {
+            ordered.push(r)
+            seen.add(r._id)
+          }
+        }
+
+        setItems(ordered.map(p => toItem(p, currency)))
+      } catch {
+        setItems([])
+      }
     }
-    if (!selectedColor) {
-      setToastType('error');
-      setToastMessage('Please select a color');
-      return;
-    }
+    build()
+  }, [currency])
+
+  const handleAddToCart = (item: NewArrivalItem) => {
+    const defaultSize = item.sizes && item.sizes.length > 0 ? item.sizes[0] : 'One Size'
+    const defaultColor = item.swatches && item.swatches.length > 0 ? item.swatches[0].name : 'Default'
 
     addToCart({
-      id: item.id.toString(),
+      id: item.id,
       name: item.name,
       image: item.image,
-      price:
-        typeof item.price === 'number'
-          ? item.price
-          : parseFloat(item.price.replace(/[^0-9.-]+/g, '')) || 0,
+      price: item.price,
       quantity: 1,
-      size: selectedSize,
-      color: selectedColor,
+      size: defaultSize,
+      color: defaultColor,
     });
 
     setToastType('success');
-    setToastMessage(`Added ${item.name} (Size: ${selectedSize}, Color: ${selectedColor}) to cart`);
+    setToastMessage(`Added ${item.name} to cart`);
   };
 
   const toggleWishlist = (item: NewArrivalItem) => {
-    const exists = wishlist.some((w) => w.id === item.id.toString());
+    const exists = wishlist.some((w) => w.id === item.id);
     if (exists) {
-      removeFromWishlist(item.id.toString());
+      removeFromWishlist(item.id);
       setToastType('error');
       setToastMessage(`${item.name} removed from wishlist`);
     } else {
-      addToWishlist({
-        id: item.id.toString(),
-        name: item.name,
-        image: item.image,
-        price:
-          typeof item.price === 'string'
-            ? parseFloat(item.price.replace(/[^0-9.-]+/g, '')) || 0
-            : item.price,
-      });
+      addToWishlist({ id: item.id, name: item.name, image: item.image, price: item.price });
       setToastType('success');
       setToastMessage(`${item.name} added to wishlist`);
     }
@@ -112,6 +188,8 @@ function NewArrivals() {
     );
   }
 
+  const displayItems = useMemo(() => items, [items]);
+
   return (
     <section className="bg-[#FFFBEB] mb-[61px] relative">
       <div className="w-full">
@@ -122,7 +200,7 @@ function NewArrivals() {
           aria-label="New arrivals product carousel"
         >
           <div className="flex gap-2">
-            {newArrivals.map((item: NewArrivalItem) => (
+            {displayItems.map((item) => (
               <div
                 key={item.id}
                 className="flex-[0_0_80%] sm:flex-[0_0_60%] md:flex-[0_0_40%] lg:flex-[0_0_30%] group relative"
@@ -131,13 +209,15 @@ function NewArrivals() {
                 role="listitem"
               >
                 <div className="relative aspect-[2/3]">
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    className="object-cover rounded-md"
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                  />
+                  <Link href={`/shop/${item.id}`} className="block relative aspect-[2/3]">
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      className="object-cover rounded-md"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+                  </Link>
                   <button
                     onClick={() => toggleWishlist(item)}
                     aria-label="Add to wishlist"
@@ -146,7 +226,7 @@ function NewArrivals() {
                     type="button"
                   >
                     <Heart
-                      className={`w-6 h-6 ${wishlist.some((w) => w.id === item.id.toString())
+                      className={`w-6 h-6 ${wishlist.some((w) => w.id === item.id)
                         ? 'fill-[#8D2741] text-[#8D2741]'
                         : 'text-[#8D2741]'
                         }`}
@@ -154,70 +234,35 @@ function NewArrivals() {
                   </button>
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-4 transition-transform transform group-hover:translate-y-0 translate-y-full">
-                  <h3 className="md:text-[16px] font-sans font-normal text-[#2C2C2C]">{item.name}</h3>
-                  {/* Price */}
-                  <p className="text-[16px] font-medium text-[#2C2C2C] font-sans">
-                    {typeof item.price === "number"
-                      ? `₦${item.price.toLocaleString()}`
-                      : item.price
-                        ? `₦${parseFloat(item.price).toLocaleString()}`
-                        : "Price not available"}
-                  </p>
-                  {/* Color Selector - only show if multiple colors are available */}
-                  {item.colors.length > 1 && (
-                    <div className="flex gap-2 my-2 flex-wrap">
-                      {item.colors.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          onClick={() =>
-                            setSelectedColors((prev) => ({
-                              ...prev,
-                              [item.id]: prev[item.id] === color ? "" : color,
-                            }))
-                          }
-                          className={`w-5 h-5 rounded border-2 transition ${selectedColors[item.id] === color ? "border-[#8D2741]" : "border-gray-300"
-                            }`}
-                          style={{ backgroundColor: color }}
-                          title={color}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Size Selector - only show if sizes are available */}
+                <div className="absolute bottom-0 left-0 right-0 bg-[#FBF7F3CC]/80 backdrop-blur-sm p-2 transition-transform transform group-hover:translate-y-0 translate-y-full font-WorkSans">
+                  <h3 className="text-[16px] font-normal text-[#2C2C2C]">{item.name}</h3>
+                  {/* Sizes */}
                   {item.sizes.length > 0 && (
-                    <div className="flex gap-2  flex-wrap">
-                      {item.sizes.map((size) => (
-                        <button
-                          key={size}
-                          type="button"
-                          aria-pressed={selectedSizes[item.id] === size}
-                          onClick={() =>
-                            setSelectedSizes((prev) => ({
-                              ...prev,
-                              [item.id]: prev[item.id] === size ? "" : size,
-                            }))
-                          }
-                          className={`px-2 rounded-[6px] text-[16px] transition-colors duration-200 ${selectedSizes[item.id] === size
-                            ? "bg-[#8D2741] text-white border-[#8D2741]"
-                            : "text-[#2C2C2C] hover:border-[#8D2741]"
-                            }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
+                    <div className="mb-1">
+                      <p className="text-xs text-gray-600">Sizes: {item.sizes.join(', ')}</p>
                     </div>
                   )}
-
-
-
-                  {/* Add to Cart Button */}
+                  {/* Colors (all available swatches) */}
+                  {item.swatches.length > 0 && (
+                    <div className="mb-1">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-xs text-gray-600">Colors:</span>
+                        {item.swatches.map((sw) => (
+                          <div
+                            key={`${item.id}-${sw.name}`}
+                            className="w-4 h-4 rounded-full border border-gray-300"
+                            style={{ backgroundColor: sw.hex || '#e5e7eb' }}
+                            title={sw.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-lg font-medium text-[#2C2C2C]">{symbol}{(item.price || 0).toLocaleString()}</p>
                   <button
                     type="button"
                     onClick={() => handleAddToCart(item)}
-                    className=" underline font-semibold text-[16px] font-sans text-[#2C2C2C] hover:text-[#701d34] transition-colors"
+                    className="underline font-semibold text-[16px] text-[#2C2C2C] hover:text-[#701d34] transition-colors"
                   >
                     ADD TO CART
                   </button>
@@ -232,5 +277,3 @@ function NewArrivals() {
     </section>
   );
 }
-
-export default NewArrivals;
