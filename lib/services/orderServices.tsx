@@ -43,16 +43,21 @@ export class OrderService {
     return await collection.findOne({ _id: new ObjectId(orderId) })
   }
 
-  static async updateOrderStatus(orderId: string, status: Order["orderStatus"]): Promise<boolean> {
+  // Update order fields like orderStatus, paymentStatus, invoice, etc.
+  static async updateOrderStatus(
+    orderId: string,
+    updateData: Partial<Pick<Order, "orderStatus" | "paymentStatus" | "invoice">> & Record<string, unknown>
+  ): Promise<boolean> {
     const collection = await this.getOrdersCollection()
+
+    const setFields: Record<string, unknown> = { updatedAt: new Date() }
+    for (const [key, value] of Object.entries(updateData || {})) {
+      if (value !== undefined) setFields[key] = value
+    }
+
     const result = await collection.updateOne(
       { _id: new ObjectId(orderId) },
-      {
-        $set: {
-          orderStatus: status,
-          updatedAt: new Date(),
-        },
-      },
+      { $set: setFields }
     )
     return result.modifiedCount > 0
   }

@@ -4,6 +4,8 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { Pencil } from "lucide-react"
+import { useCurrency, type SupportedCurrency } from "../context/CurrencyContext"
+import { useAuth } from "../context/AuthContext"
 
 type UserProfile = {
   fullName: string
@@ -25,6 +27,8 @@ interface EditProfileProps {
 
 export default function EditProfile({ onSaveComplete, initialData }: EditProfileProps) {
   const [formData, setFormData] = useState<UserProfile>(initialData)
+  const { currency, setCurrency } = useCurrency()
+  const { user } = useAuth()
 
   useEffect(() => {
     if (initialData) {
@@ -46,22 +50,29 @@ export default function EditProfile({ onSaveComplete, initialData }: EditProfile
     e.preventDefault()
 
     try {
+      if (!user?._id) {
+        throw new Error("You must be logged in to update profile")
+      }
+
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ userId: user._id, ...formData }),
       })
 
       if (!res.ok) {
-        throw new Error("Failed to update profile")
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || "Failed to update profile")
       }
 
-      const updatedProfile = await res.json()
-      onSaveComplete(updatedProfile) // Pass updated profile back to parent
+      const data = await res.json()
+      const updatedProfile = data?.profile || data // support both shapes
+      onSaveComplete(updatedProfile)
     } catch (err) {
       console.error("Profile update error:", err)
+      alert(err instanceof Error ? err.message : "Failed to update profile")
     }
   }
 
@@ -178,6 +189,21 @@ export default function EditProfile({ onSaveComplete, initialData }: EditProfile
                 <Pencil size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8D2741]" />
               </div>
             </div>
+          </div>
+
+          {/* Currency Preference */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Preferred currency</label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
+              className="w-full border border-[#D0D5DD] p-3 pr-10 rounded-[6px] bg-[#FFFDF4] focus:ring-2 focus:ring-[#8D2741] outline-none"
+            >
+              <option value="NGN">Nigeria (₦)</option>
+              <option value="USD">USA & Others ($)</option>
+              <option value="GBP">United Kingdom (£)</option>
+            </select>
+            <p className="text-xs text-gray-600 mt-1">This sets prices across the site.</p>
           </div>
 
           {/* Submit */}

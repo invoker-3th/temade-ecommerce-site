@@ -49,28 +49,39 @@ const CheckoutPage = () => {
 
   const [isProcessing, setIsProcessing] = useState(false)
 
+  // Check if all required fields are filled
+  const isFormValid = useMemo(() => {
+    const requiredFields = ['firstname', 'lastname', 'email', 'address', 'city', 'state', 'phone', 'country', 'postalcode']
+    return requiredFields.every(field => formData[field as keyof typeof formData]?.trim())
+  }, [formData])
+
   // Paystack configuration - memoized to prevent recreation on every render
-  const config = useMemo(() => ({
-    reference: new Date().getTime().toString(),
-    email: user?.email || formData.email,
-    amount: Math.round(total * 100), // Amount in kobo (multiply by 100)
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
-    currency: "NGN",
-    metadata: {
-      custom_fields: [
-        {
-          display_name: "Full Name",
-          variable_name: "full_name",
-          value: `${formData.firstname} ${formData.lastname}`
-        },
-        {
-          display_name: "Phone",
-          variable_name: "phone",
-          value: formData.phone
-        }
-      ]
-    }
-  }), [user?.email, formData.email, total, formData.firstname, formData.lastname, formData.phone])
+  const config = useMemo(() => {
+    const safeOrderId = typeof window !== 'undefined' ? (sessionStorage.getItem('pendingOrderId') || '') : ''
+    return ({
+      reference: new Date().getTime().toString(),
+      email: user?.email || formData.email,
+      amount: Math.round(total * 100), // Amount in kobo (multiply by 100)
+      publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
+      currency: "NGN",
+      metadata: {
+        orderId: safeOrderId,
+        amount: Math.round(total * 100),
+        custom_fields: [
+          {
+            display_name: "Full Name",
+            variable_name: "full_name",
+            value: `${formData.firstname} ${formData.lastname}`
+          },
+          {
+            display_name: "Phone",
+            variable_name: "phone",
+            value: formData.phone
+          }
+        ]
+      }
+    })
+  }, [user?.email, formData.email, total, formData.firstname, formData.lastname, formData.phone])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -104,13 +115,9 @@ const CheckoutPage = () => {
 
     setIsProcessing(true)
 
-    // Initialize Paystack payment
-    // ...existing code for Paystack initialization...
-  }
-
-  const handlePaystackSuccess = async (reference: { reference: string }) => {
+    // Create pending order first
     try {
-      const response = await fetch("/api/orders", {
+      const orderResponse = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -118,10 +125,17 @@ const CheckoutPage = () => {
         body: JSON.stringify({
           userId: user?._id || null,
           items: cartItems,
-          shippingAddress: formData,
-          paymentMethod: "card",
-          paymentReference: reference.reference,
-          paymentStatus: "completed",
+          shippingAddress: {
+            userName: `${formData.firstname} ${formData.lastname}`,
+            email: formData.email,
+            phone: formData.phone,
+            city: formData.city,
+            state: formData.state,
+            address: formData.address,
+          },
+          paymentMethod: "paystack",
+          paymentStatus: "pending",
+          orderStatus: "pending",
           subtotal,
           tax,
           shipping,
@@ -129,41 +143,46 @@ const CheckoutPage = () => {
         }),
       })
 
-      if (response.ok) {
-        // Attach invoice to the order using PATCH
-        const { order } = await response.json()
-        await fetch("/api/orders", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId: order?._id,
-            reference: reference.reference,
-            paymentMethod: "paystack",
-            shippingAddress: {
-              userName: `${formData.firstname} ${formData.lastname}`,
-              email: formData.email,
-              phone: formData.phone,
-              city: formData.city,
-              state: formData.state,
-              address: formData.address,
-            },
-            items: cartItems,
-            subtotal,
-            tax,
-            shipping,
-            total,
-            customer: { name: `${formData.firstname} ${formData.lastname}`, email: formData.email, phone: formData.phone },
-          }),
-        })
-        clearCart()
-        setIsOverlayVisible(true)
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || "Failed to create order")
+      if (!orderResponse.ok) {
+        throw new Error("Failed to create order")
       }
+
+      const { order } = await orderResponse.json()
+      
+      // Store order ID for later use (browser only)
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('pendingOrderId', order._id)
+      }
+      
     } catch (error) {
       console.error("Order creation error:", error)
-      alert(`Payment successful but order creation failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please contact support with your payment reference: ${reference.reference}`)
+      alert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setIsProcessing(false)
+      return
+    }
+
+    // Initialize Paystack payment
+    // ...existing code for Paystack initialization...
+  }
+
+  const handlePaystackSuccess = async (reference: { reference: string }) => {
+    try {
+      // Payment initiated successfully - webhook will handle the actual confirmation
+      console.log("Payment initiated, waiting for webhook confirmation...")
+      
+      // Clear the pending order ID from session storage
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('pendingOrderId')
+      }
+      clearCart()
+      setIsOverlayVisible(true)
+      
+      // Show success message
+      alert(`Payment initiated successfully! Reference: ${reference.reference}. You will receive a confirmation email once payment is verified.`)
+      
+    } catch (error) {
+      console.error("Payment success handling error:", error)
+      alert(`Payment successful but there was an issue processing your order. Please contact support with your payment reference: ${reference.reference}`)
     } finally {
       setIsProcessing(false)
     }
@@ -174,7 +193,7 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] py-10 px-4 md:px-16 font-sans">
+    <div className="min-h-screen bg-[#FFFBEB] py-10 px-4 md:px-16 font-WorkSans">
       <CheckoutOverlay visible={isOverlayVisible} onClose={() => setIsOverlayVisible(false)} />
       <nav className="text-sm sm:text-base text-gray-600 mb-6">
         <ul className="flex flex-wrap gap-1">
@@ -276,8 +295,9 @@ const CheckoutPage = () => {
                 config={config}
                 onSuccess={handlePaystackSuccess}
                 onClose={handlePaystackClose}
-                disabled={isProcessing || cartItems.length === 0}
+                disabled={isProcessing || cartItems.length === 0 || !isFormValid}
                 isProcessing={isProcessing}
+                isFormValid={isFormValid}
               />
 
             </div>

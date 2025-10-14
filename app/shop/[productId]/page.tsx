@@ -9,6 +9,7 @@ import { Star, CheckCircle2, XCircle, Heart } from 'lucide-react';
 import { useCart } from '@/app/context/CartContext';
 import { useWishlist } from '@/app/context/WishlistContext';
 import { Work_Sans } from 'next/font/google';
+import { useCurrency, pickPrice } from '@/app/context/CurrencyContext';
 
 const workSans = Work_Sans({
     subsets: ['latin'],
@@ -61,6 +62,7 @@ export default function ProductDetailPage({ params }: Props) {
     const { productId } = use(params);
     const { addToCart } = useCart();
     const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
+    const { currency, symbol } = useCurrency();
 
     const [product, setProduct] = useState<Product | null>(null);
     const [allVariations, setAllVariations] = useState<ProductWithVariations[]>([]);
@@ -74,41 +76,31 @@ export default function ProductDetailPage({ params }: Props) {
     useEffect(() => {
         const fetchProduct = async () => {
             try {
-                // First, get the specific product
                 const res = await fetch(`/api/admin/products/${productId}`);
                 if (res.ok) {
                     const data = await res.json();
                     setProduct(data);
-                    
-                    // Then, get all variations of the same product name
+
                     const variationsRes = await fetch(`/api/products/by-name/${encodeURIComponent(data.name)}`);
                     if (variationsRes.ok) {
                         const variations = await variationsRes.json();
                         setAllVariations(variations);
-                        
-                        // Collect all unique colors from all variations
-                        const allColors = variations.flatMap((p: ProductWithVariations) => 
-                            p.colorVariants.map(cv => ({ 
-                                colorName: cv.colorName, 
+
+                        const allColors = variations.flatMap((p: ProductWithVariations) =>
+                            p.colorVariants.map(cv => ({
+                                colorName: cv.colorName,
                                 hexCode: cv.hexCode,
-                                images: cv.images 
+                                images: cv.images
                             }))
                         );
-                        
-                        // Remove duplicates based on colorName
-                        const uniqueColors = allColors.filter((color: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }, index: number, array: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }[]) => 
+
+                        const uniqueColors = allColors.filter((color: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }, index: number, array: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }[]) =>
                             array.findIndex((c: { colorName: string; hexCode: string; images: Array<{ src: string; alt: string }> }) => c.colorName === color.colorName) === index
                         );
-                        
-                        console.log('All variations:', variations);
-                        console.log('All colors:', allColors);
-                        console.log('Unique colors:', uniqueColors);
-                        
-                        // Set default color and size
+
                         if (uniqueColors.length > 0) {
                             setSelectedColor(uniqueColors[0].colorName);
                         } else if (data.colorVariants && data.colorVariants.length > 0) {
-                            // Fallback to original product colors if no variations found
                             setSelectedColor(data.colorVariants[0].colorName);
                         }
                         if (data.sizes && data.sizes.length > 0) {
@@ -131,16 +123,15 @@ export default function ProductDetailPage({ params }: Props) {
 
     const handleAddToCart = () => {
         if (!product) return;
-        
+
         if (!selectedSize) {
             setNotification({ message: 'Please select a size', type: 'error' });
             return;
         }
 
-        // Allow adding to cart even if color is not selected; default to first available
         let ensuredColor = selectedColor
         if (!ensuredColor) {
-            const allColors = (allVariations.length > 0 
+            const allColors = (allVariations.length > 0
                 ? allVariations.flatMap(p => p.colorVariants)
                 : product.colorVariants)
                 .filter((variant, index, array) => array.findIndex(v => v.colorName === variant.colorName) === index)
@@ -152,16 +143,21 @@ export default function ProductDetailPage({ params }: Props) {
             (variant) => variant.colorName === (ensuredColor || selectedColor)
         );
 
-        if (!selectedColorVariant) {
-            setNotification({ message: 'Selected color not found', type: 'error' });
-            return;
-        }
+        const allImages = allVariations
+            .flatMap(p => p.colorVariants)
+            .flatMap(cv => cv.images);
+        const fallbackImageSrc = selectedColorVariant?.images[0]?.src
+            || allImages[0]?.src
+            || product.colorVariants[0]?.images[0]?.src
+            || '/placeholder.svg'
+
+        const displayPrice = pickPrice(product, currency) ?? product.priceNGN
 
         addToCart({
             id: product._id,
             name: product.name,
-            price: product.priceNGN,
-            image: selectedColorVariant.images[0]?.src || '',
+            price: displayPrice,
+            image: fallbackImageSrc,
             size: selectedSize,
             color: ensuredColor,
             quantity,
@@ -172,11 +168,19 @@ export default function ProductDetailPage({ params }: Props) {
 
     const handleWishlistToggle = () => {
         if (!product) return;
-        
+
         const exists = wishlist.some((w) => w.id === product._id);
+
+        const allImages = allVariations
+            .flatMap(p => p.colorVariants)
+            .flatMap(cv => cv.images);
         const selectedColorVariant = product.colorVariants.find(
             (variant) => variant.colorName === selectedColor
         );
+        const wishlistImage = selectedColorVariant?.images[0]?.src
+            || allImages[0]?.src
+            || product.colorVariants[0]?.images[0]?.src
+            || ''
 
         if (exists) {
             removeFromWishlist(product._id);
@@ -185,8 +189,8 @@ export default function ProductDetailPage({ params }: Props) {
             addToWishlist({
                 id: product._id,
                 name: product.name,
-                image: selectedColorVariant?.images[0]?.src || '',
-                price: product.priceNGN || 0
+                image: wishlistImage,
+                price: (pickPrice(product, currency) ?? product.priceNGN) || 0
             });
             setNotification({ message: `${product.name} added to wishlist`, type: 'success' });
         }
@@ -211,16 +215,15 @@ export default function ProductDetailPage({ params }: Props) {
         notFound();
     }
 
-    // Collect all images from all color variations
     const allImages = allVariations
         .flatMap(p => p.colorVariants)
         .flatMap(cv => cv.images);
-    
+
     const mainImage = allImages[selectedImageIndex] || allImages[0];
+    const displayPrice = product ? (pickPrice(product, currency) ?? product.priceNGN) : 0
 
     return (
         <div className={`px-4 py-8 max-w-7xl mx-auto relative ${workSans.className}`}>
-            {/* Breadcrumb */}
             <nav className="text-sm sm:text-base text-gray-600 mb-6">
                 <ul className="flex flex-wrap gap-1">
                     <li><Link href="/" className="text-[#CA6F86] hover:underline">Home</Link></li>
@@ -231,11 +234,8 @@ export default function ProductDetailPage({ params }: Props) {
                 </ul>
             </nav>
 
-            {/* Main Section */}
             <div className="flex flex-col lg:flex-row lg:items-start gap-8">
-                {/* Images */}
                 <div className="flex flex-col lg:flex-row gap-4 w-full lg:w-1/2">
-                    {/* Thumbnails - Show all images from all color variations */}
                     {allImages.length > 1 && (
                         <div className="flex w-full gap-3 max-smb:overflow-x-auto lg:flex-col lg:w-1/3">
                             {allImages.map((img, idx) => (
@@ -243,8 +243,8 @@ export default function ProductDetailPage({ params }: Props) {
                                     key={idx}
                                     onClick={() => setSelectedImageIndex(idx)}
                                     className={`min-w-[5rem] sm:min-w-[7rem] h-28 sm:h-36 rounded-md border-2 transition-all duration-200 bg-cover bg-center ${
-                                        selectedImageIndex === idx 
-                                            ? 'border-[#CA6F86]' 
+                                        selectedImageIndex === idx
+                                            ? 'border-[#CA6F86]'
                                             : 'border-gray-200 hover:border-[#CA6F86]'
                                     }`}
                                     style={{ backgroundImage: `url(${img.src})` }}
@@ -254,7 +254,6 @@ export default function ProductDetailPage({ params }: Props) {
                         </div>
                     )}
 
-                    {/* Main Image */}
                     <div className="w-full relative aspect-[3/4] max-w-[700px]">
                         {mainImage && (
                             <Image
@@ -269,41 +268,32 @@ export default function ProductDetailPage({ params }: Props) {
                     </div>
                 </div>
 
-                {/* Product Info */}
                 <div className="w-full lg:w-1/2 space-y-6">
                     <div>
                         <h1 className="text-3xl sm:text-4xl font-bold text-[#16161A]">{product.name}</h1>
-                        <p className="text-sm text-gray-500 mt-2">SKU: {product.sku}</p>
+                    </div>
 
-                        <div className="flex items-center gap-2 text-yellow-400 mt-4">
-                            {[...Array(4)].map((_, i) => (
-                                <Star key={i} className="w-4 h-4 fill-yellow-400" />
-                            ))}
-                            <span className="text-sm text-gray-500 ml-2">15 reviews</span>
-                        </div>
+                    <div className="flex items-center gap-2 text-yellow-400 mt-4">
+                        {[...Array(4)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-yellow-400" />
+                        ))}
+                        <span className="text-sm text-gray-500 ml-2">15 reviews</span>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <p className="text-3xl font-bold text-[#16161A]">₦{product.priceNGN.toLocaleString()}</p>
-                        {product.priceUSD && (
-                            <p className="text-lg text-gray-600">${product.priceUSD.toLocaleString()}</p>
-                        )}
-                        {product.priceGBP && (
-                            <p className="text-lg text-gray-600">£{product.priceGBP.toLocaleString()}</p>
-                        )}
+                        <p className="text-3xl font-bold text-[#16161A]">{symbol}{(displayPrice || 0).toLocaleString()}</p>
                     </div>
 
                     <p className="text-gray-600 leading-relaxed text-[16px]">{product.description}</p>
 
-                    {/* Color Selection */}
                     <div className="space-y-3">
                         <h2 className="font-semibold text-[#16161A]">Color: {selectedColor}</h2>
                         <div className="flex gap-3 flex-wrap">
-                            {(allVariations.length > 0 
+                            {(allVariations.length > 0
                                 ? allVariations.flatMap(p => p.colorVariants)
                                 : product.colorVariants
                             )
-                                .filter((variant, index, array) => 
+                                .filter((variant, index, array) =>
                                     array.findIndex(v => v.colorName === variant.colorName) === index
                                 )
                                 .map((variant) => (
@@ -311,8 +301,7 @@ export default function ProductDetailPage({ params }: Props) {
                                     key={variant.colorName}
                                     onClick={() => {
                                         setSelectedColor(variant.colorName);
-                                        // Find the first image of this color variant
-                                        const colorImages = (allVariations.length > 0 
+                                        const colorImages = (allVariations.length > 0
                                             ? allVariations.flatMap(p => p.colorVariants)
                                             : product.colorVariants
                                         ).find(cv => cv.colorName === variant.colorName)?.images || [];
@@ -343,7 +332,6 @@ export default function ProductDetailPage({ params }: Props) {
                         )}
                     </div>
 
-                    {/* Size Selection */}
                     <div className="space-y-3">
                         <h2 className="font-semibold text-[#16161A]">Size: {selectedSize}</h2>
                         <div className="flex gap-3 flex-wrap">
@@ -363,31 +351,30 @@ export default function ProductDetailPage({ params }: Props) {
                         </div>
                     </div>
 
-                    {/* Quantity & Actions */}
                     <div className="flex items-center flex-wrap gap-4">
                         <div className="flex items-center gap-4 border rounded-lg px-4 py-2 text-lg">
-                            <button 
+                            <button
                                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
                             >
                                 -
                             </button>
                             <span className="min-w-[2rem] text-center">{quantity}</span>
-                            <button 
+                            <button
                                 onClick={() => setQuantity((q) => q + 1)}
                                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
                             >
                                 +
                             </button>
                         </div>
-                        
+
                         <button
                             onClick={handleAddToCart}
                             className="bg-[#CA6F86] text-white px-8 py-3 rounded-lg text-base font-medium hover:bg-[#B85A75] transition w-full sm:w-auto"
                         >
                             Add to Cart
                         </button>
-                        
+
                         <button
                             onClick={handleWishlistToggle}
                             className={`p-3 rounded-lg border-2 transition ${
@@ -396,7 +383,7 @@ export default function ProductDetailPage({ params }: Props) {
                                     : 'border-gray-300 hover:border-[#CA6F86] text-gray-600'
                             }`}
                         >
-                            <Heart 
+                            <Heart
                                 className={`w-6 h-6 ${
                                     wishlist.some((w) => w.id === product._id) ? 'fill-current' : ''
                                 }`}
@@ -404,7 +391,6 @@ export default function ProductDetailPage({ params }: Props) {
                         </button>
                     </div>
 
-                    {/* Product Details */}
                     <div className="border-t pt-6">
                         <div className="space-y-4">
                             <div className="flex justify-between py-3 border-b">
@@ -415,16 +401,11 @@ export default function ProductDetailPage({ params }: Props) {
                                 <span className="font-semibold text-[#464646]">Material:</span>
                                 <span className="text-[#626262]">100% Cotton</span>
                             </div>
-                            <div className="flex justify-between py-3">
-                                <span className="font-semibold text-[#464646]">SKU:</span>
-                                <span className="text-[#626262]">{product.sku}</span>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Notification */}
             {notification && (
                 <div
                     className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 max-w-sm shadow-lg rounded-lg px-5 py-3 text-sm font-medium transition-opacity duration-300 ${

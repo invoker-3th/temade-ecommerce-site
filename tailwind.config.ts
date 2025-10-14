@@ -77,10 +77,9 @@ export default {
         scrollbar: ["rounded", "dark"],
       },
     },
-    plugins: [
-      require("tailwindcss-animate"),
-      require("tailwind-scrollbar-hide"),
-    ],
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("tailwind-scrollbar-hide"),
+  ],
 } satisfies Config;
