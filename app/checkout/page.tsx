@@ -205,7 +205,7 @@ const CheckoutPage = () => {
           <li>/</li>
           <li>
             <Link href={``} className="text-pink-600 hover:underline">
-              cart
+              Cart
             </Link>
           </li>
           <li>/</li>
@@ -305,7 +305,7 @@ const CheckoutPage = () => {
             <form
               id="checkout-form"
               onSubmit={handleSubmit}
-              className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg"
+              className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg w-full"
             >
               <h2 className="text-[24px] font-semibold text-[#222222]">Delivery Information</h2>
 
