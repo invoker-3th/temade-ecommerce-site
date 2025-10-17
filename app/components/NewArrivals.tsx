@@ -210,13 +210,13 @@ export default function NewArrivals() {
               >
                 <div className="relative aspect-[2/3]">
                   <Link href={`/shop/${item.id}`} className="block relative aspect-[2/3]">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      className="object-cover rounded-md"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    fill
+                    className="object-cover rounded-md"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
                   </Link>
                   <button
                     onClick={() => toggleWishlist(item)}

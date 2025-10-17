@@ -22,10 +22,20 @@ export async function GET(request: Request) {
       .toArray()
 
     // Join minimal user info
-    const userIds = Array.from(new Set(orders.map((o) => String(o.userId)))).map((id) => new ObjectId(id))
-    const users = await usersCol
-      .find({ _id: { $in: userIds } }, { projection: { _id: 1, email: 1, userName: 1, phone: 1, address: 1 } })
-      .toArray()
+    const userIds = Array.from(
+      new Set(
+        orders
+          .map((o) => o.userId)
+          .filter((id): id is ObjectId => Boolean(id))
+          .map((id) => id as ObjectId)
+      )
+    )
+
+    const users = userIds.length
+      ? await usersCol
+          .find({ _id: { $in: userIds } }, { projection: { _id: 1, email: 1, userName: 1, phone: 1, address: 1 } })
+          .toArray()
+      : []
     const idToUser = new Map<string, Pick<User, "_id" | "email" | "userName" | "phone" | "address">>(
       users.map((u) => [String(u._id), u])
     )

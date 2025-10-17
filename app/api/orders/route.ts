@@ -7,15 +7,15 @@ import { ObjectId } from "mongodb"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, items, shippingAddress, paymentMethod, subtotal, tax, shipping, total } = body
+  const { userId, items, shippingAddress, paymentMethod, subtotal, tax, shipping, total } = body
 
-    if (!userId || !items || !shippingAddress) {
+    if (!items || !shippingAddress) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     // Create order
     const orderData = {
-      userId: new ObjectId(userId),
+      ...(userId ? { userId: new ObjectId(userId) } : {}),
       // Normalize line items for analytics pipeline
       items: (items || []).map((it: { id: string | number; name: string; image?: string; price: number; quantity: number }) => ({
         id: String(it.id),
@@ -36,8 +36,10 @@ export async function POST(request: NextRequest) {
 
     const newOrder = await OrderService.createOrder(orderData)
 
-    // Clear user's cart after successful order
-    await UserService.updateUserCart(userId, [])
+    // Clear user's cart after successful order (only for logged-in users)
+    if (userId) {
+      await UserService.updateUserCart(userId, [])
+    }
 
     return NextResponse.json(
       {

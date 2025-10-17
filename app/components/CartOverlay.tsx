@@ -2,6 +2,7 @@
 
 import { X, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useCurrency } from '../context/CurrencyContext';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -11,6 +12,7 @@ type CartOverlayProps = {
 
 export default function CartOverlay({ onClose }: CartOverlayProps) {
     const { cartItems, increaseQty, decreaseQty, removeItem, getTotal } = useCart();
+    const { symbol } = useCurrency();
     const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
     return (
@@ -70,7 +72,7 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                                                 {item.name}
                                             </h3>
                                             <p className="text-base sm:text-lg font-WorkSans font-semibold text-[#222222]">
-                                                ₦{item.price.toLocaleString()}
+                                                {symbol}{item.price.toLocaleString()}
                                             </p>
                                         </div>
                                         <p className="text-xs font-WorkSans text-gray-500">Color: {item.color}</p>
@@ -110,7 +112,7 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                 <div className="sticky bottom-0 left-0 right-0 bg-[#FFFBEB] border-t px-4 md:px-5 py-4 shadow-inner">
                     <div className="flex justify-between font-WorkSans font-semibold text-[#5A554C] mb-3 text-sm sm:text-base">
                         <span>Total</span>
-                        <span>₦{getTotal().toLocaleString()}</span>
+                        <span>{symbol}{getTotal().toLocaleString()}</span>
                     </div>
                     <Link href="/checkout">
                         <button

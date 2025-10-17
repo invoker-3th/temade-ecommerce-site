@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useState, useMemo } from "react"
 import { useCart } from "../context/CartContext"
 import { useAuth } from "../context/AuthContext"
+import { useCurrency } from "../context/CurrencyContext"
 import dynamic from "next/dynamic"
 import CheckoutOverlay from "../components/CheckoutOverlay"
 
@@ -19,6 +20,7 @@ const CheckoutPage = () => {
   const [isOverlayVisible, setIsOverlayVisible] = useState(false)
   const { cartItems, getTotal, clearCart } = useCart()
   const { user } = useAuth()
+  const { symbol } = useCurrency()
   const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = getTotal()
   const tax = subtotal * 0.1
@@ -55,41 +57,43 @@ const CheckoutPage = () => {
     return requiredFields.every(field => formData[field as keyof typeof formData]?.trim())
   }, [formData])
 
+  // Track created order for webhook mapping
+  const [pendingOrderId, setPendingOrderId] = useState<string>("")
+
   // Paystack configuration - memoized to prevent recreation on every render
   const config = useMemo(() => {
-    const safeOrderId = typeof window !== 'undefined' ? (sessionStorage.getItem('pendingOrderId') || '') : ''
     return ({
-      reference: new Date().getTime().toString(),
-      email: user?.email || formData.email,
-      amount: Math.round(total * 100), // Amount in kobo (multiply by 100)
-      publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
-      currency: "NGN",
-      metadata: {
-        orderId: safeOrderId,
+    reference: new Date().getTime().toString(),
+    email: user?.email || formData.email,
+    amount: Math.round(total * 100), // Amount in kobo (multiply by 100)
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
+    currency: "NGN",
+    metadata: {
+        orderId: pendingOrderId,
         amount: Math.round(total * 100),
-        custom_fields: [
-          {
-            display_name: "Full Name",
-            variable_name: "full_name",
-            value: `${formData.firstname} ${formData.lastname}`
-          },
-          {
-            display_name: "Phone",
-            variable_name: "phone",
-            value: formData.phone
-          }
-        ]
-      }
+        userId: user?._id?.toString() || undefined,
+      custom_fields: [
+        {
+          display_name: "Full Name",
+          variable_name: "full_name",
+          value: `${formData.firstname} ${formData.lastname}`
+        },
+        {
+          display_name: "Phone",
+          variable_name: "phone",
+          value: formData.phone
+        }
+      ]
+    }
     })
-  }, [user?.email, formData.email, total, formData.firstname, formData.lastname, formData.phone])
+  }, [user?.email, formData.email, total, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (cartItems.length === 0) return
+  const createPendingOrder = async (): Promise<boolean> => {
+    if (cartItems.length === 0) return false
 
     // Validate required fields
     const requiredFields = ['firstname', 'lastname', 'email', 'address', 'city', 'state', 'phone', 'country', 'postalcode']
@@ -97,20 +101,20 @@ const CheckoutPage = () => {
     
     if (missingFields.length > 0) {
       alert(`Please fill in all required fields: ${missingFields.join(', ')}`)
-      return
+      return false
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email)) {
       alert('Please enter a valid email address')
-      return
+      return false
     }
 
     // Check if Paystack public key is available
     if (!process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY === "pk_test_your_public_key") {
       alert('Payment system is not configured. Please contact support.')
-      return
+      return false
     }
 
     setIsProcessing(true)
@@ -125,31 +129,32 @@ const CheckoutPage = () => {
         body: JSON.stringify({
           userId: user?._id || null,
           items: cartItems,
-          shippingAddress: {
-            userName: `${formData.firstname} ${formData.lastname}`,
-            email: formData.email,
-            phone: formData.phone,
-            city: formData.city,
-            state: formData.state,
-            address: formData.address,
-          },
+            shippingAddress: {
+              userName: `${formData.firstname} ${formData.lastname}`,
+              email: formData.email,
+              phone: formData.phone,
+              city: formData.city,
+              state: formData.state,
+              address: formData.address,
+            },
           paymentMethod: "paystack",
           paymentStatus: "pending",
           orderStatus: "pending",
-          subtotal,
-          tax,
-          shipping,
-          total,
-        }),
-      })
+            subtotal,
+            tax,
+            shipping,
+            total,
+          }),
+        })
 
       if (!orderResponse.ok) {
         throw new Error("Failed to create order")
       }
 
       const { order } = await orderResponse.json()
+      setPendingOrderId(order._id)
       
-      // Store order ID for later use (browser only)
+      // Store order ID in sessionStorage for Paystack component
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('pendingOrderId', order._id)
       }
@@ -158,11 +163,9 @@ const CheckoutPage = () => {
       console.error("Order creation error:", error)
       alert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setIsProcessing(false)
-      return
+      return false
     }
-
-    // Initialize Paystack payment
-    // ...existing code for Paystack initialization...
+    return true
   }
 
   const handlePaystackSuccess = async (reference: { reference: string }) => {
@@ -170,10 +173,7 @@ const CheckoutPage = () => {
       // Payment initiated successfully - webhook will handle the actual confirmation
       console.log("Payment initiated, waiting for webhook confirmation...")
       
-      // Clear the pending order ID from session storage
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('pendingOrderId')
-      }
+      setPendingOrderId("")
       clearCart()
       setIsOverlayVisible(true)
       
@@ -266,7 +266,7 @@ const CheckoutPage = () => {
                       </div>
                     </div>
                     <p className="text-[18px] text-[#222222] font-semibold">
-                      ₦{(item.price * item.quantity).toLocaleString()}
+                      {symbol}{(item.price * item.quantity).toLocaleString()}
                     </p>
                   </div>
                 ))}
@@ -274,19 +274,19 @@ const CheckoutPage = () => {
               <div className="mt-6 border-t pt-4 space-y-2 text-[#475367] text-sm font-medium">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>₦{subtotal.toLocaleString()}</span>
+                  <span>{symbol}{subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (10%)</span>
-                  <span>₦{tax.toLocaleString()}</span>
+                  <span>{symbol}{tax.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span>₦{shipping.toLocaleString()}</span>
+                  <span>{symbol}{shipping.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-medium pt-2 border-t">
                   <span>Total</span>
-                  <span className="text-[#1D2739] text-base font-semibold">₦{total.toLocaleString()}</span>
+                  <span className="text-[#1D2739] text-base font-semibold">{symbol}{total.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -295,6 +295,7 @@ const CheckoutPage = () => {
                 config={config}
                 onSuccess={handlePaystackSuccess}
                 onClose={handlePaystackClose}
+                beforeInit={createPendingOrder}
                 disabled={isProcessing || cartItems.length === 0 || !isFormValid}
                 isProcessing={isProcessing}
                 isFormValid={isFormValid}
@@ -304,7 +305,6 @@ const CheckoutPage = () => {
 
             <form
               id="checkout-form"
-              onSubmit={handleSubmit}
               className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg w-full"
             >
               <h2 className="text-[24px] font-semibold text-[#222222]">Delivery Information</h2>

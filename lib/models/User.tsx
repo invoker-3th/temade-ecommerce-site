@@ -43,7 +43,7 @@ export interface User {
 
 export interface Order {
   _id?: ObjectId
-  userId: ObjectId
+  userId?: ObjectId
   items: CartItem[]
   shippingAddress: {
     userName: string

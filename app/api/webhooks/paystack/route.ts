@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { OrderService } from "@/lib/services/orderServices"
+import { getDatabase } from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
 
 // Paystack webhook secret from environment variables
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY
@@ -48,13 +50,53 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Amount mismatch" }, { status: 400 })
       }
 
-      // Update order status to paid and processing
+      // Validate orderId is a proper ObjectId
+      if (!ObjectId.isValid(orderId)) {
+        console.error(`Invalid orderId in webhook: ${orderId}`)
+        return NextResponse.json({ error: "Invalid order ID" }, { status: 400 })
+      }
+
+      // Get the order first to build the invoice
+      const order = await OrderService.getOrderById(orderId)
+      if (!order) {
+        console.error(`Order ${orderId} not found`)
+        return NextResponse.json({ error: "Order not found" }, { status: 404 })
+      }
+
+      // Create invoice
+      const invoiceNumber = `INV-${Date.now()}`
+      const invoice = {
+        number: invoiceNumber,
+        issuedAt: new Date(),
+        items: order.items.map(item => ({
+          name: item.name,
+          color: item.color || "",
+          size: item.size || "",
+          price: item.price,
+          quantity: item.quantity,
+          total: item.price * item.quantity,
+        })),
+        subtotal: order.subtotal,
+        tax: order.tax,
+        shipping: order.shipping,
+        total: order.total,
+        shippingAddress: order.shippingAddress,
+        customer: {
+          name: order.shippingAddress.userName,
+          email: order.shippingAddress.email,
+          phone: order.shippingAddress.phone,
+        },
+        payment: { method: "paystack", reference },
+      }
+
+      // Update order status to paid and processing with invoice
       const success = await OrderService.updateOrderStatus(orderId, {
         paymentStatus: "completed",
         orderStatus: "processing",
         paymentReference: reference,
         paymentAmount: amount,
-        paymentDate: new Date()
+        paymentDate: new Date(),
+        invoice
       })
 
       if (!success) {
@@ -64,19 +106,18 @@ export async function POST(request: NextRequest) {
 
       console.log(`Order ${orderId} payment confirmed via webhook`)
       
-      // Create admin notification
+      // Create admin notification directly (avoid external fetch/base URL issues)
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/admin/notifications`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'payment_confirmed',
-            title: 'Payment Confirmed',
-            message: `Order ${orderId} payment of ₦${(amount / 100).toLocaleString()} confirmed via Paystack`,
-            orderId,
-            paymentReference: reference,
-            amount: amount / 100
-          })
+        const db = await getDatabase()
+        await db.collection('notifications').insertOne({
+          type: 'payment_confirmed',
+          title: 'Payment Confirmed',
+          message: `Order ${orderId} payment of ₦${(amount / 100).toLocaleString()} confirmed via Paystack`,
+          orderId,
+          paymentReference: reference,
+          amount: amount / 100,
+          read: false,
+          createdAt: new Date()
         })
       } catch (error) {
         console.error('Failed to create admin notification:', error)

@@ -29,6 +29,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [filterUserId, setFilterUserId] = useState<string>("")
+  const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -84,17 +85,59 @@ export default function AdminOrdersPage() {
               <div className="mt-3 flex items-center justify-between">
                 <div className="text-sm text-gray-700">Status: <span className="font-semibold">{o.orderStatus}</span> • Payment: <span className="font-semibold">{o.paymentStatus}</span></div>
                 <div className="flex items-center gap-2">
-                  {["pending","processing","shipped","delivered","cancelled"].map((s) => (
-                    <button key={s} className={`px-2 py-1 rounded border ${o.orderStatus===s? 'bg-[#CA6F86] text-white':'bg-white'}`} onClick={async () => {
-                      await fetch('/api/admin/orders', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ orderId: o._id, status: s }) })
-                      // Reload
-                      const qs = filterUserId ? `?userId=${encodeURIComponent(filterUserId)}` : ""
-                      const res = await fetch(`/api/admin/orders${qs}`, { cache: "no-store" })
-                      const data = await res.json(); setOrders(data.orders || [])
-                    }}>{s}</button>
-                  ))}
+                  {(["pending","processing","shipped","delivered","cancelled"] as const).map((s) => {
+                    const disabled = s === 'pending' || s === 'processing'
+                    return (
+                      <button
+                        key={s}
+                        disabled={disabled}
+                        className={`px-2 py-1 rounded border ${o.orderStatus===s? 'bg-[#CA6F86] text-white':'bg-white'} ${disabled? 'opacity-50 cursor-not-allowed':''}`}
+                        onClick={async () => {
+                          if (disabled) return
+                          await fetch('/api/admin/orders', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ orderId: o._id, status: s }) })
+                          const qs = filterUserId ? `?userId=${encodeURIComponent(filterUserId)}` : ""
+                          const res = await fetch(`/api/admin/orders${qs}`, { cache: "no-store" })
+                          const data = await res.json(); setOrders(data.orders || [])
+                        }}
+                      >{s}</button>
+                    )
+                  })}
                 </div>
               </div>
+              <div className="mt-3">
+                <button className="text-sm underline" onClick={() => setOpenId(openId===o._id? null : o._id)}>
+                  {openId===o._id? 'Hide details' : 'View details'}
+                </button>
+              </div>
+              {openId===o._id && (
+                <div className="mt-4 border-t pt-4 grid md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="font-semibold mb-1">Customer</p>
+                    <p>Name: {o.invoice?.customer?.name || o.shippingAddress.userName}</p>
+                    <p>Email: {o.invoice?.customer?.email || o.shippingAddress.email}</p>
+                    <p>Phone: {o.invoice?.customer?.phone || o.shippingAddress.phone}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-1">Delivery Address</p>
+                    <p>{o.shippingAddress.address}</p>
+                    <p>{o.shippingAddress.city}, {o.shippingAddress.state}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-1">Payment</p>
+                    <p>Method: {o.invoice?.payment.method || 'paystack'}</p>
+                    <p>Reference: {o.invoice?.payment.reference || '-'}</p>
+                    <p>Status: {o.paymentStatus}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-1">Items</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {o.items.map((it, idx) => (
+                        <li key={idx}>{it.name} × {it.quantity} — ₦{(it.price * it.quantity).toLocaleString()}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               {o.invoice && (
                 <div className="mt-4 border-t pt-4">
                   <p className="font-semibold mb-2">Invoice</p>
