@@ -57,6 +57,7 @@ export interface Order {
   paymentStatus: "pending" | "completed" | "failed"
   orderStatus: "processing" | "shipped" | "delivered" | "cancelled"
   paymentReference?: string
+  currency: "NGN" | "USD" | "GBP"
   invoice?: {
     number: string
     issuedAt: Date
@@ -70,15 +71,14 @@ export interface Order {
     }>
     subtotal: number
     tax: number
-    shipping: number
     total: number
+    currency: "NGN" | "USD" | "GBP"
     shippingAddress: Order["shippingAddress"]
     customer: { name: string; email: string; phone: string }
     payment: { method: string; reference?: string }
   }
   subtotal: number
   tax: number
-  shipping: number
   total: number
   createdAt: Date
   updatedAt: Date

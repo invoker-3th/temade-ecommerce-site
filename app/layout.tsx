@@ -11,6 +11,7 @@ import Footer from "./components/Footer"
 import TextMarqueeBar from "./components/TextMarqueeBar"
 import { CurrencyProvider } from "./context/CurrencyContext"
 import RegionDialog from "./components/RegionDialog"
+import CartCurrencyUpdater from "./components/CartCurrencyUpdater"
 
 
 const ebGaramond = EB_Garamond({
@@ -50,6 +51,8 @@ export default function RootLayout({
                 <NavBar />
                 {/* Region selection dialog shown when no currency is set */}
                 <RegionDialog />
+                {/* Update cart prices when currency changes */}
+                <CartCurrencyUpdater />
                 {children}
                 <TextMarqueeBar />
                 <div className="w-full flex justify-center">

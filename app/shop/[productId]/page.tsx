@@ -161,6 +161,9 @@ export default function ProductDetailPage({ params }: Props) {
             size: selectedSize,
             color: ensuredColor,
             quantity,
+            priceNGN: product.priceNGN,
+            priceUSD: product.priceUSD,
+            priceGBP: product.priceGBP,
         });
 
         setNotification({ message: 'Added to cart successfully!', type: 'success' });
@@ -190,7 +193,10 @@ export default function ProductDetailPage({ params }: Props) {
                 id: product._id,
                 name: product.name,
                 image: wishlistImage,
-                price: (pickPrice(product, currency) ?? product.priceNGN) || 0
+                price: (pickPrice(product, currency) ?? product.priceNGN) || 0,
+                priceNGN: product.priceNGN,
+                priceUSD: product.priceUSD,
+                priceGBP: product.priceGBP,
             });
             setNotification({ message: `${product.name} added to wishlist`, type: 'success' });
         }

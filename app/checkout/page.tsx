@@ -20,12 +20,11 @@ const CheckoutPage = () => {
   const [isOverlayVisible, setIsOverlayVisible] = useState(false)
   const { cartItems, getTotal, clearCart } = useCart()
   const { user } = useAuth()
-  const { symbol } = useCurrency()
+  const { symbol, currency } = useCurrency()
   const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = getTotal()
   const tax = subtotal * 0.1
-  const shipping = 1000
-  const total = subtotal + tax + shipping
+  const total = subtotal + tax
 
   const [formData, setFormData] = useState<{
     firstname: string
@@ -62,15 +61,19 @@ const CheckoutPage = () => {
 
   // Paystack configuration - memoized to prevent recreation on every render
   const config = useMemo(() => {
+    // Convert currency to Paystack format
+    const paystackCurrency = currency === 'NGN' ? 'NGN' : currency === 'USD' ? 'USD' : 'GBP'
+    
     return ({
     reference: new Date().getTime().toString(),
     email: user?.email || formData.email,
-    amount: Math.round(total * 100), // Amount in kobo (multiply by 100)
+    amount: Math.round(total * 100), // Amount in smallest currency unit (multiply by 100)
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
-    currency: "NGN",
+    currency: paystackCurrency,
     metadata: {
         orderId: pendingOrderId,
         amount: Math.round(total * 100),
+        currency: paystackCurrency,
         userId: user?._id?.toString() || undefined,
       custom_fields: [
         {
@@ -86,7 +89,7 @@ const CheckoutPage = () => {
       ]
     }
     })
-  }, [user?.email, formData.email, total, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id])
+  }, [user?.email, formData.email, total, currency, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -140,9 +143,9 @@ const CheckoutPage = () => {
           paymentMethod: "paystack",
           paymentStatus: "pending",
           orderStatus: "pending",
+          currency: currency,
             subtotal,
             tax,
-            shipping,
             total,
           }),
         })
@@ -279,10 +282,6 @@ const CheckoutPage = () => {
                 <div className="flex justify-between">
                   <span>Tax (10%)</span>
                   <span>{symbol}{tax.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span>{symbol}{shipping.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-medium pt-2 border-t">
                   <span>Total</span>

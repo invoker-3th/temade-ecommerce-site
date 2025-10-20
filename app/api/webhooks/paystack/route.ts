@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
         })),
         subtotal: order.subtotal,
         tax: order.tax,
-        shipping: order.shipping,
         total: order.total,
+        currency: order.currency,
         shippingAddress: order.shippingAddress,
         customer: {
           name: order.shippingAddress.userName,
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         await db.collection('notifications').insertOne({
           type: 'payment_confirmed',
           title: 'Payment Confirmed',
-          message: `Order ${orderId} payment of ₦${(amount / 100).toLocaleString()} confirmed via Paystack`,
+          message: `Order ${orderId} payment of ${order.currency === 'USD' ? '$' : order.currency === 'GBP' ? '£' : '₦'}${(amount / 100).toLocaleString()} confirmed via Paystack`,
           orderId,
           paymentReference: reference,
           amount: amount / 100,
