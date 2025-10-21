@@ -253,7 +253,7 @@ const CheckoutPage = () => {
               </div>
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 ">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex flex-col items-start gap-4">
+                  <div key={item.id} className="flex items-start gap-4">
                     <div className="flex items-start gap-4 flex-1">
                       <Image
                         src={item.image || "/placeholder.svg"}
@@ -266,12 +266,12 @@ const CheckoutPage = () => {
                         <p className="font-semibold text-[20px] text-[#222222]">{item.name}</p>
                         <p className="text-xs text-gray-500">Color: {item.color}</p>
                         <p className="text-xs text-gray-400">Size: {item.size}</p>
-                        <p className="text-[18px] text-[#222222] font-semibold hidden">
+                        <p className="text-[18px] text-[#222222] font-semibold md:hidden">
                           {symbol}{(item.price * item.quantity).toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    <p className="text-[18px] text-[#222222] font-semibold md:hidden">
+                    <p className="text-[18px] text-[#222222] font-semibold hidden md:block">
                       {symbol}{(item.price * item.quantity).toLocaleString()}
                     </p>
                   </div>
@@ -304,7 +304,7 @@ const CheckoutPage = () => {
               />
 
             </div>
-            <div className=" flex flex-col-reverse">
+            <div className="flex-1 flex flex-col">
               <form
                 id="checkout-form"
                 className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg w-full"
@@ -469,7 +469,7 @@ const CheckoutPage = () => {
               </form>
               {/* link to whatsapp to finalize shipping */}
               <p className="mt-4 text-sm text-[#474747] flex items-center">
-                For International orders, please click on this
+                For International orders, please click on this{" "}
                 <a
                   href="https://wa.me/message/4KDPOAXHMT6AK1"
                   target="_blank"
@@ -478,7 +478,7 @@ const CheckoutPage = () => {
                 >
                   link
                 </a>
-                to finalizing shipping.
+                {" "}to finalize shipping.
               </p>
             </div>
 
