@@ -3,6 +3,8 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useAuth } from "./AuthContext"
+import { pickPrice } from "./CurrencyContext"
+import type { SupportedCurrency } from "./CurrencyContext"
 
 type CartItem = {
   id: string
@@ -12,6 +14,10 @@ type CartItem = {
   quantity: number
   size: string
   color: string
+  // Store original product data for currency conversion
+  priceNGN?: number
+  priceUSD?: number
+  priceGBP?: number
 }
 
 type CartContextType = {
@@ -21,7 +27,8 @@ type CartContextType = {
   increaseQty: (id: string) => void
   decreaseQty: (id: string) => void
   getTotal: () => number
-  clearCart: () => void   // ✅ added
+  clearCart: () => void
+  updateCartCurrency: (currency: SupportedCurrency) => void
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -107,6 +114,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem("cart") // ✅ clear localStorage
   }
 
+  const updateCartCurrency = useCallback((currency: SupportedCurrency) => {
+    setCartItems((prev) => 
+      prev.map((item) => ({
+        ...item,
+        price: pickPrice(item, currency) ?? item.price
+      }))
+    )
+  }, [])
+
   return (
     <CartContext.Provider
       value={{
@@ -116,7 +132,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         increaseQty,
         decreaseQty,
         getTotal,
-        clearCart, // ✅ exposed
+        clearCart,
+        updateCartCurrency,
       }}
     >
       {children}

@@ -32,6 +32,10 @@ type NewArrivalItem = {
   sizes: string[];
   price: number;
   swatches: ColorSwatch[];
+  // Add price properties for different currencies
+  priceNGN: number;
+  priceUSD?: number;
+  priceGBP?: number;
 };
 
 type ToastType = 'success' | 'error';
@@ -53,6 +57,10 @@ function toItem(product: ApiProduct, currency: 'NGN' | 'USD' | 'GBP'): NewArriva
     sizes: product.sizes || [],
     price,
     swatches,
+    // Include all currency prices
+    priceNGN: product.priceNGN,
+    priceUSD: product.priceUSD,
+    priceGBP: product.priceGBP,
   }
 }
 
@@ -147,6 +155,9 @@ export default function NewArrivals() {
       quantity: 1,
       size: defaultSize,
       color: defaultColor,
+      priceNGN: item.priceNGN,
+      priceUSD: item.priceUSD,
+      priceGBP: item.priceGBP,
     });
 
     setToastType('success');
@@ -160,7 +171,15 @@ export default function NewArrivals() {
       setToastType('error');
       setToastMessage(`${item.name} removed from wishlist`);
     } else {
-      addToWishlist({ id: item.id, name: item.name, image: item.image, price: item.price });
+      addToWishlist({ 
+        id: item.id, 
+        name: item.name, 
+        image: item.image, 
+        price: item.price,
+        priceNGN: item.priceNGN,
+        priceUSD: item.priceUSD,
+        priceGBP: item.priceGBP,
+      });
       setToastType('success');
       setToastMessage(`${item.name} added to wishlist`);
     }

@@ -7,7 +7,7 @@ import { ObjectId } from "mongodb"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-  const { userId, items, shippingAddress, paymentMethod, subtotal, tax, shipping, total } = body
+  const { userId, items, shippingAddress, paymentMethod, subtotal, tax, total, currency } = body
 
     if (!items || !shippingAddress) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -17,20 +17,22 @@ export async function POST(request: NextRequest) {
     const orderData = {
       ...(userId ? { userId: new ObjectId(userId) } : {}),
       // Normalize line items for analytics pipeline
-      items: (items || []).map((it: { id: string | number; name: string; image?: string; price: number; quantity: number }) => ({
+      items: (items || []).map((it: { id: string | number; name: string; image?: string; price: number; quantity: number; size?: string; color?: string }) => ({
         id: String(it.id),
         name: String(it.name),
         image: String(it.image || ""),
         price: Number(it.price || 0),
         quantity: Number(it.quantity || 1),
+        size: it.size || "One Size",
+        color: it.color || "Default",
       })),
       shippingAddress,
       paymentMethod,
       paymentStatus: "pending" as const,
       orderStatus: "processing" as const,
+      currency: currency || "NGN",
       subtotal,
       tax,
-      shipping,
       total,
     }
 
@@ -58,7 +60,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { orderId, reference, paymentMethod, paymentStatus, orderStatus, shippingAddress, items, subtotal, tax, shipping, total, customer } = body
+    const { orderId, reference, paymentMethod, paymentStatus, orderStatus, shippingAddress, items, subtotal, tax, total, customer, currency } = body
 
     if (!orderId || !reference) {
       return NextResponse.json({ error: "orderId and reference are required" }, { status: 400 })
@@ -78,8 +80,8 @@ export async function PATCH(request: NextRequest) {
       })),
       subtotal: Number(subtotal || 0),
       tax: Number(tax || 0),
-      shipping: Number(shipping || 0),
       total: Number(total || 0),
+      currency: currency || "NGN",
       shippingAddress,
       customer: {
         name: customer?.name || shippingAddress?.userName,
