@@ -75,19 +75,19 @@ const CheckoutPage = () => {
         amount: Math.round(total * 100),
         currency: paystackCurrency,
         userId: user?._id?.toString() || undefined,
-      custom_fields: [
-        {
-          display_name: "Full Name",
-          variable_name: "full_name",
-          value: `${formData.firstname} ${formData.lastname}`
-        },
-        {
-          display_name: "Phone",
-          variable_name: "phone",
-          value: formData.phone
-        }
-      ]
-    }
+        custom_fields: [
+          {
+            display_name: "Full Name",
+            variable_name: "full_name",
+            value: `${formData.firstname} ${formData.lastname}`
+          },
+          {
+            display_name: "Phone",
+            variable_name: "phone",
+            value: formData.phone
+          }
+        ]
+      }
     })
   }, [user?.email, formData.email, total, currency, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id])
 
@@ -101,7 +101,7 @@ const CheckoutPage = () => {
     // Validate required fields
     const requiredFields = ['firstname', 'lastname', 'email', 'address', 'city', 'state', 'phone', 'country', 'postalcode']
     const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]?.trim())
-    
+
     if (missingFields.length > 0) {
       alert(`Please fill in all required fields: ${missingFields.join(', ')}`)
       return false
@@ -132,14 +132,14 @@ const CheckoutPage = () => {
         body: JSON.stringify({
           userId: user?._id || null,
           items: cartItems,
-            shippingAddress: {
-              userName: `${formData.firstname} ${formData.lastname}`,
-              email: formData.email,
-              phone: formData.phone,
-              city: formData.city,
-              state: formData.state,
-              address: formData.address,
-            },
+          shippingAddress: {
+            userName: `${formData.firstname} ${formData.lastname}`,
+            email: formData.email,
+            phone: formData.phone,
+            city: formData.city,
+            state: formData.state,
+            address: formData.address,
+          },
           paymentMethod: "paystack",
           paymentStatus: "pending",
           orderStatus: "pending",
@@ -156,12 +156,12 @@ const CheckoutPage = () => {
 
       const { order } = await orderResponse.json()
       setPendingOrderId(order._id)
-      
+
       // Store order ID in sessionStorage for Paystack component
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('pendingOrderId', order._id)
       }
-      
+
     } catch (error) {
       console.error("Order creation error:", error)
       alert(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -175,14 +175,14 @@ const CheckoutPage = () => {
     try {
       // Payment initiated successfully - webhook will handle the actual confirmation
       console.log("Payment initiated, waiting for webhook confirmation...")
-      
+
       setPendingOrderId("")
       clearCart()
       setIsOverlayVisible(true)
-      
+
       // Show success message
       alert(`Payment initiated successfully! Reference: ${reference.reference}. You will receive a confirmation email once payment is verified.`)
-      
+
     } catch (error) {
       console.error("Payment success handling error:", error)
       alert(`Payment successful but there was an issue processing your order. Please contact support with your payment reference: ${reference.reference}`)
@@ -290,7 +290,7 @@ const CheckoutPage = () => {
               </div>
 
               {/* Replace the existing button with: */}
-              <PaystackCheckout 
+              <PaystackCheckout
                 config={config}
                 onSuccess={handlePaystackSuccess}
                 onClose={handlePaystackClose}
@@ -301,169 +301,184 @@ const CheckoutPage = () => {
               />
 
             </div>
+            <>
+              <form
+                id="checkout-form"
+                className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg w-full"
+              >
+                <h2 className="text-[24px] font-semibold text-[#222222]">Delivery Information</h2>
 
-            <form
-              id="checkout-form"
-              className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg w-full"
-            >
-              <h2 className="text-[24px] font-semibold text-[#222222]">Delivery Information</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="firstname" className="block text-sm font-medium text-[#333] mb-1">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      id="firstname"
+                      name="firstname"
+                      placeholder="Enter your first name"
+                      value={formData.firstname}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="lastname" className="block text-sm font-medium text-[#333] mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      id="lastname"
+                      name="lastname"
+                      placeholder="Enter your last name"
+                      value={formData.lastname}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                    />
+                  </div>
+                </div>
                 <div>
-                  <label htmlFor="firstname" className="block text-sm font-medium text-[#333] mb-1">
-                    First Name
+                  <label htmlFor="address" className="block text-sm font-medium text-[#333] mb-1">
+                    Address
                   </label>
                   <input
                     type="text"
-                    id="firstname"
-                    name="firstname"
-                    placeholder="Enter your first name"
-                    value={formData.firstname}
-                    onChange={handleChange}
-                    required
-                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="lastname" className="block text-sm font-medium text-[#333] mb-1">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    id="lastname"
-                    name="lastname"
-                    placeholder="Enter your last name"
-                    value={formData.lastname}
-                    onChange={handleChange}
-                    required
-                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="address" className="block text-sm font-medium text-[#333] mb-1">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  placeholder="Enter full address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  required
-                  className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="state" className="block text-sm font-medium text-[#333] mb-1">
-                    State
-                  </label>
-                  <input
-                    type="text"
-                    id="state"
-                    name="state"
-                    placeholder="Enter your state"
-                    value={formData.state}
+                    id="address"
+                    name="address"
+                    placeholder="Enter full address"
+                    value={formData.address}
                     onChange={handleChange}
                     required
                     className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-[#333] mb-1">
-                    Town/City
-                  </label>
-                  <input
-                    type="text"
-                    id="city"
-                    name="city"
-                    placeholder="Enter your city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    required
-                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="state" className="block text-sm font-medium text-[#333] mb-1">
+                      State
+                    </label>
+                    <input
+                      type="text"
+                      id="state"
+                      name="state"
+                      placeholder="Enter your state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* select country */}
-                <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-[#333] mb-1">
-                    Country
-                  </label>
-                  <select
-                    id="country"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                    required
-                    className="w-full border rounded-md p-3 bg-transparent"
-                  >
-                    <option value="">Select a country</option>
-                    <option value="Nigeria">Nigeria</option>
-                    <option value="Ghana">Ghana</option>
-                    <option value="Kenya">Kenya</option>
-                    <option value="South Africa">South Africa</option>
-                    <option value="Uganda">Uganda</option>
-                    <option value="US">US</option>
-                    <option value="UK">UK</option>
-                  </select>
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium text-[#333] mb-1">
+                      Town/City
+                    </label>
+                    <input
+                      type="text"
+                      id="city"
+                      name="city"
+                      placeholder="Enter your city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="postalcode" className="block text-sm font-medium text-[#333] mb-1">
-                    Postalcode
-                  </label>
-                  <input
-                    type="text"
-                    id="postalcode"
-                    name="postalcode"
-                    placeholder="Enter your postalcode"
-                    value={formData.postalcode}
-                    onChange={handleChange}
-                    required
-                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-[#333] mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    placeholder="Enter your phone number"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* select country */}
+                  <div>
+                    <label htmlFor="country" className="block text-sm font-medium text-[#333] mb-1">
+                      Country
+                    </label>
+                    <select
+                      id="country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 bg-transparent"
+                    >
+                      <option value="">Select a country</option>
+                      <option value="Nigeria">Nigeria</option>
+                      <option value="Ghana">Ghana</option>
+                      <option value="Kenya">Kenya</option>
+                      <option value="South Africa">South Africa</option>
+                      <option value="Uganda">Uganda</option>
+                      <option value="US">US</option>
+                      <option value="UK">UK</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="postalcode" className="block text-sm font-medium text-[#333] mb-1">
+                      Postalcode
+                    </label>
+                    <input
+                      type="text"
+                      id="postalcode"
+                      name="postalcode"
+                      placeholder="Enter your postalcode"
+                      value={formData.postalcode}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-[#333] mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="Enter email address"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-[#333] mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      placeholder="Enter your phone number"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-[#333] mb-1">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      placeholder="Enter email address"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      className="w-full border rounded-md p-3 outline-[#CA6F86] bg-transparent"
+                    />
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+              {/* link to whatsapp to finalize shipping */}
+              <p className="mt-4 text-sm text-[#474747] flex items-center">
+                For International orders, please click on this
+                <a
+                  href="https://wa.me/message/4KDPOAXHMT6AK1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#8D2741] underline"
+                >
+                  link
+                </a>
+                to finalizing shipping.
+              </p>
+            </>
+
           </div>
         </div>
       )}
