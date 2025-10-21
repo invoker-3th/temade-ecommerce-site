@@ -194,9 +194,6 @@ export default function ProductDetailPage({ params }: Props) {
                 name: product.name,
                 image: wishlistImage,
                 price: (pickPrice(product, currency) ?? product.priceNGN) || 0,
-                priceNGN: product.priceNGN,
-                priceUSD: product.priceUSD,
-                priceGBP: product.priceGBP,
             });
             setNotification({ message: `${product.name} added to wishlist`, type: 'success' });
         }

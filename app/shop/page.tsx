@@ -163,9 +163,7 @@ function Shop() {
                       setToastType("error")
                       setToastMessage(`${p.name} removed from wishlist`)
                     } else {
-                      addToWishlist({ id: p._id, name: p.name, image: first?.src || "", price: displayPrice || 0, priceNGN: p.priceNGN,
-                        priceUSD: p.priceUSD,
-                        priceGBP: p.priceGBP })
+                      addToWishlist({ id: p._id, name: p.name, image: first?.src || "", price: displayPrice || 0 })
                       setToastType("success")
                       setToastMessage(`${p.name} added to wishlist`)
                     }
@@ -225,10 +223,7 @@ function Shop() {
                       price: displayPrice || 0, 
                       quantity: 1, 
                       size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size", 
-                      color: p.colorVariants[0]?.colorName || "Default",
-                      priceNGN: p.priceNGN,
-                      priceUSD: p.priceUSD,
-                      priceGBP: p.priceGBP,
+                      color: p.colorVariants[0]?.colorName || "Default" 
                     })
                     setToastType("success")
                     setToastMessage(`Added ${p.name} to cart`)

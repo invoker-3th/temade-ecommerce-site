@@ -199,9 +199,7 @@ function CategoryPage({ params }: CategoryPageProps) {
                       setToastType("error")
                       setToastMessage(`${p.name} removed from wishlist`)
                     } else {
-                      addToWishlist({ id: p._id, name: p.name, image: first?.src || "", price: p.priceNGN || 0 , priceNGN: p.priceNGN,
-                        priceUSD: p.priceUSD,
-                        priceGBP: p.priceGBP })
+                      addToWishlist({ id: p._id, name: p.name, image: first?.src || "", price: p.priceNGN || 0 ,  })
                       setToastType("success")
                       setToastMessage(`${p.name} added to wishlist`)
                     }

@@ -176,9 +176,6 @@ export default function NewArrivals() {
         name: item.name, 
         image: item.image, 
         price: item.price,
-        priceNGN: item.priceNGN,
-        priceUSD: item.priceUSD,
-        priceGBP: item.priceGBP,
       });
       setToastType('success');
       setToastMessage(`${item.name} added to wishlist`);

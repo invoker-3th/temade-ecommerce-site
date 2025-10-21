@@ -8,9 +8,7 @@ type WishlistItem = {
   name: string
   image: string
   price: number
-  priceNGN: number
-  priceUSD?: number
-  priceGBP?: number
+  
 }
 
 type WishlistContextType = {
