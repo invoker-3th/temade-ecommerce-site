@@ -63,14 +63,14 @@ const CheckoutPage = () => {
   const config = useMemo(() => {
     // Convert currency to Paystack format
     const paystackCurrency = currency === 'NGN' ? 'NGN' : currency === 'USD' ? 'USD' : 'GBP'
-    
+
     return ({
-    reference: new Date().getTime().toString(),
-    email: user?.email || formData.email,
-    amount: Math.round(total * 100), // Amount in smallest currency unit (multiply by 100)
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
-    currency: paystackCurrency,
-    metadata: {
+      reference: new Date().getTime().toString(),
+      email: user?.email || formData.email,
+      amount: Math.round(total * 100), // Amount in smallest currency unit (multiply by 100)
+      publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
+      currency: paystackCurrency,
+      metadata: {
         orderId: pendingOrderId,
         amount: Math.round(total * 100),
         currency: paystackCurrency,
@@ -144,11 +144,11 @@ const CheckoutPage = () => {
           paymentStatus: "pending",
           orderStatus: "pending",
           currency: currency,
-            subtotal,
-            tax,
-            total,
-          }),
-        })
+          subtotal,
+          tax,
+          total,
+        }),
+      })
 
       if (!orderResponse.ok) {
         throw new Error("Failed to create order")
@@ -241,7 +241,7 @@ const CheckoutPage = () => {
       ) : (
         <div className="">
           {/* Left column: Order summary + form */}
-          <div className="order-2 lg:order-1 flex  flex-col-reverse justify-between items-start gap-4 md:flex-row-reverse">
+          <div className="order-2 lg:order-1 flex flex-col-reverse justify-between items-start gap-4 md:flex-row-reverse">
             <div className="bg-[#F2E5E8] p-6 rounded-[5px] shadow-sm flex-1 ">
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="text-xl font-semibold text-[#222222]">Order Summary</h2>
@@ -266,9 +266,12 @@ const CheckoutPage = () => {
                         <p className="font-semibold text-[20px] text-[#222222]">{item.name}</p>
                         <p className="text-xs text-gray-500">Color: {item.color}</p>
                         <p className="text-xs text-gray-400">Size: {item.size}</p>
+                        <p className="text-[18px] text-[#222222] font-semibold md:hidden">
+                          {symbol}{(item.price * item.quantity).toLocaleString()}
+                        </p>
                       </div>
                     </div>
-                    <p className="text-[18px] text-[#222222] font-semibold">
+                    <p className="text-[18px] text-[#222222] font-semibold hidden md:block">
                       {symbol}{(item.price * item.quantity).toLocaleString()}
                     </p>
                   </div>
@@ -301,7 +304,7 @@ const CheckoutPage = () => {
               />
 
             </div>
-            <>
+            <div className="flex-1 flex flex-col">
               <form
                 id="checkout-form"
                 className="space-y-6 p-6 border border-[#D3D3D3] flex-1 rounded-lg w-full"
@@ -466,7 +469,7 @@ const CheckoutPage = () => {
               </form>
               {/* link to whatsapp to finalize shipping */}
               <p className="mt-4 text-sm text-[#474747] flex items-center">
-                For International orders, please click on this
+                For International orders, please click on this{" "}
                 <a
                   href="https://wa.me/message/4KDPOAXHMT6AK1"
                   target="_blank"
@@ -475,9 +478,9 @@ const CheckoutPage = () => {
                 >
                   link
                 </a>
-                to finalizing shipping.
+                {" "}to finalize shipping.
               </p>
-            </>
+            </div>
 
           </div>
         </div>
