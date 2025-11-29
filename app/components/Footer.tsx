@@ -5,11 +5,17 @@ import Link from 'next/link'
 import { useState } from 'react'
 import ShippingPolicyModal from './ShippingPolicyModal'
 import PrivacyPolicyModal from './PrivacyPolicyModal'
+import ContactModal from './ContactModal'
+import AboutModal from './AboutModal'
+import TermsOfServiceModal from './TermsOfServiceModal'
 
 export default function Footer() {
   const [email, setEmail] = useState('')
   const [showShippingModal, setShowShippingModal] = useState(false)
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
+  const [showContactModal, setShowContactModal] = useState(false)
+  const [showAboutModal, setShowAboutModal] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +42,7 @@ export default function Footer() {
               © {new Date().getFullYear()} ALL RIGHTS RESERVED
             </p>
             <p className="text-sm text-[#5A554C] font-medium">
-              Orders@temadestudios.com
+              orders@temadestudios.com
             </p>
           </div>
 
@@ -46,12 +52,20 @@ export default function Footer() {
             <a href="https://www.instagram.com/temade_studios" className="text-sm text-[#5A554C] hover:underline">
               Instagram
             </a>
-            <a href="#" className="text-sm text-[#5A554C] hover:underline">
+            <button
+              type="button"
+              onClick={() => setShowContactModal(true)}
+              className="text-left text-sm text-[#5A554C] hover:underline"
+            >
               Contact Us
-            </a>
-            <a href="#" className="text-sm text-[#5A554C] hover:underline">
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAboutModal(true)}
+              className="text-left text-sm text-[#5A554C] hover:underline"
+            >
               About Us
-            </a>
+            </button>
           </div>
 
           {/* Policies */}
@@ -69,9 +83,12 @@ export default function Footer() {
             >
               Privacy Policy
             </button>
-            <a href="#" className="text-sm text-[#5A554C] hover:underline">
+            <button
+              onClick={() => setShowTermsModal(true)}
+              className="text-left text-sm text-[#5A554C] hover:underline"
+            >
               Terms of Service
-            </a>
+            </button>
           </div>
 
           {/* Newsletter */}
@@ -107,6 +124,18 @@ export default function Footer() {
       <PrivacyPolicyModal
         open={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
+      />
+      <ContactModal
+        open={showContactModal}
+        onClose={() => setShowContactModal(false)}
+      />
+      <AboutModal
+        open={showAboutModal}
+        onClose={() => setShowAboutModal(false)}
+      />
+      <TermsOfServiceModal
+        open={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
       />
     </>
   )

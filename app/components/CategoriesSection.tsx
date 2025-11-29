@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { EB_Garamond } from 'next/font/google';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 const ebGaramond = EB_Garamond({
   subsets: ['latin'],
@@ -14,25 +15,29 @@ const ebGaramond = EB_Garamond({
 function CategorySection() {
 
   return (
-    <section
-      className=" my-[40px] bg-[#FFFBEB] md:min-h-[150vh] lg:h-[50vh] overflow-hidden flex flex-col justify-center  relative"
-    >
-      <div className=" bg-[#FFFBEB] min-h-screen md:min-h-[150vh] bg-center bg-no-repeat sm:mx-8"
-        style={{
-          backgroundImage: "url('/section2-image.png')",
-          backgroundPosition: "center 6%",
-        }}>
-
+    <section className="relative bg-[#FFFBEB]">
+      <div className="mx-auto flex w-full justify-center px-4">
+        <div className="relative w-full md:w-[75%] min-h-[100vh] overflow-hidden bg-[#845D2D] flex items-center justify-center">
+          <Image
+            src="/IMG_3258(1).jpg"
+            alt="TemADE Studios model wearing cotton adire"
+            fill
+            sizes="(max-width: 768px) 100vw, 75vw"
+            className="object-contain object-center"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/25 to-black/60" />
+        </div>
       </div>
-      <div className=' absolute top-[30%] sm:top-[50%] left-0 w-full h-full  text-center z-10'>
+      <div className="absolute top-[30%] sm:top-[50%] left-0 w-full h-full text-center z-10">
         <div className={`${ebGaramond.className} font-medium flex flex-col sm:flex-row justify-between items-center w-full max-w-[1200px] mb-[90px] mx-auto`}>
-          <Link href="/shop/categories/pants" className="text-responsive text-[#FFFFFF] sm:text-[#CA6F86] ">
+          <Link href="/shop/categories/pants" className="text-2xl sm:text-[50px] text-[#FFFFFF] sm:text-[#CA6F86] transition-colors">
             PANTS
           </Link>
-          <Link href="/shop/categories/dresses" className="text-responsive2 text-[#FFFFFF] ">
+          <Link href="/shop/categories/dresses" className="text-3xl sm:text-[70px] text-[#FFFFFF] transition-colors">
             DRESSES
           </Link>
-          <Link href="/shop/categories/skirts" className="text-responsive text-[#FFFFFF] sm:text-[#CA6F86]">
+          <Link href="/shop/categories/skirts" className="text-2xl sm:text-[50px] text-[#FFFFFF] sm:text-[#CA6F86] transition-colors">
             SKIRTS
           </Link>
         </div>

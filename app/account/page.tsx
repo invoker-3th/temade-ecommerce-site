@@ -8,6 +8,8 @@ import Sidebar from "../components/Sidebar"
 import EditProfile from "../components/edit-profile"
 import OrdersTab from "../components/orders-tab"
 import { useAuth } from "../context/AuthContext"
+import LoadingSpinner from "../components/LoadingSpinner"
+import AccountSkeleton from "../components/skeletons/AccountSkeleton"
 
 type UserProfile = {
   fullName: string
@@ -59,11 +61,14 @@ export default function AccountPage() {
     setActiveTab("account")
   }
 
-  if (isLoading) {
-    return <p className="p-6 text-center">Loading...</p>
+  if (isLoading || !profile) {
+    return (
+      <div className="min-h-screen bg-[#FFFBEB] py-10">
+        <LoadingSpinner label="Loading your account dashboard..." block className="justify-center mb-8" />
+        <AccountSkeleton />
+      </div>
+    )
   }
-
-  if (!profile) return null
 
   return (
     <>

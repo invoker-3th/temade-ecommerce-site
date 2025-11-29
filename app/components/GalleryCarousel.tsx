@@ -26,7 +26,7 @@ function GalleryCarousel() {
 
   if (!mounted) return null;
   return (
-    <section className="relative bg-[#FFFBEB] py-10 overflow-hidden">
+    <section className="relative bg-[#FFFBEB] overflow-hidden">
       <div ref={emblaRef} className="overflow-hidden cursor-grab">
         <div className="flex">
           {galleryImages.map((imgSrc, index) => (

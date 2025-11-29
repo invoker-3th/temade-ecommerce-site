@@ -91,7 +91,7 @@ const NavBar = () => {
           {/* Desktop Nav */}
           <div className="hidden lg:flex space-x-[32px] text-sm text-[#030C26]">
             <Link href="/">NEW ARRIVALS</Link>
-            <Link href="/shop">COLLECTIONS</Link>
+            <Link href="/collections">COLLECTIONS</Link>
             <button
               onClick={() => setIsCategoryDropdownOpen(true)}
               className={`flex items-center gap-1 transition-colors ${isCategoryDropdownOpen ? "underline text-[#8D2741] font-semibold" : ""}`}
@@ -213,7 +213,7 @@ const NavBar = () => {
         </div>
         <div className="flex flex-col px-6 py-4 space-y-6 text-[#030C26] text-sm">
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>NEW ARRIVALS</Link>
-          <Link href="/shop" onClick={() => setIsMobileMenuOpen(false)}>COLLECTIONS</Link>
+          <Link href="/collections" onClick={() => setIsMobileMenuOpen(false)}>COLLECTIONS</Link>
           <button
             onClick={() => {
               setIsMobileMenuOpen(false);

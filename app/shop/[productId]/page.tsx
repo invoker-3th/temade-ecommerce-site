@@ -10,6 +10,8 @@ import { useCart } from '@/app/context/CartContext';
 import { useWishlist } from '@/app/context/WishlistContext';
 import { Work_Sans } from 'next/font/google';
 import { useCurrency, pickPrice } from '@/app/context/CurrencyContext';
+import LoadingSpinner from '@/app/components/LoadingSpinner';
+import ProductDetailSkeleton from '@/app/components/skeletons/ProductDetailSkeleton';
 
 const workSans = Work_Sans({
     subsets: ['latin'],
@@ -208,8 +210,11 @@ export default function ProductDetailPage({ params }: Props) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">
-                <div className="text-lg">Loading...</div>
+            <div className="min-h-screen bg-[#FFFBEB] py-10">
+                <div className="max-w-7xl mx-auto space-y-8">
+                    <LoadingSpinner label="Loading product details..." block />
+                    <ProductDetailSkeleton />
+                </div>
             </div>
         );
     }

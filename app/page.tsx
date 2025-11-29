@@ -7,13 +7,12 @@ import GalleryCarousel from "./components/GalleryCarousel";
 
 export default function Home() {
   return (
-    <main>
+    <main className="space-y-12 sm:space-y-14 lg:space-y-16">
       <Hero />
       <CategorySection />
       <GalleryCarousel />
       <NewArrivals />
       <HeroBanner />
-      
     </main>
   );
 }

@@ -4,6 +4,8 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
+import LoadingSpinner from "./LoadingSpinner"
+import SearchResultsSkeleton from "./skeletons/SearchResultsSkeleton"
 
 type Product = {
   _id: string
@@ -22,6 +24,7 @@ export default function SearchPage() {
   const router = useRouter()
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768
+  const shouldShowInitialSkeleton = loading && results.length === 0
 
   // Read query from URL
   useEffect(() => {
@@ -103,24 +106,17 @@ export default function SearchPage() {
               Search Results{query ? ` for: ${query}` : ""}
             </h1>
 
-            {/* Loading Animation */}
-            <AnimatePresence>
               {loading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center gap-2 text-gray-600"
-                >
-                  <span className="w-4 h-4 border-2 border-[#8D2741] border-t-transparent rounded-full animate-spin inline-block" />
-                  Loading results...
-                </motion.div>
-              )}
-            </AnimatePresence>
+              <div className="mb-4">
+                <LoadingSpinner label="Searching products..." block className="justify-start" />
+              </div>
+            )}
 
             {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
 
-            {/* 🧩 Product Grid */}
+            {shouldShowInitialSkeleton ? (
+              <SearchResultsSkeleton items={isMobile ? 4 : 6} />
+            ) : (
             <div
               className={`grid gap-4 mt-4 ${isMobile ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
                 }`}
@@ -163,6 +159,7 @@ export default function SearchPage() {
                 ))}
               </AnimatePresence>
             </div>
+            )}
           </>
         ) : (
           // ✨ Message when no query (mobile only)
