@@ -146,7 +146,7 @@ export default function LookbookClient({ initialSections }: LookbookClientProps)
     <div className="py-10 space-y-10">
       {sections.map((section, sectionIdx) => (
         <section key={section.material} className="space-y-6 px-4">
-          <h2 className="text-4xl sm:text-6xl md:text-8xl lg:text-[150px] font-medium text-[#8D2741] font-sans text-center leading-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[75px] font-medium text-[#8D2741] font-sans text-center leading-tight">
             {section.material}
           </h2>
 
