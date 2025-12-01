@@ -155,7 +155,7 @@ export default function LookbookClient({ initialSections }: LookbookClientProps)
               <button
                 key={`${section.material}-${index}`}
                 type="button"
-                className="relative w-full min-h-[320px] md:min-h-[420px] overflow-hidden rounded-2xl shadow-lg group focus:outline-none"
+                className="relative w-full aspect-square overflow-hidden rounded-2xl shadow-lg group focus:outline-none bg-[#111111]"
                 onClick={() => openViewer(sectionIdx, index)}
               >
                 <Image
@@ -186,30 +186,30 @@ export default function LookbookClient({ initialSections }: LookbookClientProps)
           {isMobile ? (
             <div
               ref={scrollContainerRef}
-              className="flex gap-4 w-full h-full overflow-x-auto snap-x snap-mandatory"
+              className="flex gap-4 w-full h-full overflow-x-auto snap-x snap-mandatory bg-black"
             >
               {activeImages.map((src, idx) => (
                 <div
                   key={`mobile-view-${idx}`}
-                  className="relative min-w-full h-full snap-center flex-shrink-0"
+                  className="relative min-w-full h-full snap-center flex-shrink-0 flex items-center justify-center"
                 >
                   <Image
                     src={src}
                     alt={`Lookbook detail ${idx + 1}`}
                     fill
-                    className="object-cover rounded-2xl"
+                    className="object-contain rounded-2xl"
                     sizes="100vw"
                   />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
+            <div className="relative w-full h-full max-w-5xl max-h-[90vh] flex items-center justify-center bg-black">
               <Image
                 src={activeImages[activeImageIndex]}
                 alt="Lookbook detail"
                 fill
-                className="object-cover rounded-3xl"
+                className="object-contain rounded-3xl"
                 sizes="(max-width: 1200px) 100vw, 1200px"
               />
               <button
