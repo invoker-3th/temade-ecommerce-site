@@ -12,6 +12,7 @@ import { Work_Sans } from 'next/font/google';
 import { useCurrency, pickPrice } from '@/app/context/CurrencyContext';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ProductDetailSkeleton from '@/app/components/skeletons/ProductDetailSkeleton';
+import { normalizeSize, normalizeSizes } from '@/lib/utils';
 
 const workSans = Work_Sans({
     subsets: ['latin'],
@@ -106,7 +107,7 @@ export default function ProductDetailPage({ params }: Props) {
                             setSelectedColor(data.colorVariants[0].colorName);
                         }
                         if (data.sizes && data.sizes.length > 0) {
-                            setSelectedSize(data.sizes[0]);
+                            setSelectedSize(normalizeSize(data.sizes[0]));
                         }
                     }
                 } else {
@@ -160,7 +161,7 @@ export default function ProductDetailPage({ params }: Props) {
             name: product.name,
             price: displayPrice,
             image: fallbackImageSrc,
-            size: selectedSize,
+            size: normalizeSize(selectedSize),
             color: ensuredColor,
             quantity,
             priceNGN: product.priceNGN,
@@ -341,21 +342,24 @@ export default function ProductDetailPage({ params }: Props) {
                     </div>
 
                     <div className="space-y-3">
-                        <h2 className="font-semibold text-[#16161A]">Size: {selectedSize}</h2>
+                        <h2 className="font-semibold text-[#16161A]">Size: {normalizeSize(selectedSize)}</h2>
                         <div className="flex gap-3 flex-wrap">
-                            {product.sizes.map((size) => (
-                                <button
-                                    key={size}
-                                    onClick={() => setSelectedSize(size)}
-                                    className={`px-4 py-2 border-2 font-semibold rounded-lg text-[16px] transition-all ${
-                                        selectedSize === size
-                                            ? 'bg-[#CA6F86] text-white border-[#CA6F86]'
-                                            : 'text-[#2C2C2C] border-gray-300 hover:border-[#CA6F86]'
-                                    }`}
-                                >
-                                    {size}
-                                </button>
-                            ))}
+                            {normalizeSizes(product.sizes).map((normalizedSize) => {
+                                const isSelected = normalizeSize(selectedSize) === normalizedSize;
+                                return (
+                                    <button
+                                        key={normalizedSize}
+                                        onClick={() => setSelectedSize(normalizedSize)}
+                                        className={`px-4 py-2 border-2 font-semibold rounded-lg text-[16px] transition-all ${
+                                            isSelected
+                                                ? 'bg-[#CA6F86] text-white border-[#CA6F86]'
+                                                : 'text-[#2C2C2C] border-gray-300 hover:border-[#CA6F86]'
+                                        }`}
+                                    >
+                                        {normalizedSize}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

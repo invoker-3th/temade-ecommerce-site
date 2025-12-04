@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext"
 import { useCurrency } from "../context/CurrencyContext"
 import dynamic from "next/dynamic"
 import CheckoutOverlay from "../components/CheckoutOverlay"
+import { normalizeSize } from "@/lib/utils"
 
 const PaystackCheckout = dynamic(
   () => import("../components/PaystackCheckout"),
@@ -265,7 +266,7 @@ const CheckoutPage = () => {
                       <div className="flex-1">
                         <p className="font-semibold text-[20px] text-[#222222]">{item.name}</p>
                         <p className="text-xs text-gray-500">Color: {item.color}</p>
-                        <p className="text-xs text-gray-400">Size: {item.size}</p>
+                        <p className="text-xs text-gray-400">Size: {normalizeSize(item.size)}</p>
                         <p className="text-[18px] text-[#222222] font-semibold md:hidden">
                           {symbol}{(item.price * item.quantity).toLocaleString()}
                         </p>

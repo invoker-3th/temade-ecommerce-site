@@ -11,6 +11,7 @@ import { useWishlist } from "../../../context/WishlistContext"
 import { notFound } from "next/navigation"
 import LoadingSpinner from "../../../components/LoadingSpinner"
 import ProductGridSkeleton from "../../../components/skeletons/ProductGridSkeleton"
+import { normalizeSize, normalizeSizes } from "@/lib/utils"
 
 type ToastType = "success" | "error"
 
@@ -254,7 +255,7 @@ function CategoryPage({ params }: CategoryPageProps) {
                   <div>
                     <h3 className="text-xl font-medium text-[#16161A]">{p.name}</h3>
                     {p.sizes?.length > 0 && (
-                      <p className="text-sm text-gray-600 mt-1">Sizes: {p.sizes.join(", ")}</p>
+                      <p className="text-sm text-gray-600 mt-1">Sizes: {normalizeSizes(p.sizes).join(", ")}</p>
                     )}
                     {p.colorVariants?.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-2">
@@ -284,7 +285,7 @@ function CategoryPage({ params }: CategoryPageProps) {
                           image: first?.src || "",
                           price: p.priceNGN ?? 0,
                           quantity: 1,
-                          size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size",
+                          size: p.sizes && p.sizes.length > 0 ? normalizeSize(p.sizes[0]) : "one-size",
                           color: p.colorVariants[0]?.colorName || "Default",
                           priceNGN: p.priceNGN,
                           priceUSD: p.priceUSD,
@@ -331,7 +332,7 @@ function CategoryPage({ params }: CategoryPageProps) {
                 <h3 className="text-[16px] font-sans font-normal text-[#2C2C2C]">{p.name}</h3>
                 {p.sizes && p.sizes.length > 0 && (
                   <div className="mb-1">
-                    <p className="text-xs text-gray-600">Sizes: {p.sizes.join(", ")}</p>
+                    <p className="text-xs text-gray-600">Sizes: {normalizeSizes(p.sizes).join(", ")}</p>
                   </div>
                 )}
                 {p.colorVariants && p.colorVariants.length > 0 && (
@@ -360,7 +361,7 @@ function CategoryPage({ params }: CategoryPageProps) {
                       image: first?.src || "",
                       price: p.priceNGN ?? 0,
                       quantity: 1,
-                      size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size",
+                      size: p.sizes && p.sizes.length > 0 ? normalizeSize(p.sizes[0]) : "one-size",
                       color: p.colorVariants[0]?.colorName || "Default",
                       priceNGN: p.priceNGN,
                       priceUSD: p.priceUSD,

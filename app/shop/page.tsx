@@ -11,6 +11,7 @@ import { useCategories } from "../hooks/useCategories"
 import { useCurrency, pickPrice } from "../context/CurrencyContext"
 import LoadingSpinner from "../components/LoadingSpinner"
 import ProductGridSkeleton from "../components/skeletons/ProductGridSkeleton"
+import { normalizeSize, normalizeSizes } from "@/lib/utils"
 
 type ToastType = "success" | "error"
 
@@ -232,7 +233,7 @@ function Shop() {
                   <div>
                     <h3 className="text-xl font-medium text-[#16161A]">{p.name}</h3>
                     {p.sizes?.length > 0 && (
-                      <p className="text-sm text-gray-600 mt-1">Sizes: {p.sizes.join(", ")}</p>
+                      <p className="text-sm text-gray-600 mt-1">Sizes: {normalizeSizes(p.sizes).join(", ")}</p>
                     )}
                     {p.colorVariants?.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-2">
@@ -263,7 +264,7 @@ function Shop() {
                           image: first?.src || "",
                           price: displayPrice || 0,
                           quantity: 1,
-                          size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size",
+                          size: p.sizes && p.sizes.length > 0 ? normalizeSize(p.sizes[0]) : "one-size",
                           color: p.colorVariants[0]?.colorName || "Default",
                         })
                         setToastType("success")
@@ -307,7 +308,7 @@ function Shop() {
                 <h3 className="text-[16px] font-normal text-[#2C2C2C]">{p.name}</h3>
                 {p.sizes && p.sizes.length > 0 && (
                   <div className="mb-1">
-                    <p className="text-xs text-gray-600">Sizes: {p.sizes.join(", ")}</p>
+                    <p className="text-xs text-gray-600">Sizes: {normalizeSizes(p.sizes).join(", ")}</p>
                   </div>
                 )}
                 {p.colorVariants && p.colorVariants.length > 0 && (
@@ -339,7 +340,7 @@ function Shop() {
                       image: first?.src || "",
                       price: displayPrice || 0,
                       quantity: 1,
-                      size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : "One Size",
+                      size: p.sizes && p.sizes.length > 0 ? normalizeSize(p.sizes[0]) : "one-size",
                       color: p.colorVariants[0]?.colorName || "Default",
                     })
                     setToastType("success")

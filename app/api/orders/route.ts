@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
         image: String(it.image || ""),
         price: Number(it.price || 0),
         quantity: Number(it.quantity || 1),
-        size: it.size || "One Size",
+        size: it.size || "one-size",
         color: it.color || "Default",
       })),
       shippingAddress,

@@ -21,7 +21,7 @@ export default function InventoryManagerPage() {
   
   const [productForm, setProductForm] = useState<ProductForm>({ 
     name: "", sku: "", description: "", categoryId: "", price: 0, 
-    sizes: "S,M,L,XL", colorName: "", colorHex: "#000000", images: [] 
+    sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [] 
   })
   
   const [categoryForm, setCategoryForm] = useState<CategoryForm>({ 
@@ -78,7 +78,7 @@ export default function InventoryManagerPage() {
     try {
       await createOrUpdateProduct(editing, productForm)
       alert(`Product ${editing ? 'updated' : 'created'} successfully`)
-      setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "S,M,L,XL", colorName: "", colorHex: "#000000", images: [] })
+      setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [] })
       setEditing(null)
       fetchData()
     } catch (e) {
@@ -370,7 +370,7 @@ export default function InventoryManagerPage() {
                   <button
                     type="button"
                     className="px-3 py-1 border rounded text-sm hover:bg-gray-50"
-                    onClick={() => setProductForm({ ...productForm, sizes: "One Size" })}
+                    onClick={() => setProductForm({ ...productForm, sizes: "one-size" })}
                   >
                     One Size
                   </button>
@@ -394,8 +394,8 @@ export default function InventoryManagerPage() {
                     const current = (productForm.sizes || "").split(',').map(s => s.trim()).filter(Boolean)
                     const checked = current.includes(opt.key)
                     const toggle = () => {
-                      if (productForm.sizes === "One Size") {
-                        // moving from One Size to explicit sizes
+                      if (productForm.sizes === "one-size") {
+                        // moving from one-size to explicit sizes
                         setProductForm({ ...productForm, sizes: opt.key })
                         return
                       }
@@ -537,7 +537,7 @@ export default function InventoryManagerPage() {
                   className="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50" 
                   onClick={() => {
                     setEditing(null)
-                    setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "S,M,L,XL", colorName: "", colorHex: "#000000", images: [] })
+                    setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [] })
                   }}
                 >
                   Cancel

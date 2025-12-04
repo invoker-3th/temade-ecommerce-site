@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { normalizeSize } from '@/lib/utils';
 
 type CartOverlayProps = {
     onClose: () => void;
@@ -76,7 +77,7 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                                             </p>
                                         </div>
                                         <p className="text-xs font-WorkSans text-gray-500">Color: {item.color}</p>
-                                        <p className="text-xs font-WorkSans text-gray-400">Size: {item.size}</p>
+                                        <p className="text-xs font-WorkSans text-gray-400">Size: {normalizeSize(item.size)}</p>
                                     </div>
 
                                     <div className="flex items-center justify-between">

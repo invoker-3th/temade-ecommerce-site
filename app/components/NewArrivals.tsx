@@ -8,6 +8,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCurrency, pickPrice } from '../context/CurrencyContext';
+import { normalizeSizes } from '@/lib/utils';
 
 // Matches backend product shape we use
 type ApiProduct = {
@@ -144,7 +145,7 @@ export default function NewArrivals() {
   }, [currency])
 
   const handleAddToCart = (item: NewArrivalItem) => {
-    const defaultSize = item.sizes && item.sizes.length > 0 ? item.sizes[0] : 'One Size'
+    const defaultSize = item.sizes && item.sizes.length > 0 ? item.sizes[0] : 'one-size'
     const defaultColor = item.swatches && item.swatches.length > 0 ? item.swatches[0].name : 'Default'
 
     addToCart({
@@ -255,7 +256,7 @@ export default function NewArrivals() {
                   {/* Sizes */}
                   {item.sizes.length > 0 && (
                     <div className="mb-1">
-                      <p className="text-xs text-gray-600">Sizes: {item.sizes.join(', ')}</p>
+                      <p className="text-xs text-gray-600">Sizes: {normalizeSizes(item.sizes).join(', ')}</p>
                     </div>
                   )}
                   {/* Colors (all available swatches) */}

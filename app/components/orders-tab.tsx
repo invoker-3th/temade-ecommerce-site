@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext"
 import { useCurrency } from "../context/CurrencyContext"
 import TrackOrderModal from "./TrackOrderModal"
 import type { Order } from "../../lib/models/User"
+import { normalizeSize } from "@/lib/utils"
 
 export default function OrdersTab() {
   const { user } = useAuth()
@@ -250,7 +251,7 @@ export default function OrdersTab() {
                               {item.color}
                     </span>
                           )}
-                          {item.size && <span>Size: {item.size}</span>}
+                          {item.size && <span>Size: {normalizeSize(item.size)}</span>}
                         </div>
                         <p className="text-sm font-medium text-gray-800 mt-1">
                           {symbol}{item.price?.toLocaleString() || '0'} each
