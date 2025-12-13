@@ -26,6 +26,10 @@ export default function AdminDashboardPage() {
 
   const isAdmin = useMemo(() => {
     if (!user?.email) return false
+    // Special case: Orders@temadestudios.com is always admin
+    if (user.email.toLowerCase() === "orders@temadestudios.com") {
+      return true
+    }
     const allow = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
     return allow.includes(user.email.toLowerCase())
   }, [user?.email])

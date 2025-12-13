@@ -23,12 +23,17 @@ export default function LoginPage() {
     const success = await login(email, userName)
 
     if (success) {
-      // Check if user is admin and redirect accordingly
-      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
-      if (adminEmails.includes(email.toLowerCase())) {
+      // Special case: Orders@temadestudios.com with username "admin" goes to admin UI
+      if (email.toLowerCase() === "orders@temadestudios.com" && userName.toLowerCase() === "admin") {
         router.push("/admin")
       } else {
-        router.push("/")
+        // Check if user is admin and redirect accordingly
+        const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+        if (adminEmails.includes(email.toLowerCase())) {
+          router.push("/admin")
+        } else {
+          router.push("/")
+        }
       }
     } else {
       setError("Login failed. Please check your email.")
