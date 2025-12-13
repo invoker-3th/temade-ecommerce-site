@@ -23,6 +23,8 @@ export default function AdminDashboardPage() {
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [totalProducts, setTotalProducts] = useState(0)
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [clearing, setClearing] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   const isAdmin = useMemo(() => {
     if (!user?.email) return false
@@ -57,6 +59,30 @@ export default function AdminDashboardPage() {
     run()
   }, [isLoading, isAdmin])
 
+  const handleClearAnalytics = async () => {
+    setClearing(true)
+    try {
+      const res = await fetch("/api/admin/clear-analytics", {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error("Failed to clear analytics")
+      const data = await res.json()
+      
+      // Reset all analytics data
+      setTotalOrders(0)
+      setTotalRevenue(0)
+      setTopProducts([])
+      
+      setShowConfirmDialog(false)
+      alert(`Analytics cleared successfully. Deleted ${data.deletedCount} orders.`)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to clear analytics"
+      alert(`Error: ${msg}`)
+    } finally {
+      setClearing(false)
+    }
+  }
+
   if (isLoading) {
     return <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading...</div>
   }
@@ -71,7 +97,51 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-WorkSans">
-      <h1 className="text-2xl md:text-3xl font-bold text-[#16161A] mb-6">Admin Analytics</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Admin Analytics</h1>
+        <button
+          onClick={() => setShowConfirmDialog(true)}
+          disabled={clearing}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm"
+        >
+          {clearing ? "Clearing..." : "Clear All Analytics"}
+        </button>
+      </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-[#16161A] mb-4">Confirm Clear Analytics</h2>
+            <p className="text-gray-700 mb-6">
+              This will permanently delete all orders, which will reset:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Total Orders</li>
+                <li>Total Revenue</li>
+                <li>Most Purchased Products</li>
+                <li>All order history</li>
+              </ul>
+              <strong className="text-red-600">This action cannot be undone.</strong>
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                disabled={clearing}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:opacity-50 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearAnalytics}
+                disabled={clearing}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-semibold"
+              >
+                {clearing ? "Clearing..." : "Yes, Clear All Data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div>Loading analytics...</div>
