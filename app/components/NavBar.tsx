@@ -16,6 +16,7 @@ import Image from "next/image";
 import ShopTemadeDropdown from "./ShopTemadeDropdown";
 import CartOverlay from "./CartOverlay";
 import { useCart } from "../context/CartContext";
+import { getUIImage } from "@/lib/utils";
 // import { useWishlist } from "../context/WishlistContext";
 // import toast, { Toaster } from "react-hot-toast";
 

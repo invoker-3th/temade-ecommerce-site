@@ -11,7 +11,7 @@ import { useWishlist } from "../../../context/WishlistContext"
 import { notFound } from "next/navigation"
 import LoadingSpinner from "../../../components/LoadingSpinner"
 import ProductGridSkeleton from "../../../components/skeletons/ProductGridSkeleton"
-import { normalizeSize, normalizeSizes, getUIImage, getDetailImages } from "@/lib/utils"
+import { normalizeSize, normalizeSizes, getUIImage } from "@/lib/utils"
 
 type ToastType = "success" | "error"
 

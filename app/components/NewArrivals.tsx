@@ -8,7 +8,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCurrency, pickPrice } from '../context/CurrencyContext';
-import { normalizeSizes } from '@/lib/utils';
+import { normalizeSizes, getUIImage } from '@/lib/utils';
 
 // Matches backend product shape we use
 type ApiProduct = {
@@ -44,23 +44,8 @@ type ToastType = 'success' | 'error';
 type AnalyticsTopProduct = { id: string; name: string; image: string; quantitySold: number; revenue: number };
 
 function firstImageOf(product: ApiProduct): string {
-  // Find first image that should be shown on UI (shop/collections)
-  const variant = product.colorVariants?.[0]
-  if (!variant?.images) return '/placeholder.svg'
-  
-  // Look for image with showOnUI flag (defaults to true if not set)
-  const uiImage = variant.images.find(img => {
-    if (typeof img === 'string') return true // Legacy format, show it
-    return img.showOnUI !== false // Show if explicitly true or undefined
-  })
-  
-  if (uiImage) {
-    return typeof uiImage === 'string' ? uiImage : uiImage.src
-  }
-  
-  // Fallback to first image if no UI image found
-  const firstImg = variant.images[0]
-  return typeof firstImg === 'string' ? firstImg : firstImg?.src || '/placeholder.svg'
+  const uiImage = getUIImage(product.colorVariants)
+  return uiImage?.src || '/placeholder.svg'
 }
 
 function toItem(product: ApiProduct, currency: 'NGN' | 'USD' | 'GBP'): NewArrivalItem {

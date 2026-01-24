@@ -78,7 +78,7 @@ const CheckoutPage = () => {
     }
     const tax = subtotal * 0.1
     return subtotal + tax
-  }, [cartItems, currency])
+  }, [currency, cartItems])
 
   // Paystack configuration - memoized to prevent recreation on every render
   const config = useMemo(() => {

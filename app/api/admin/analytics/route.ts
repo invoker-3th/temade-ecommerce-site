@@ -60,7 +60,10 @@ export async function GET() {
       GBP: { orders: 0, revenue: 0 },
     }
     
-    currencyStats.forEach((stat: { _id: string; orders: number; revenue: number }) => {
+    type CurrencyStat = { _id: string | null; orders: number; revenue: number }
+    const typedCurrencyStats = currencyStats as unknown as CurrencyStat[]
+    
+    typedCurrencyStats.forEach((stat) => {
       const currency = stat._id || 'NGN'
       if (currency in currencyBreakdown) {
         currencyBreakdown[currency as keyof typeof currencyBreakdown] = {

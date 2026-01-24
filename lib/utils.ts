@@ -45,3 +45,65 @@ export function normalizeSize(size: string | undefined | null): string {
 export function normalizeSizes(sizes: string[]): string[] {
   return sizes.map(normalizeSize)
 }
+
+/**
+ * Get the first image that should be displayed on UI (shop, collections, etc.)
+ * Respects the showOnUI flag on images
+ */
+export function getUIImage(
+  colorVariants?: Array<{ 
+    images: Array<{ src: string; alt: string; showOnUI?: boolean } | string> 
+  }>
+): { src: string; alt: string } | null {
+  if (!colorVariants || colorVariants.length === 0) return null
+  
+  const variant = colorVariants[0]
+  if (!variant?.images || variant.images.length === 0) return null
+  
+  // Find first image with showOnUI flag (defaults to true if not set)
+  const uiImage = variant.images.find(img => {
+    if (typeof img === 'string') return true // Legacy format, show it
+    return img.showOnUI !== false // Show if explicitly true or undefined
+  })
+  
+  if (uiImage) {
+    if (typeof uiImage === 'string') {
+      return { src: uiImage, alt: '' }
+    }
+    return { src: uiImage.src, alt: uiImage.alt || '' }
+  }
+  
+  // Fallback to first image
+  const firstImg = variant.images[0]
+  if (typeof firstImg === 'string') {
+    return { src: firstImg, alt: '' }
+  }
+  return firstImg ? { src: firstImg.src, alt: firstImg.alt || '' } : null
+}
+
+/**
+ * Get all images that should be displayed on product detail page
+ * Respects the showOnDetails flag on images
+ */
+export function getDetailImages(
+  colorVariants?: Array<{ 
+    images: Array<{ src: string; alt: string; showOnDetails?: boolean } | string> 
+  }>
+): Array<{ src: string; alt: string }> {
+  if (!colorVariants || colorVariants.length === 0) return []
+  
+  const variant = colorVariants[0]
+  if (!variant?.images || variant.images.length === 0) return []
+  
+  return variant.images
+    .filter(img => {
+      if (typeof img === 'string') return true // Legacy format, show it
+      return img.showOnDetails !== false // Show if explicitly true or undefined
+    })
+    .map(img => {
+      if (typeof img === 'string') {
+        return { src: img, alt: '' }
+      }
+      return { src: img.src, alt: img.alt || '' }
+    })
+}
