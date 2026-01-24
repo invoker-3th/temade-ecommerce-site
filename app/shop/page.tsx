@@ -11,7 +11,7 @@ import { useCategories } from "../hooks/useCategories"
 import { useCurrency, pickPrice } from "../context/CurrencyContext"
 import LoadingSpinner from "../components/LoadingSpinner"
 import ProductGridSkeleton from "../components/skeletons/ProductGridSkeleton"
-import { normalizeSize, normalizeSizes } from "@/lib/utils"
+import { normalizeSize, normalizeSizes, getUIImage } from "@/lib/utils"
 
 type ToastType = "success" | "error"
 
@@ -177,13 +177,13 @@ function Shop() {
         }
       >
         {uniqueProducts.map((p) => {
-          const firstImage = p.colorVariants[0]?.images[0]
+          const firstImage = getUIImage(p.colorVariants)
           const displayPrice = pickPrice(p, currency) ?? p.priceNGN
 
           const WishlistButton = (
             <button
               onClick={() => {
-                const first = p.colorVariants[0]?.images[0]
+                const first = getUIImage(p.colorVariants)
                 const exists = wishlist.some((w) => w.id === p._id)
                 if (exists) {
                   removeFromWishlist(p._id)
@@ -221,7 +221,7 @@ function Shop() {
                   <Link href={`/shop/${p._id}`} className="block h-full">
                     <Image
                       src={firstImage?.src || "/placeholder.svg"}
-                      alt={firstImage?.alt || p.name}
+                      alt={firstImage?.alt || p.name || "Product"}
                       fill
                       className="object-cover rounded-xl"
                       sizes="(max-width: 640px) 100vw, 33vw"
@@ -257,7 +257,7 @@ function Shop() {
                     <button
                       type="button"
                       onClick={() => {
-                        const first = p.colorVariants[0]?.images[0]
+                        const first = getUIImage(p.colorVariants)
                         addToCart({
                           id: p._id,
                           name: p.name,
@@ -333,7 +333,7 @@ function Shop() {
                 <button
                   type="button"
                   onClick={() => {
-                    const first = p.colorVariants[0]?.images[0]
+                    const first = getUIImage(p.colorVariants)
                     addToCart({
                       id: p._id,
                       name: p.name,

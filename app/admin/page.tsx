@@ -23,6 +23,12 @@ export default function AdminDashboardPage() {
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [totalProducts, setTotalProducts] = useState(0)
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [currencyBreakdown, setCurrencyBreakdown] = useState({
+    NGN: { orders: 0, revenue: 0 },
+    USD: { orders: 0, revenue: 0 },
+    EUR: { orders: 0, revenue: 0 },
+    GBP: { orders: 0, revenue: 0 },
+  })
   const [clearing, setClearing] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
@@ -49,6 +55,12 @@ export default function AdminDashboardPage() {
         setTotalRevenue(data.totalRevenue || 0)
         setTotalProducts(data.totalProducts || 0)
         setTopProducts(data.topProducts || [])
+        setCurrencyBreakdown(data.currencyBreakdown || {
+          NGN: { orders: 0, revenue: 0 },
+          USD: { orders: 0, revenue: 0 },
+          EUR: { orders: 0, revenue: 0 },
+          GBP: { orders: 0, revenue: 0 },
+        })
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Failed to load analytics"
         setError(msg)
@@ -171,6 +183,33 @@ export default function AdminDashboardPage() {
 
           {/* Notifications */}
           <AdminNotifications />
+
+          {/* Currency Breakdown */}
+          <div>
+            <h2 className="text-xl font-bold mb-3 text-[#16161A]">Revenue by Currency</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl shadow p-5">
+                <p className="text-sm font-semibold text-gray-600">NGN (₦)</p>
+                <p className="text-2xl font-bold text-[#16161A]">₦{currencyBreakdown.NGN.revenue.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">{currencyBreakdown.NGN.orders} orders</p>
+              </div>
+              <div className="bg-white rounded-xl shadow p-5">
+                <p className="text-sm font-semibold text-gray-600">USD ($)</p>
+                <p className="text-2xl font-bold text-[#16161A]">${currencyBreakdown.USD.revenue.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">{currencyBreakdown.USD.orders} orders</p>
+              </div>
+              <div className="bg-white rounded-xl shadow p-5">
+                <p className="text-sm font-semibold text-gray-600">EUR (€)</p>
+                <p className="text-2xl font-bold text-[#16161A]">€{currencyBreakdown.EUR.revenue.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">{currencyBreakdown.EUR.orders} orders</p>
+              </div>
+              <div className="bg-white rounded-xl shadow p-5">
+                <p className="text-sm font-semibold text-gray-600">GBP (£)</p>
+                <p className="text-2xl font-bold text-[#16161A]">£{currencyBreakdown.GBP.revenue.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">{currencyBreakdown.GBP.orders} orders</p>
+              </div>
+            </div>
+          </div>
 
           {/* Top Products */}
           <div>

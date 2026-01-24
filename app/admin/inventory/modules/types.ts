@@ -10,6 +10,7 @@ export type ProductForm = {
   colorName: string
   colorHex: string // required hex color code
   images: string[]
+  imageSettings?: Record<string, { showOnUI: boolean; showOnDetails: boolean }> // Image URL -> display settings
   // New fields for product grouping
   baseProductId?: string // ID of the base product (for grouping color variations)
   isBaseProduct?: boolean // true if this is the main product, false if it's a color variation
@@ -36,7 +37,7 @@ export type Product = {
   colorVariants: Array<{
     colorName: string
     hexCode: string // required hex color code
-    images: Array<{ src: string; alt: string }>
+    images: Array<{ src: string; alt: string; showOnUI?: boolean; showOnDetails?: boolean }>
   }>
   // New fields for product grouping
   baseProductId?: string // ID of the base product (for grouping color variations)

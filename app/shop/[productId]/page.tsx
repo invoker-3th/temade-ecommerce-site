@@ -12,7 +12,7 @@ import { Work_Sans } from 'next/font/google';
 import { useCurrency, pickPrice } from '@/app/context/CurrencyContext';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ProductDetailSkeleton from '@/app/components/skeletons/ProductDetailSkeleton';
-import { normalizeSize, normalizeSizes } from '@/lib/utils';
+import { normalizeSize, normalizeSizes, getDetailImages } from '@/lib/utils';
 
 const workSans = Work_Sans({
     subsets: ['latin'],
@@ -146,12 +146,12 @@ export default function ProductDetailPage({ params }: Props) {
             (variant) => variant.colorName === (ensuredColor || selectedColor)
         );
 
-        const allImages = allVariations
-            .flatMap(p => p.colorVariants)
-            .flatMap(cv => cv.images);
-        const fallbackImageSrc = selectedColorVariant?.images[0]?.src
-            || allImages[0]?.src
-            || product.colorVariants[0]?.images[0]?.src
+        const detailImages = selectedColorVariant 
+            ? getDetailImages([selectedColorVariant])
+            : getDetailImages(product.colorVariants)
+        const fallbackImageSrc = detailImages[0]?.src
+            || selectedColorVariant?.images?.[0]?.src
+            || product.colorVariants[0]?.images?.[0]?.src
             || '/placeholder.svg'
 
         const displayPrice = pickPrice(product, currency) ?? product.priceNGN
@@ -177,15 +177,15 @@ export default function ProductDetailPage({ params }: Props) {
 
         const exists = wishlist.some((w) => w.id === product._id);
 
-        const allImages = allVariations
-            .flatMap(p => p.colorVariants)
-            .flatMap(cv => cv.images);
         const selectedColorVariant = product.colorVariants.find(
             (variant) => variant.colorName === selectedColor
         );
-        const wishlistImage = selectedColorVariant?.images[0]?.src
-            || allImages[0]?.src
-            || product.colorVariants[0]?.images[0]?.src
+        const detailImages = selectedColorVariant 
+            ? getDetailImages([selectedColorVariant])
+            : getDetailImages(product.colorVariants)
+        const wishlistImage = detailImages[0]?.src
+            || selectedColorVariant?.images?.[0]?.src
+            || product.colorVariants[0]?.images?.[0]?.src
             || ''
 
         if (exists) {
@@ -224,9 +224,19 @@ export default function ProductDetailPage({ params }: Props) {
         notFound();
     }
 
+    // Get all images that should be shown on detail page (respects showOnDetails flag)
     const allImages = allVariations
-        .flatMap(p => p.colorVariants)
-        .flatMap(cv => cv.images);
+        .flatMap(p => {
+            // For each product, get detail images from all color variants
+            return p.colorVariants.flatMap(cv => {
+                const detailImgs = getDetailImages([cv])
+                return detailImgs
+            })
+        })
+        .filter((img, index, self) => 
+            // Remove duplicates by src
+            index === self.findIndex(i => i.src === img.src)
+        );
 
     const mainImage = allImages[selectedImageIndex] || allImages[0];
     const displayPrice = product ? (pickPrice(product, currency) ?? product.priceNGN) : 0

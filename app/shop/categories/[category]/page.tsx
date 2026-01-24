@@ -11,7 +11,7 @@ import { useWishlist } from "../../../context/WishlistContext"
 import { notFound } from "next/navigation"
 import LoadingSpinner from "../../../components/LoadingSpinner"
 import ProductGridSkeleton from "../../../components/skeletons/ProductGridSkeleton"
-import { normalizeSize, normalizeSizes } from "@/lib/utils"
+import { normalizeSize, normalizeSizes, getUIImage, getDetailImages } from "@/lib/utils"
 
 type ToastType = "success" | "error"
 
@@ -200,12 +200,12 @@ function CategoryPage({ params }: CategoryPageProps) {
         }
       >
         {uniqueProducts.map((p) => {
-          const firstImage = p.colorVariants[0]?.images[0]
+          const firstImage = getUIImage(p.colorVariants)
 
           const WishlistButton = (
             <button
               onClick={() => {
-                const first = p.colorVariants[0]?.images[0]
+                const first = getUIImage(p.colorVariants)
                 const exists = wishlist.some((w) => w.id === p._id)
                 if (exists) {
                   removeFromWishlist(p._id)
@@ -278,7 +278,7 @@ function CategoryPage({ params }: CategoryPageProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        const first = p.colorVariants[0]?.images[0]
+                        const first = getUIImage(p.colorVariants)
                         addToCart({
                           id: p._id,
                           name: p.name,
@@ -354,7 +354,7 @@ function CategoryPage({ params }: CategoryPageProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    const first = p.colorVariants[0]?.images[0]
+                    const first = getUIImage(p.colorVariants)
                     addToCart({
                       id: p._id,
                       name: p.name,

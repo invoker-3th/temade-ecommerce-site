@@ -13,12 +13,14 @@ export async function GET(request: Request) {
     if (category) {
       query = { category }
     } else if (q) {
-      // Match either name prefix or category name (exact or prefix), case-insensitive
+      // Match product name (anywhere in the name, not just prefix), category, or description
+      // This allows searching for "Loop" to find "Loop Top" and "Bass" to find "Bass Pants"
       query = {
         $or: [
-          { name: { $regex: `^${q}`, $options: 'i' } },
+          { name: { $regex: q, $options: 'i' } }, // Match anywhere in name
           { category: { $regex: `^${q}$`, $options: 'i' } },
           { category: { $regex: `^${q}`, $options: 'i' } },
+          { description: { $regex: q, $options: 'i' } }, // Also search in description if available
         ],
       }
     }

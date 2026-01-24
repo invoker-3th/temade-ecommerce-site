@@ -53,7 +53,35 @@ export default function PaystackCheckout({ config, onSuccess, onClose, beforeIni
     } catch (error) {
       console.error('Error updating Paystack metadata:', error)
     }
-    initializePayment({ onSuccess, onClose })
+    
+    try {
+      initializePayment({ 
+        onSuccess, 
+        onClose: () => {
+          // Paystack was closed - could be user cancellation or error
+          // Errors are typically shown in the Paystack popup itself
+          onClose()
+        }
+      })
+    } catch (error) {
+      console.error('Error initializing payment:', error)
+      let errorMessage = 'Failed to start payment. Please try again.'
+      
+      if (error instanceof Error) {
+        if (error.message?.includes('Currency not supported') || error.message?.includes('currency')) {
+          errorMessage = 'The selected currency is not supported. Payments are currently only available in NGN (₦). Please switch to NGN or contact support for assistance.'
+        } else if (!error.message?.includes('MetaMask')) {
+          // Ignore MetaMask errors as they're unrelated to Paystack
+          errorMessage = error.message || errorMessage
+        } else {
+          // MetaMask error - ignore it
+          return
+        }
+      }
+      
+      alert(errorMessage)
+      onClose()
+    }
   }
 
   return (

@@ -9,7 +9,7 @@ export async function GET() {
     const ordersCol = db.collection("orders")
     const productsCol = db.collection("products")
 
-    const [usersCount, ordersStats, topProducts, totalProducts] = await Promise.all([
+    const [usersCount, ordersStats, currencyStats, topProducts, totalProducts] = await Promise.all([
       usersCol.countDocuments({}),
       ordersCol
         .aggregate([
@@ -18,6 +18,17 @@ export async function GET() {
               _id: null,
               totalOrders: { $sum: 1 },
               totalRevenue: { $sum: "$total" },
+            },
+          },
+        ])
+        .toArray(),
+      ordersCol
+        .aggregate([
+          {
+            $group: {
+              _id: "$currency",
+              orders: { $sum: 1 },
+              revenue: { $sum: "$total" },
             },
           },
         ])
@@ -41,6 +52,24 @@ export async function GET() {
 
     const totals = ordersStats[0] || { totalOrders: 0, totalRevenue: 0 }
 
+    // Process currency stats
+    const currencyBreakdown = {
+      NGN: { orders: 0, revenue: 0 },
+      USD: { orders: 0, revenue: 0 },
+      EUR: { orders: 0, revenue: 0 },
+      GBP: { orders: 0, revenue: 0 },
+    }
+    
+    currencyStats.forEach((stat: { _id: string; orders: number; revenue: number }) => {
+      const currency = stat._id || 'NGN'
+      if (currency in currencyBreakdown) {
+        currencyBreakdown[currency as keyof typeof currencyBreakdown] = {
+          orders: stat.orders || 0,
+          revenue: stat.revenue || 0,
+        }
+      }
+    })
+
     type AggDoc = { _id: { id: string; name: string; image: string }; quantitySold: number; revenue: number }
     const typedTop = topProducts as unknown as AggDoc[]
     
@@ -49,6 +78,7 @@ export async function GET() {
       totalOrders: totals.totalOrders || 0,
       totalRevenue: totals.totalRevenue || 0,
       totalProducts,
+      currencyBreakdown,
       topProducts: typedTop.map((p) => ({
         id: p._id.id,
         name: p._id.name,

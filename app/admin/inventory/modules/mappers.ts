@@ -11,7 +11,15 @@ export function productFormToRequestBody(form: ProductForm) {
       {
         colorName: form.colorName,
         hexCode: form.colorHex, // now required
-        images: form.images.map((src) => ({ src, alt: form.name })),
+        images: form.images.map((src) => {
+          const settings = form.imageSettings?.[src] || { showOnUI: true, showOnDetails: true }
+          return { 
+            src, 
+            alt: form.name,
+            showOnUI: settings.showOnUI ?? true,
+            showOnDetails: settings.showOnDetails ?? true
+          }
+        }),
       },
     ],
     priceNGN: form.price,

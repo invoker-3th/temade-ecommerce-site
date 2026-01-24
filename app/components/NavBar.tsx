@@ -191,13 +191,35 @@ const NavBar = () => {
             </button>
           </div>
 
-          {/* Hamburger (Mobile) */}
-          <button
-            onClick={() => !isMobileMenuOpen && setIsMobileMenuOpen(true)}
-            className="sm:hidden text-[#030C26]"
-          >
-            <Menu />
-          </button>
+          {/* Mobile Icons (visible on small screens) */}
+          <div className="sm:hidden flex items-center space-x-4">
+            <button onClick={() => setSearchOpen((v) => !v)} className="text-[#030C26]">
+              <Search />
+            </button>
+            <Link href="/wishlist" className="relative text-[#030C26]">
+              <Heart />
+            </Link>
+            <Link href="/account" className="text-[#030C26]">
+              <CircleUser />
+            </Link>
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative text-[#030C26] flex items-center"
+            >
+              <ShoppingCart />
+              {totalCartQuantity > 0 ? (
+                <span className="absolute z-10 text-[12px] left-4 font-bold">
+                  [{totalCartQuantity}]
+                </span>
+              ) : "[0]"}
+            </button>
+            <button
+              onClick={() => !isMobileMenuOpen && setIsMobileMenuOpen(true)}
+              className="text-[#030C26]"
+            >
+              <Menu />
+            </button>
+          </div>
         </div>
       </nav>
 

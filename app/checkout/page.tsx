@@ -60,21 +60,51 @@ const CheckoutPage = () => {
   // Track created order for webhook mapping
   const [pendingOrderId, setPendingOrderId] = useState<string>("")
 
+  // Calculate total in selected currency for Paystack
+  const paystackTotal = useMemo(() => {
+    let subtotal = 0
+    if (currency === 'NGN') {
+      subtotal = cartItems.reduce((sum, item) => {
+        const price = item.priceNGN ?? item.price
+        return sum + (price * item.quantity)
+      }, 0)
+    } else if (currency === 'USD') {
+      subtotal = cartItems.reduce((sum, item) => {
+        const price = item.priceUSD ?? item.price
+        return sum + (price * item.quantity)
+      }, 0)
+    } else {
+      subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    }
+    const tax = subtotal * 0.1
+    return subtotal + tax
+  }, [cartItems, currency])
+
   // Paystack configuration - memoized to prevent recreation on every render
   const config = useMemo(() => {
-    // Convert currency to Paystack format
-    const paystackCurrency = currency === 'NGN' ? 'NGN' : currency === 'USD' ? 'USD' : 'GBP'
+    // Paystack supports NGN, USD, and EUR
+    let paystackCurrency: 'NGN' | 'USD' | 'EUR' = 'NGN'
+    if (currency === 'NGN') {
+      paystackCurrency = 'NGN'
+    } else if (currency === 'USD') {
+      paystackCurrency = 'USD'
+    } else {
+      // Default to NGN if currency is not supported
+      paystackCurrency = 'NGN'
+    }
 
     return ({
       reference: new Date().getTime().toString(),
       email: user?.email || formData.email,
-      amount: Math.round(total * 100), // Amount in smallest currency unit (multiply by 100)
+      amount: Math.round(paystackTotal * 100), // Amount in smallest currency unit (multiply by 100)
       publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_public_key",
       currency: paystackCurrency,
       metadata: {
         orderId: pendingOrderId,
-        amount: Math.round(total * 100),
+        amount: Math.round(paystackTotal * 100),
         currency: paystackCurrency,
+        originalCurrency: currency, // Store the user's selected currency
+        originalAmount: Math.round(total * 100), // Store the original amount in selected currency
         userId: user?._id?.toString() || undefined,
         custom_fields: [
           {
@@ -90,7 +120,7 @@ const CheckoutPage = () => {
         ]
       }
     })
-  }, [user?.email, formData.email, total, currency, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id])
+  }, [user?.email, formData.email, paystackTotal, total, currency, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id, cartItems])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -292,6 +322,7 @@ const CheckoutPage = () => {
                   <span className="text-[#1D2739] text-base font-semibold">{symbol}{total.toLocaleString()}</span>
                 </div>
               </div>
+
 
               {/* Replace the existing button with: */}
               <PaystackCheckout

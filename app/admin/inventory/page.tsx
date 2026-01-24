@@ -21,7 +21,8 @@ export default function InventoryManagerPage() {
   
   const [productForm, setProductForm] = useState<ProductForm>({ 
     name: "", sku: "", description: "", categoryId: "", price: 0, 
-    sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [] 
+    sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [],
+    imageSettings: {}
   })
   
   const [categoryForm, setCategoryForm] = useState<CategoryForm>({ 
@@ -211,6 +212,17 @@ export default function InventoryManagerPage() {
     const imgs = variant?.images ?? []
     const normalizedImages = imgs.map((img: { src: string; alt: string } | string) => (typeof img === "string" ? img : img?.src)).filter(Boolean)
 
+    // Extract image settings from existing product
+    const imageSettings: Record<string, { showOnUI: boolean; showOnDetails: boolean }> = {}
+    variant?.images?.forEach((img) => {
+      if (typeof img === 'object' && img.src) {
+        imageSettings[img.src] = {
+          showOnUI: img.showOnUI ?? true,
+          showOnDetails: img.showOnDetails ?? true
+        }
+      }
+    })
+
     setProductForm({
       name: product.name,
       sku: product.sku,
@@ -222,7 +234,8 @@ export default function InventoryManagerPage() {
       sizes: Array.isArray(product.sizes) ? product.sizes.join(",") : String(product.sizes || ""),
       colorName: variant?.colorName || "",
       colorHex: variant?.hexCode || "#000000",
-      images: normalizedImages || []
+      images: normalizedImages || [],
+      imageSettings
     })
   }
 
@@ -298,22 +311,65 @@ export default function InventoryManagerPage() {
       {/* Instructions */}
       {activeTab === 'products' && (
         <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-6 mb-8">
-          <h2 className="text-lg font-bold mb-3 text-[#16161A]">How to Add Products & Color Variations</h2>
-          <div className="space-y-3 text-sm text-gray-700">
+          <h2 className="text-lg font-bold mb-3 text-[#16161A]">Step-by-Step Guide: Adding Products & Managing Images</h2>
+          <div className="space-y-4 text-sm text-gray-700">
             <div>
-              <p><strong>Categories:</strong> Select from existing categories (TOPS, SKIRTS, PANTS, DRESSES, JACKETS) or create new ones. Products will appear in the selected category in the shop.</p>
+              <p className="font-semibold mb-2">Step 1: Basic Product Information</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>Enter SKU (unique product identifier)</li>
+                <li>Enter product name (e.g., &ldquo;Cotton Dress&rdquo;)</li>
+                <li>Select category (TOPS, SKIRTS, PANTS, DRESSES, JACKETS, etc.)</li>
+                <li>Enter description</li>
+                <li>Select available sizes</li>
+                <li>Set prices (NGN required, USD and GBP optional)</li>
+              </ul>
             </div>
             <div>
-              <p><strong>Color Variations:</strong></p>
-              <p><strong>Step 1:</strong> Create the base product (e.g., &ldquo;Cotton Dress&rdquo;) with the first color (e.g., &ldquo;Blue&rdquo;)</p>
-              <p><strong>Step 2:</strong> To add more colors of the same product, create a new product with:</p>
+              <p className="font-semibold mb-2">Step 2: Color Information</p>
               <ul className="list-disc list-inside ml-4 space-y-1">
-                <li>Same product name (e.g., &ldquo;Cotton Dress&rdquo;)</li>
-                <li>Different SKU (e.g., &ldquo;COTTON-DRESS-RED&rdquo;)</li>
-                <li>Different color name and hex code (e.g., &ldquo;Red&rdquo;, &ldquo;#FF0000&rdquo;)</li>
-                <li>Same category, sizes and pricing</li>
+                <li>Enter color name (e.g., &ldquo;Navy Blue&rdquo;, &ldquo;Red&rdquo;)</li>
+                <li>Select or enter hex color code (e.g., #000080 for navy blue)</li>
+                <li>This color will appear as a swatch on the product page</li>
               </ul>
-              <p><strong>Result:</strong> All color variations will appear together on the same product detail page, and customers can select their preferred color using the color swatches.</p>
+            </div>
+            <div>
+              <p className="font-semibold mb-2">Step 3: Upload Images</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>Click the upload area to select images (up to 5 images)</li>
+                <li>Images will appear as thumbnails below the upload area</li>
+                <li>You can remove images by hovering and clicking &ldquo;Remove&rdquo;</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold mb-2">Step 4: Configure Image Display Settings</p>
+              <p className="mb-2">For each uploaded image, you can control where it appears:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li><strong>Show on Shop/Collections:</strong> Check this to display the image on product listings (shop page, collections, search results, new arrivals). Uncheck to hide it from these pages.</li>
+                <li><strong>Show on Product Details:</strong> Check this to display the image on the product detail page when customers click to view the product. Uncheck to hide it from the detail page.</li>
+              </ul>
+              <p className="mt-2 font-semibold">Recommended Setup:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li><strong>Main product image:</strong> Check both boxes - this is the primary image customers see</li>
+                <li><strong>Additional angles:</strong> Check only &ldquo;Show on Product Details&rdquo; - these appear when customers view the product</li>
+                <li><strong>Hidden images:</strong> Uncheck both boxes if you want to keep images in the system but not display them</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold mb-2">Step 5: Adding Color Variations</p>
+              <p className="mb-2">To add more colors of the same product:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>Create a new product with the <strong>same product name</strong> (e.g., &ldquo;Cotton Dress&rdquo;)</li>
+                <li>Use a <strong>different SKU</strong> (e.g., &ldquo;COTTON-DRESS-RED&rdquo;)</li>
+                <li>Enter a <strong>different color name and hex code</strong> (e.g., &ldquo;Red&rdquo;, &ldquo;#FF0000&rdquo;)</li>
+                <li>Use the <strong>same category, sizes, and pricing</strong></li>
+                <li>Upload images for this color variation</li>
+                <li>Configure image display settings for each color</li>
+              </ul>
+              <p className="mt-2"><strong>Result:</strong> All color variations will appear together on the same product detail page, and customers can select their preferred color using the color swatches.</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-4">
+              <p className="font-semibold text-blue-900 mb-1">💡 Pro Tip:</p>
+              <p className="text-blue-800">Set one main image to show on shop/collections for each color, and set additional images to only show on product details. This keeps your shop pages clean while giving customers more views when they&rsquo;re interested in a product.</p>
             </div>
           </div>
         </div>
@@ -503,23 +559,65 @@ export default function InventoryManagerPage() {
 
               {/* Previews for images already added to the product form */}
               {productForm.images.length > 0 && (
-                <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {productForm.images.map((src) => (
-                    <div key={src} className="relative group border rounded overflow-hidden">
-                      <div className="relative w-full h-24 bg-gray-100">
-                        <Image src={src} alt="preview" fill className="object-cover" />
-                      </div>
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-3">
+                    <strong>Image Display Settings:</strong> Select which images appear on product listings (shop, collections) and which appear only on the product detail page.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {productForm.images.map((src) => {
+                      const settings = productForm.imageSettings?.[src] || { showOnUI: true, showOnDetails: true }
+                      const updateSettings = (field: 'showOnUI' | 'showOnDetails', value: boolean) => {
+                        setProductForm(prev => ({
+                          ...prev,
+                          imageSettings: {
+                            ...prev.imageSettings,
+                            [src]: {
+                              ...settings,
+                              [field]: value
+                            }
+                          }
+                        }))
+                      }
+                      return (
+                        <div key={src} className="relative group border-2 rounded-lg overflow-hidden bg-white">
+                          <div className="relative w-full h-32 bg-gray-100">
+                            <Image src={src} alt="preview" fill className="object-cover" />
+                          </div>
+                          
+                          {/* Image settings checkboxes */}
+                          <div className="p-2 space-y-2 bg-white border-t">
+                            <label className="flex items-center gap-2 text-xs cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={settings.showOnUI ?? true}
+                                onChange={(e) => updateSettings('showOnUI', e.target.checked)}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-gray-700">Show on Shop/Collections</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-xs cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={settings.showOnDetails ?? true}
+                                onChange={(e) => updateSettings('showOnDetails', e.target.checked)}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-gray-700">Show on Product Details</span>
+                            </label>
+                          </div>
 
-                      {/* Remove button (visible on hover) */}
-                      <button
-                        type="button"
-                        onClick={() => onRemoveImageFromProduct(src)}
-                        className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                          {/* Remove button (visible on hover) */}
+                          <button
+                            type="button"
+                            onClick={() => onRemoveImageFromProduct(src)}
+                            className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -537,7 +635,7 @@ export default function InventoryManagerPage() {
                   className="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50" 
                   onClick={() => {
                     setEditing(null)
-                    setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [] })
+                    setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [], imageSettings: {} })
                   }}
                 >
                   Cancel

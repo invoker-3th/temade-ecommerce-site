@@ -3,6 +3,8 @@ import type { ObjectId } from "mongodb"
 export interface ProductImage {
   src: string
   alt: string
+  showOnUI?: boolean // If true, shows on product listings (shop, collections, etc.)
+  showOnDetails?: boolean // If true, shows on product detail page
 }
 
 export interface ProductColorVariant {
