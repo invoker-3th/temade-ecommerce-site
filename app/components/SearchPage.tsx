@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import LoadingSpinner from "./LoadingSpinner"
 import SearchResultsSkeleton from "./skeletons/SearchResultsSkeleton"
+import { getUIImage } from "@/lib/utils"
 
 type Product = {
   _id: string
@@ -141,8 +142,8 @@ export default function SearchPage() {
                     >
                       <div className="w-full h-40 bg-gray-100 rounded mb-2 overflow-hidden">
                         <Image
-                          src={p.colorVariants?.[0]?.images?.[0]?.src || "/placeholder.svg"}
-                          alt={p.name}
+                          src={getUIImage(p.colorVariants)?.src || "/placeholder.svg"}
+                          alt={getUIImage(p.colorVariants)?.alt || p.name}
                           width={0}
                           height={0}
                           sizes="100vw"

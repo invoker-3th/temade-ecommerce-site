@@ -132,7 +132,7 @@ const NavBar = () => {
                             <li key={p._id} className="py-2">
                               <Link href={`/shop/${p._id}`} onClick={() => setSearchOpen(false)} className="flex items-center gap-3 hover:bg-gray-50 rounded px-2 py-1">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={p?.colorVariants?.[0]?.images?.[0]?.src || '/placeholder.svg'} alt={p.name} className="w-10 h-10 object-cover rounded" />
+                                <img src={getUIImage(p.colorVariants)?.src || '/placeholder.svg'} alt={getUIImage(p.colorVariants)?.alt || p.name} className="w-10 h-10 object-cover rounded" />
                                 <div className="flex-1">
                                   <div className="text-sm font-medium">{p.name}</div>
                                   <div className="text-xs text-gray-500">{p.category}</div>
