@@ -6,6 +6,8 @@ import { useCurrency } from '../context/CurrencyContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { normalizeSize } from '@/lib/utils';
+import { useEffect } from 'react';
+import { trackViewCart } from '@/lib/analytics';
 
 type CartOverlayProps = {
     onClose: () => void;
@@ -13,8 +15,24 @@ type CartOverlayProps = {
 
 export default function CartOverlay({ onClose }: CartOverlayProps) {
     const { cartItems, increaseQty, decreaseQty, removeItem, getTotal } = useCart();
-    const { symbol } = useCurrency();
+    const { symbol, currency } = useCurrency();
     const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+    useEffect(() => {
+        if (cartItems.length === 0) return
+        trackViewCart({
+            currency,
+            value: getTotal(),
+            items: cartItems.map((item) => ({
+                item_id: item.id,
+                item_name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                item_variant: item.size,
+                item_category: item.color,
+            })),
+        })
+    }, [])
 
     return (
         <>

@@ -1,16 +1,14 @@
 "use client"
 
-import { useMemo, useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/app/context/AuthContext"
 import { baseCategoryImages } from "@/app/data/shopCategories"
 import FileUploadZone from "@/app/components/FileUploadZone"
 import { sizeOptions, type ProductForm, type CategoryForm, type Product, type Category } from "./modules"
 import { fetchInventoryLists, createOrUpdateProduct, deleteProduct } from "./modules"
 
 export default function InventoryManagerPage() {
-  const { user, isLoading } = useAuth()
   const categoryFileInput = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products')
   const [creating, setCreating] = useState(false)
@@ -29,17 +27,9 @@ export default function InventoryManagerPage() {
     name: "", slug: "", description: "", image: "" 
   })
 
-  const isAdmin = useMemo(() => {
-    if (!user?.email) return false
-    const allow = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
-    return allow.includes(user.email.toLowerCase())
-  }, [user?.email])
-
   useEffect(() => {
-    if (isAdmin) {
-      fetchData()
-    }
-  }, [isAdmin])
+    fetchData()
+  }, [])
 
   const fetchData = async () => {
     setLoading(true)
@@ -185,17 +175,8 @@ export default function InventoryManagerPage() {
     }
   }
 
-  if (isLoading || loading) {
-    return <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading...</div>
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-[#FFFBEB] flex flex-col items-center justify-center gap-3">
-        <p className="text-lg">Access denied</p>
-        <Link href="/" className="text-[#CA6F86] underline">Go home</Link>
-      </div>
-    )
+  if (loading) {
+    return <div className="p-6 md:p-10">Loading...</div>
   }
 
   const staticCategories = Object.keys(baseCategoryImages)
@@ -278,10 +259,10 @@ export default function InventoryManagerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-['Work_Sans']">
+    <div className="p-6 md:p-10 font-['Work_Sans']">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Inventory Management</h1>
-        <Link href="/admin" className="underline font-bold text-[#2C2C2C]">Back to Analytics</Link>
+        <Link href="/admin" className="underline font-bold text-[#2C2C2C]">Back to Dashboard</Link>
       </div>
 
       {/* Tab Navigation */}

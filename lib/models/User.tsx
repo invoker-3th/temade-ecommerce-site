@@ -22,6 +22,8 @@ export interface User {
   email: string
   userName: string
   phone?: string
+  role?: "customer" | "admin" | "editor" | "viewer"
+  disabled?: boolean
   address?: {
     address?: string,
     city?: string
@@ -35,6 +37,7 @@ export interface User {
   createdAt: Date
   updatedAt: Date
   isEmailVerified: boolean
+  emailVerifiedAt?: Date
   preferences?: {
     newsletter: boolean
     notifications: boolean

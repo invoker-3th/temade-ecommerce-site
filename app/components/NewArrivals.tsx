@@ -3,12 +3,13 @@
 import { Heart, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCurrency, pickPrice } from '../context/CurrencyContext';
 import { normalizeSizes, getUIImage } from '@/lib/utils';
+import { trackViewItemList } from '@/lib/analytics';
 
 // Matches backend product shape we use
 type ApiProduct = {
@@ -75,6 +76,7 @@ export default function NewArrivals() {
   const { addToCart } = useCart();
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { symbol, currency } = useCurrency();
+  const listTrackedRef = useRef(false);
 
   useEffect(() => {
     if (toastMessage) {
@@ -136,13 +138,32 @@ export default function NewArrivals() {
           }
         }
 
-        setItems(ordered.map(p => toItem(p, currency)))
+        const mapped = ordered.map(p => toItem(p, currency))
+        setItems(mapped)
       } catch {
         setItems([])
       }
     }
     build()
   }, [currency])
+
+  useEffect(() => {
+    if (listTrackedRef.current) return
+    if (items.length === 0) return
+
+    trackViewItemList({
+      item_list_name: "New Arrivals",
+      items: items.slice(0, 20).map((item) => ({
+        item_id: item.id,
+        item_name: item.name,
+        price: item.price,
+        quantity: 1,
+        item_variant: item.sizes?.[0] || "",
+        item_category: item.swatches?.[0]?.name || "",
+      })),
+    })
+    listTrackedRef.current = true
+  }, [items])
 
   const handleAddToCart = (item: NewArrivalItem) => {
     const defaultSize = item.sizes && item.sizes.length > 0 ? item.sizes[0] : 'one-size'

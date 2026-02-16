@@ -3,6 +3,7 @@ import crypto from "crypto"
 import { OrderService } from "@/lib/services/orderServices"
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
+import { sendEmail } from "@/lib/email"
 
 // Paystack webhook secret from environment variables
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY
@@ -122,8 +123,32 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('Failed to create admin notification:', error)
       }
-      
-      // TODO: Send customer confirmation email here
+
+      // Send customer confirmation email
+      try {
+        const currencySymbol = order.currency === "USD" ? "$" : order.currency === "GBP" ? "£" : "₦"
+        const totalFormatted = `${currencySymbol}${order.total.toLocaleString()}`
+        const subject = `Order Confirmation - ${invoiceNumber}`
+        const itemLines = order.items
+          .map((item) => `${item.name} x${item.quantity} (${currencySymbol}${item.price.toLocaleString()})`)
+          .join("<br/>")
+
+        await sendEmail({
+          to: order.shippingAddress.email,
+          subject,
+          html: `
+            <h2>Thanks for your order!</h2>
+            <p>Your payment was confirmed and your order is now processing.</p>
+            <p><strong>Order:</strong> ${invoiceNumber}</p>
+            <p><strong>Total:</strong> ${totalFormatted}</p>
+            <p><strong>Items:</strong><br/>${itemLines}</p>
+            <p><strong>Shipping To:</strong> ${order.shippingAddress.userName}, ${order.shippingAddress.address}, ${order.shippingAddress.city}, ${order.shippingAddress.state}</p>
+          `,
+          text: `Thanks for your order! Order ${invoiceNumber}, total ${totalFormatted}.`,
+        })
+      } catch (error) {
+        console.error("Failed to send confirmation email:", error)
+      }
     }
 
     return NextResponse.json({ received: true })

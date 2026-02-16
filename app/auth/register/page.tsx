@@ -13,6 +13,9 @@ export default function RegisterPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otp, setOtp] = useState("")
+  const [verificationLink, setVerificationLink] = useState("")
   const { register } = useAuth()
   const router = useRouter()
 
@@ -28,12 +31,14 @@ export default function RegisterPage() {
     setIsLoading(true)
     setError("")
 
-    const success = await register(formData)
+    const result = await register(formData)
 
-    if (success) {
-      router.push("/")
+    if (result.success) {
+      setOtp(result.otp || "")
+      setVerificationLink(result.verificationLink || "")
+      setShowOtpModal(true)
     } else {
-      setError("Registration failed. Please try again.")
+      setError(result.error || "Registration failed. Please try again.")
     }
 
     setIsLoading(false)
@@ -109,6 +114,41 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-xl border border-[#EEE7DA] max-w-md w-full p-6 text-center">
+            <h2 className="text-2xl font-bold mb-2 font-garamond">Verify your email</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              We sent a welcome email with your verification link and OTP.
+            </p>
+            {otp && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-500">Your OTP</p>
+                <div className="text-xl font-semibold tracking-[0.3em]">{otp}</div>
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              {verificationLink && (
+                <a
+                  href={verificationLink}
+                  className="px-4 py-2 rounded bg-[#8D2741] text-white"
+                >
+                  Verify now
+                </a>
+              )}
+              <button
+                onClick={() => {
+                  setShowOtpModal(false)
+                  router.push("/auth/login")
+                }}
+                className="px-4 py-2 rounded border border-[#EEE7DA] text-gray-700"
+              >
+                Go to login
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

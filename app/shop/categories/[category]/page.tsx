@@ -3,7 +3,7 @@
 import { Heart, CheckCircle2, LayoutGrid, List } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useCategories } from "@/app/hooks/useCategories"
 // Removed static data import - using only admin-created data
 import { useCart } from "../../../context/CartContext"
@@ -12,6 +12,8 @@ import { notFound } from "next/navigation"
 import LoadingSpinner from "../../../components/LoadingSpinner"
 import ProductGridSkeleton from "../../../components/skeletons/ProductGridSkeleton"
 import { normalizeSize, normalizeSizes, getUIImage } from "@/lib/utils"
+import { useCurrency, pickPrice } from "@/app/context/CurrencyContext"
+import { trackViewItemList } from "@/lib/analytics"
 
 type ToastType = "success" | "error"
 
@@ -45,10 +47,12 @@ function CategoryPage({ params }: CategoryPageProps) {
   const [toastType, setToastType] = useState<ToastType>("success")
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
+  const { currency } = useCurrency()
   const [category, setCategory] = useState<string>("")
   const { categories: mergedCategories } = useCategories({ pollMs: 15000 })
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
   const [loading, setLoading] = useState(true)
+  const listTrackedRef = useRef(false)
 
   useEffect(() => {
     const loadCategory = async () => {
@@ -114,6 +118,25 @@ function CategoryPage({ params }: CategoryPageProps) {
     }
     return Array.from(nameToProduct.values())
   }, [dbProducts])
+
+  useEffect(() => {
+    if (loading) return
+    if (listTrackedRef.current) return
+    if (uniqueProducts.length === 0) return
+
+    trackViewItemList({
+      item_list_name: `Category: ${category || "Unknown"}`,
+      items: uniqueProducts.slice(0, 20).map((p) => ({
+        item_id: p._id,
+        item_name: p.name,
+        price: pickPrice(p, currency) ?? p.priceNGN,
+        quantity: 1,
+        item_variant: p.sizes?.[0] || "",
+        item_category: p.category,
+      })),
+    })
+    listTrackedRef.current = true
+  }, [loading, uniqueProducts, currency, category])
 
   // Show loading state while category is being loaded
   if (loading) {

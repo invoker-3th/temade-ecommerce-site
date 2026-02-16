@@ -72,6 +72,11 @@ export default function AccountPage() {
 
   return (
     <>
+      {!user?.isEmailVerified && (
+        <div className="bg-[#FFF2CC] border-b border-[#F2D68A] text-[#3B2F0B] px-4 py-3 text-sm text-center">
+          Go to email to verify your email.
+        </div>
+      )}
       {/* Header */}
       <div
         className="w-full bg-[url('/auth-header-image.jpg')] bg-cover bg-center h-[150px] md:h-[223px]"

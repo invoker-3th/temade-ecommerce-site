@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { UserService } from "@/lib/services/userServices"
+import { sendEmail } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +10,6 @@ export async function POST(request: NextRequest) {
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 })
     }
-
     if (!userName) {
       return NextResponse.json({ error: "Username is required" }, { status: 400 })
     }
@@ -19,11 +19,57 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
+    if (user.disabled) {
+      return NextResponse.json({ error: "Account is disabled" }, { status: 403 })
+    }
+    const adminAllow = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+      .split(/[,\n;\s]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+    const isAdmin = user.role === "admin" || adminAllow.includes(user.email.toLowerCase())
+    if (isAdmin) {
+      const adminUserName = (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "").trim().toLowerCase()
+      if (adminUserName && userName.trim().toLowerCase() !== adminUserName) {
+        return NextResponse.json({ error: "Invalid admin credentials" }, { status: 401 })
+      }
+    } else {
+      if (!user.isEmailVerified) {
+        return NextResponse.json({ error: "Email not verified" }, { status: 403 })
+      }
+    }
+    if ((user.userName || "").trim().toLowerCase() !== userName.trim().toLowerCase()) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    }
 
     // In a real app, you'd verify password here
     // For this demo, we'll just return user data
 
     const { ...userResponse } = user
+    if (isAdmin) {
+      const notifyTo = "enjayjerey@gmail.com"
+      try {
+        const forwardedFor = request.headers.get("x-forwarded-for") || "unknown"
+        const ua = request.headers.get("user-agent") || "unknown"
+        const now = new Date().toISOString()
+        await sendEmail({
+          to: notifyTo,
+          subject: "Admin login detected",
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #222;">
+              <h2>Admin login detected</h2>
+              <p>User: <strong>${user.userName}</strong></p>
+              <p>Email: <strong>${user.email}</strong></p>
+              <p>Time: ${now}</p>
+              <p>IP: ${forwardedFor}</p>
+              <p>User-Agent: ${ua}</p>
+            </div>
+          `,
+          text: `Admin login detected. User: ${user.userName}. Email: ${user.email}. Time: ${now}. IP: ${forwardedFor}. UA: ${ua}`,
+        })
+      } catch (error) {
+        console.error("Admin login alert error:", error)
+      }
+    }
 
     return NextResponse.json(
       {

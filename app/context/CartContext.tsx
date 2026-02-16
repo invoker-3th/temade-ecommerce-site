@@ -3,8 +3,9 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useAuth } from "./AuthContext"
-import { pickPrice } from "./CurrencyContext"
+import { pickPrice, useCurrency } from "./CurrencyContext"
 import type { SupportedCurrency } from "./CurrencyContext"
+import { trackAddToCart, trackRemoveFromCart } from "@/lib/analytics"
 
 type CartItem = {
   id: string
@@ -36,6 +37,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const { user } = useAuth()
+  const { currency } = useCurrency()
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -91,10 +93,42 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         return [...prev, item]
       }
     })
+
+    trackAddToCart({
+      currency,
+      value: item.price * item.quantity,
+      items: [
+        {
+          item_id: item.id,
+          item_name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          item_variant: item.size,
+          item_category: item.color,
+        },
+      ],
+    })
   }
 
   const removeItem = (id: string) => {
+    const removed = cartItems.find((item) => item.id === id)
     setCartItems((prev) => prev.filter((item) => item.id !== id))
+    if (removed) {
+      trackRemoveFromCart({
+        currency,
+        value: removed.price * removed.quantity,
+        items: [
+          {
+            item_id: removed.id,
+            item_name: removed.name,
+            price: removed.price,
+            quantity: removed.quantity,
+            item_variant: removed.size,
+            item_category: removed.color,
+          },
+        ],
+      })
+    }
   }
 
   const increaseQty = (id: string) => {

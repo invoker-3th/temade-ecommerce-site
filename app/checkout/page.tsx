@@ -11,6 +11,7 @@ import { useCurrency } from "../context/CurrencyContext"
 import dynamic from "next/dynamic"
 import CheckoutOverlay from "../components/CheckoutOverlay"
 import { normalizeSize } from "@/lib/utils"
+import { trackBeginCheckout, trackPurchase } from "@/lib/analytics"
 
 const PaystackCheckout = dynamic(
   () => import("../components/PaystackCheckout"),
@@ -153,6 +154,19 @@ const CheckoutPage = () => {
 
     setIsProcessing(true)
 
+    trackBeginCheckout({
+      currency,
+      value: total,
+      items: cartItems.map((item) => ({
+        item_id: item.id,
+        item_name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        item_variant: item.size,
+        item_category: item.color,
+      })),
+    })
+
     // Create pending order first
     try {
       const orderResponse = await fetch("/api/orders", {
@@ -206,6 +220,20 @@ const CheckoutPage = () => {
     try {
       // Payment initiated successfully - webhook will handle the actual confirmation
       console.log("Payment initiated, waiting for webhook confirmation...")
+
+      trackPurchase({
+        transaction_id: pendingOrderId || reference.reference,
+        currency,
+        value: total,
+        items: cartItems.map((item) => ({
+          item_id: item.id,
+          item_name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          item_variant: item.size,
+          item_category: item.color,
+        })),
+      })
 
       setPendingOrderId("")
       clearCart()

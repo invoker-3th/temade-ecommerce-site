@@ -9,7 +9,7 @@ type AuthContextType = {
   isLoading: boolean
   isLoggingOut: boolean
   login: (email: string, userName: string) => Promise<boolean>
-  register: (userData: RegisterData) => Promise<boolean>
+  register: (userData: RegisterData) => Promise<{ success: boolean; otp?: string; verificationLink?: string; error?: string }>
   logout: () => Promise<void>
   syncUserData: () => Promise<void>
 }
@@ -64,7 +64,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const register = async (userData: RegisterData): Promise<boolean> => {
+  const register = async (
+    userData: RegisterData
+  ): Promise<{ success: boolean; otp?: string; verificationLink?: string; error?: string }> => {
     try {
       // Get local storage data to sync with new account
       const localCart = JSON.parse(localStorage.getItem("cart") || "[]")
@@ -82,16 +84,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }),
       })
 
+      const data = await response.json()
       if (response.ok) {
-        const data = await response.json()
-        setUser(data.user)
-        localStorage.setItem("user", JSON.stringify(data.user))
-        return true
+        return {
+          success: true,
+          otp: data?.otp,
+          verificationLink: data?.verificationLink,
+        }
       }
-      return false
+      return { success: false, error: data?.error }
     } catch (error) {
       console.error("Registration error:", error)
-      return false
+      return { success: false, error: "Registration failed. Please try again." }
     }
   }
 

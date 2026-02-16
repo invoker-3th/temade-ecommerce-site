@@ -13,6 +13,7 @@ export class UserService {
 
     const newUser: User = {
       ...userData,
+      email: userData.email.trim().toLowerCase(),
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -23,7 +24,10 @@ export class UserService {
 
   static async getUserByEmail(email: string): Promise<User | null> {
     const collection = await this.getUsersCollection()
-    return await collection.findOne({ email })
+    const trimmed = email.trim()
+    if (!trimmed) return null
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    return await collection.findOne({ email: { $regex: `^${escaped}$`, $options: "i" } })
   }
 
   static async getUserById(userId: string): Promise<User | null> {

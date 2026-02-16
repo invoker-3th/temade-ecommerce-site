@@ -43,6 +43,18 @@ body {
   font-family: 'Work Sans', sans-serif;
 }
 
+.admin-scope {
+  font-family: var(--font-WorkSans), sans-serif;
+}
+
+.admin-scope h1,
+.admin-scope h2,
+.admin-scope h3,
+.admin-scope h4,
+.admin-scope .admin-heading {
+  font-family: var(--font-garamond), serif;
+}
+
 /* For email input placeholder */
 ::placeholder {
   color: #5A554C;

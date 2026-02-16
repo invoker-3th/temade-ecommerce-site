@@ -3,7 +3,7 @@
 import { Heart, CheckCircle2, LayoutGrid, List } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 // Removed static data imports - using only admin-created data
 import { useCart } from "../context/CartContext"
 import { useWishlist } from "../context/WishlistContext"
@@ -12,6 +12,7 @@ import { useCurrency, pickPrice } from "../context/CurrencyContext"
 import LoadingSpinner from "../components/LoadingSpinner"
 import ProductGridSkeleton from "../components/skeletons/ProductGridSkeleton"
 import { normalizeSize, normalizeSizes, getUIImage } from "@/lib/utils"
+import { trackViewItemList } from "@/lib/analytics"
 
 type ToastType = "success" | "error"
 
@@ -61,6 +62,7 @@ function Shop() {
   const [toastType, setToastType] = useState<ToastType>("success")
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
+  const listTrackedRef = useRef(false)
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -96,6 +98,25 @@ function Shop() {
     }
     return Array.from(nameToProduct.values())
   }, [dbProducts])
+
+  useEffect(() => {
+    if (loadingProducts) return
+    if (listTrackedRef.current) return
+    if (uniqueProducts.length === 0) return
+
+    trackViewItemList({
+      item_list_name: "Shop",
+      items: uniqueProducts.slice(0, 20).map((p) => ({
+        item_id: p._id,
+        item_name: p.name,
+        price: pickPrice(p, currency) ?? p.priceNGN,
+        quantity: 1,
+        item_variant: p.sizes?.[0] || "",
+        item_category: p.category,
+      })),
+    })
+    listTrackedRef.current = true
+  }, [loadingProducts, uniqueProducts, currency])
 
   if (loadingProducts) {
     return (

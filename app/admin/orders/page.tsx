@@ -48,10 +48,10 @@ export default function AdminOrdersPage() {
   }, [filterUserId])
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] p-6 md:p-10 font-WorkSans">
+    <div className="p-6 md:p-10 font-WorkSans">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Orders</h1>
-        <Link href="/admin" className="underline font-bold text-[#2C2C2C]">Back to Analytics</Link>
+        <Link href="/admin" className="underline font-bold text-[#2C2C2C]">Back to Dashboard</Link>
       </div>
 
       {loading ? (

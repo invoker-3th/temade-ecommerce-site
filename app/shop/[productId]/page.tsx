@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { use } from 'react';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -13,6 +13,7 @@ import { useCurrency, pickPrice } from '@/app/context/CurrencyContext';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ProductDetailSkeleton from '@/app/components/skeletons/ProductDetailSkeleton';
 import { normalizeSize, normalizeSizes, getDetailImages } from '@/lib/utils';
+import { trackViewItem } from '@/lib/analytics';
 
 const workSans = Work_Sans({
     subsets: ['latin'],
@@ -75,6 +76,7 @@ export default function ProductDetailPage({ params }: Props) {
     const [quantity, setQuantity] = useState<number>(1);
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+    const viewTrackedRef = useRef<string | null>(null);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -123,6 +125,28 @@ export default function ProductDetailPage({ params }: Props) {
 
         fetchProduct();
     }, [productId]);
+
+    useEffect(() => {
+        if (!product) return
+        if (viewTrackedRef.current === product._id) return
+
+        const displayPrice = pickPrice(product, currency) ?? product.priceNGN
+        trackViewItem({
+            currency,
+            value: displayPrice,
+            items: [
+                {
+                    item_id: product._id,
+                    item_name: product.name,
+                    price: displayPrice,
+                    quantity: 1,
+                    item_variant: selectedSize || product.sizes?.[0] || "",
+                    item_category: product.category,
+                },
+            ],
+        })
+        viewTrackedRef.current = product._id
+    }, [product, currency, selectedSize]);
 
     const handleAddToCart = () => {
         if (!product) return;
