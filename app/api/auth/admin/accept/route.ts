@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import { getDatabase } from "@/lib/mongodb"
 import { verifyAdminInviteJwt } from "@/lib/verificationTokens"
+import { writeAuditLog } from "@/lib/audit"
 
 export async function GET(request: Request) {
   try {
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
     const invite = await db.collection("admin_invites").findOne({
       token,
       usedAt: null,
+      revokedAt: null,
       expiresAt: { $gt: new Date() },
     })
 
@@ -50,6 +52,14 @@ export async function GET(request: Request) {
     )
 
     const user = await db.collection("users").findOne({ _id: new ObjectId(payload.sub) })
+    await writeAuditLog({
+      actorEmail: payload.email.toLowerCase(),
+      action: "admin_activated",
+      targetEmail: payload.email.toLowerCase(),
+      targetId: payload.sub,
+      metadata: { inviteId: String(invite._id) },
+    })
+
     return NextResponse.json({ success: true, user })
   } catch (error) {
     console.error("Admin invite accept error:", error)

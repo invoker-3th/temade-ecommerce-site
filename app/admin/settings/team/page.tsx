@@ -27,12 +27,22 @@ export default function AdminTeamPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [form, setForm] = useState({ userName: "", email: "" })
 
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
+
   const loadTeam = async () => {
+    if (!adminEmail) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch("/api/admin/team/invite", { cache: "no-store" })
+      const res = await fetch("/api/admin/team/invite", {
+        cache: "no-store",
+        headers: { "x-admin-email": adminEmail },
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load team")
       setAdmins(data.admins || [])
@@ -45,12 +55,18 @@ export default function AdminTeamPage() {
   }
 
   useEffect(() => {
+    if (!adminEmail) return
     loadTeam()
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminEmail])
 
   const sendInvite = async () => {
     setError("")
     setSuccess("")
+    if (!adminEmail) {
+      setError("Admin session not ready. Please refresh and try again.")
+      return
+    }
     if (!form.userName.trim() || !form.email.trim()) {
       setError("Username and email are required.")
       return
@@ -60,11 +76,10 @@ export default function AdminTeamPage() {
     try {
       const res = await fetch("/api/admin/team/invite", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
         body: JSON.stringify({
           userName: form.userName.trim(),
           email: form.email.trim(),
-          createdByEmail: user?.email || "",
         }),
       })
       const data = await res.json()
@@ -77,6 +92,56 @@ export default function AdminTeamPage() {
       setError(e instanceof Error ? e.message : "Failed to send invite")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const resendInvite = async (inviteId: string) => {
+    setError("")
+    setSuccess("")
+    if (!adminEmail) {
+      setError("Admin session not ready. Please refresh and try again.")
+      return
+    }
+    setActionLoadingId(inviteId)
+    try {
+      const res = await fetch("/api/admin/team/invite", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
+        body: JSON.stringify({ inviteId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Failed to resend invite")
+      setSuccess("Invite resent.")
+      await loadTeam()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to resend invite")
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const revokeInvite = async (inviteId: string) => {
+    setError("")
+    setSuccess("")
+    if (!adminEmail) {
+      setError("Admin session not ready. Please refresh and try again.")
+      return
+    }
+    setActionLoadingId(inviteId)
+    try {
+      const res = await fetch("/api/admin/team/invite", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
+        body: JSON.stringify({ inviteId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Failed to revoke invite")
+      setSuccess("Invite revoked.")
+      await loadTeam()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to revoke invite")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -130,6 +195,22 @@ export default function AdminTeamPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Expires: {new Date(invite.expiresAt).toLocaleString()}
                   </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      onClick={() => resendInvite(invite._id)}
+                      disabled={actionLoadingId === invite._id}
+                      className="px-2 py-1 text-xs rounded border border-[#8D2741] text-[#8D2741] disabled:opacity-50"
+                    >
+                      {actionLoadingId === invite._id ? "Working..." : "Resend"}
+                    </button>
+                    <button
+                      onClick={() => revokeInvite(invite._id)}
+                      disabled={actionLoadingId === invite._id}
+                      className="px-2 py-1 text-xs rounded border border-red-300 text-red-700 disabled:opacity-50"
+                    >
+                      Revoke
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

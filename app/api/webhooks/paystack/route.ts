@@ -4,6 +4,7 @@ import { OrderService } from "@/lib/services/orderServices"
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 import { sendEmail } from "@/lib/email"
+import { capturePosthogServerEvent } from "@/lib/posthog-server"
 
 // Paystack webhook secret from environment variables
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY
@@ -152,6 +153,32 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error("Failed to send confirmation email:", error)
       }
+
+      // Authoritative server-side purchase tracking in PostHog
+      await capturePosthogServerEvent({
+        event: "purchase_completed",
+        distinctId:
+          (order.userId ? String(order.userId) : "") ||
+          order.shippingAddress.email ||
+          reference,
+        properties: {
+          source: "paystack_webhook",
+          order_id: orderId,
+          transaction_reference: reference,
+          currency: order.currency,
+          value: order.total,
+          amount_minor: amount,
+          item_count: order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+          items: order.items.map((item) => ({
+            item_id: item.id,
+            item_name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            item_variant: item.size || "",
+            item_category: item.color || "",
+          })),
+        },
+      })
     }
 
     return NextResponse.json({ received: true })

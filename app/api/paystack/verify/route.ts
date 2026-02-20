@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { OrderService } from "@/lib/services/orderServices"
 import { getDatabase } from "@/lib/mongodb"
 import { verifyPaystackTransaction } from "@/lib/paystack"
+import { capturePosthogServerEvent } from "@/lib/posthog-server"
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,6 +92,31 @@ export async function POST(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: "Failed to update order payment status" }, { status: 500 })
     }
+
+    await capturePosthogServerEvent({
+      event: "purchase_completed",
+      distinctId:
+        (order.userId ? String(order.userId) : "") ||
+        order.shippingAddress.email ||
+        reference,
+      properties: {
+        source: "paystack_verify_route",
+        order_id: resolvedOrderId,
+        transaction_reference: reference,
+        currency: order.currency,
+        value: order.total,
+        amount_minor: Number(tx.amount || 0),
+        item_count: order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+        items: order.items.map((item) => ({
+          item_id: item.id,
+          item_name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          item_variant: item.size || "",
+          item_category: item.color || "",
+        })),
+      },
+    })
 
     try {
       const db = await getDatabase()

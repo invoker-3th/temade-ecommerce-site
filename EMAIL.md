@@ -20,7 +20,6 @@ This document explains how emails work in this repo and how they can be improved
 ### 2) Admin Login Alert (Resend)
 - Trigger: admin login (`POST /api/auth/login`)
 - File: `app/api/auth/login/route.ts`
-- Sends alert email to: `enjayjerey@gmail.com`
 - Includes: username, email, time, IP, and user-agent
 
 ## Email Infrastructure

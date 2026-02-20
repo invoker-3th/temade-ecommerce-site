@@ -15,6 +15,13 @@ type SiteAnalysisResponse = {
       averageSessionDuration: number
     }
     topPages: Array<{ path: string; views: number }>
+    series?: Array<{
+      bucket: string
+      activeUsers: number
+      sessions: number
+      pageViews: number
+      averageSessionDuration: number
+    }>
   }
   webVitals: {
     connected: boolean
@@ -48,6 +55,21 @@ function getDateRange(range: string) {
   const now = new Date()
   let start = new Date(now)
   switch (range) {
+    case "1d":
+      start.setDate(now.getDate() - 1)
+      break
+    case "1m":
+      start.setMonth(now.getMonth() - 1)
+      break
+    case "1q":
+      start.setMonth(now.getMonth() - 3)
+      break
+    case "1y":
+      start.setFullYear(now.getFullYear() - 1)
+      break
+    case "all":
+      start = new Date(2020, 0, 1)
+      break
     case "7d":
       start.setDate(now.getDate() - 6)
       break
@@ -65,6 +87,20 @@ function getDateRange(range: string) {
   }
   const toDate = (date: Date) => date.toISOString().slice(0, 10)
   return { startDate: toDate(start), endDate: toDate(now) }
+}
+
+function getPosthogBucketExpression(granularity: string) {
+  switch (granularity) {
+    case "yearly":
+      return "toStartOfYear(timestamp)"
+    case "quarterly":
+      return "toStartOfQuarter(timestamp)"
+    case "monthly":
+      return "toStartOfMonth(timestamp)"
+    case "daily":
+    default:
+      return "toDate(timestamp)"
+  }
 }
 
 function base64Url(input: string) {
@@ -176,6 +212,7 @@ async function runPosthogQuery(posthogHost: string, projectId: string, apiKey: s
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const range = searchParams.get("range") || "30d"
+  const granularity = searchParams.get("granularity") || "daily"
   const { startDate, endDate } = getDateRange(range)
 
   const response: SiteAnalysisResponse = {
@@ -197,8 +234,10 @@ export async function GET(request: Request) {
     try {
       const startDateTime = `${startDate} 00:00:00`
       const endDateTime = `${endDate} 23:59:59`
+      const bucketExpr = getPosthogBucketExpression(granularity)
 
-      const [activeUsersRows, pageViewsRows, sessionsRows, avgSessionRows, topPagesRows] = await Promise.all([
+      const [activeUsersRows, pageViewsRows, sessionsRows, avgSessionRows, topPagesRows, seriesRows] =
+        await Promise.all([
         runPosthogQuery(
           posthogHost,
           posthogProjectId,
@@ -229,7 +268,22 @@ export async function GET(request: Request) {
           posthogApiKey,
           `select coalesce(nullIf(properties.$pathname, ''), nullIf(properties.$current_url, ''), 'unknown') as path, count() as views from events where event = '$pageview' and timestamp >= toDateTime('${startDateTime}') and timestamp <= toDateTime('${endDateTime}') group by path order by views desc limit 10`
         ),
-      ])
+        runPosthogQuery(
+          posthogHost,
+          posthogProjectId,
+          posthogApiKey,
+          `select
+            toString(${bucketExpr}) as bucket,
+            uniqIf(distinct_id, event = '$pageview') as activeUsers,
+            countIf(event = '$session_start') as sessions,
+            countIf(event = '$pageview') as pageViews,
+            avgIf(toFloat(properties.$session_duration), event = '$session_end' and properties.$session_duration is not null) as averageSessionDuration
+          from events
+          where timestamp >= toDateTime('${startDateTime}') and timestamp <= toDateTime('${endDateTime}')
+          group by bucket
+          order by bucket asc`
+        ),
+        ])
 
       response.posthog.summary = {
         activeUsers: Number(activeUsersRows?.[0]?.[0] || 0),
@@ -240,6 +294,13 @@ export async function GET(request: Request) {
       response.posthog.topPages = (topPagesRows || []).map((row) => ({
         path: String(row?.[0] || "-"),
         views: Number(row?.[1] || 0),
+      }))
+      response.posthog.series = (seriesRows || []).map((row) => ({
+        bucket: String(row?.[0] || ""),
+        activeUsers: Number(row?.[1] || 0),
+        sessions: Number(row?.[2] || 0),
+        pageViews: Number(row?.[3] || 0),
+        averageSessionDuration: Math.round(Number(row?.[4] || 0)),
       }))
       response.posthog.connected = true
     } catch (err) {

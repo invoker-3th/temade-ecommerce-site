@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import type { User } from "@/lib/models/User"
+import posthog from "posthog-js"
 
 type AuthContextType = {
   user: User | null
@@ -28,11 +29,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
 
+  const identifyPosthogUser = (nextUser: User | null) => {
+    if (typeof window === "undefined") return
+    const consent = localStorage.getItem("cookie_consent")
+    if (consent !== "accepted") return
+    if (!nextUser?._id) return
+    posthog.identify(String(nextUser._id), {
+      email: nextUser.email,
+      userName: nextUser.userName,
+      role: nextUser.role || "customer",
+    })
+  }
+
   useEffect(() => {
     // Check if user is logged in on app start
     const savedUser = localStorage.getItem("user")
     if (savedUser) {
-      setUser(JSON.parse(savedUser))
+      const parsedUser = JSON.parse(savedUser) as User
+      setUser(parsedUser)
+      identifyPosthogUser(parsedUser)
     }
     setIsLoading(false)
   }, [])
@@ -51,6 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const data = await response.json()
         setUser(data.user)
         localStorage.setItem("user", JSON.stringify(data.user))
+        identifyPosthogUser(data.user)
 
         // Sync local storage data with database
         await syncUserData()
@@ -116,6 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem("user")
       localStorage.removeItem("cart")
       localStorage.removeItem("wishlist")
+      posthog.reset()
       
       // Wait a moment to ensure state updates
       await new Promise(resolve => setTimeout(resolve, 100))
