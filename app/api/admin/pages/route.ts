@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
+import { ObjectId } from "mongodb"
 import { getDatabase } from "@/lib/mongodb"
 
 type PageDoc = {
-  _id?: unknown
+  _id?: ObjectId
   title: string
   slug: string
   status: "draft" | "published"
@@ -87,3 +88,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+
+

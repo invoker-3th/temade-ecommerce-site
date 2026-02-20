@@ -14,12 +14,50 @@ type SiteAnalysisData = {
     }
     topPages: Array<{ path: string; views: number }>
   }
+  webVitals: {
+    connected: boolean
+    summary: null | {
+      p75Lcp: number
+      p75Cls: number
+      p75Inp: number
+      samples: number
+    }
+    series?: Array<{ date: string; lcp: number; cls: number; inp: number }>
+  }
   gsc: {
     connected: boolean
     topPages: Array<{ page: string; clicks: number; impressions: number; ctr: number; position: number }>
     sitemaps: Array<{ path: string; lastSubmitted?: string; lastDownloaded?: string }>
   }
   errors: string[]
+}
+
+type SeriesPoint = { date: string; lcp: number; cls: number; inp: number }
+
+function buildPath(points: Array<{ x: number; y: number }>) {
+  if (points.length === 0) return ""
+  return points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
+}
+
+function scaleSeries(
+  series: SeriesPoint[],
+  key: "lcp" | "cls" | "inp",
+  width: number,
+  height: number
+) {
+  const values = series.map((p) => p[key]).filter((v) => Number.isFinite(v))
+  if (values.length === 0) return ""
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const step = series.length > 1 ? width / (series.length - 1) : width
+  const points = series.map((p, idx) => {
+    const value = p[key]
+    const x = idx * step
+    const y = height - ((value - min) / range) * height
+    return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) }
+  })
+  return buildPath(points)
 }
 
 const ranges = [
@@ -103,8 +141,13 @@ export default function AdminSiteAnalysisPage() {
             </div>
             <div className="bg-white rounded-xl shadow p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Core Web Vitals</p>
-              <p className="text-xl font-semibold mt-2">Not Connected</p>
+              <p className="text-xl font-semibold mt-2">{data?.webVitals.connected ? "Connected" : "Not Connected"}</p>
               <p className="text-sm text-gray-600 mt-1">Surface LCP / CLS / INP after adding web-vitals tracking.</p>
+              {data?.webVitals.summary && (
+                <p className="text-xs text-gray-500 mt-2">
+                  P75 LCP {data.webVitals.summary.p75Lcp} · CLS {data.webVitals.summary.p75Cls} · INP {data.webVitals.summary.p75Inp} ({data.webVitals.summary.samples} samples)
+                </p>
+              )}
             </div>
           </div>
 
@@ -194,6 +237,55 @@ export default function AdminSiteAnalysisPage() {
                   {data?.errors.map((err, idx) => (
                     <div key={`${err}-${idx}`}>{err}</div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-1 mt-6">
+            <div className="bg-white rounded-xl shadow p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Core Web Vitals (P75)</p>
+                <span className="text-xs text-gray-400">{data?.webVitals.connected ? "Live" : "Awaiting data"}</span>
+              </div>
+              {!data?.webVitals.series || data.webVitals.series.length === 0 ? (
+                <div className="text-sm text-gray-400">No web vitals data available yet.</div>
+              ) : (
+                <div className="w-full">
+                  <svg viewBox="0 0 600 200" className="w-full h-52">
+                    <path
+                      d={scaleSeries(data.webVitals.series, "lcp", 600, 160)}
+                      fill="none"
+                      stroke="#8D2741"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d={scaleSeries(data.webVitals.series, "cls", 600, 160)}
+                      fill="none"
+                      stroke="#2C2C2C"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d={scaleSeries(data.webVitals.series, "inp", 600, 160)}
+                      fill="none"
+                      stroke="#CA6F86"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  <div className="flex flex-wrap gap-4 text-xs text-gray-600 mt-2">
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-3 h-3 rounded-full bg-[#8D2741]" />
+                      LCP
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-3 h-3 rounded-full bg-[#2C2C2C]" />
+                      CLS
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-3 h-3 rounded-full bg-[#CA6F86]" />
+                      INP
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

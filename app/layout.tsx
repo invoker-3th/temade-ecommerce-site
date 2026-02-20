@@ -14,6 +14,7 @@ import { CurrencyProvider } from "./context/CurrencyContext"
 import RegionDialog from "./components/RegionDialog"
 import CartCurrencyUpdater from "./components/CartCurrencyUpdater"
 import PostHogClient from "./components/PostHogClient"
+import WebVitalsClient from "./components/WebVitalsClient"
 import CookieConsentBanner from "./components/CookieConsentBanner"
 
 
@@ -73,6 +74,7 @@ export default function RootLayout({
                 {/* Update cart prices when currency changes */}
                 <CartCurrencyUpdater />
                 <PostHogClient />
+                <WebVitalsClient />
                 {children}
                 <TextMarqueeBar />
                 <div className="w-full flex justify-center">

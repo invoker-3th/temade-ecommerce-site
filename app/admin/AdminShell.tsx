@@ -6,7 +6,10 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
 
-const nav = [
+type NavItem = { label: string; href: string; disabled?: boolean }
+type NavSection = { title: string; items: NavItem[] }
+
+const nav: NavSection[] = [
   {
     title: "Overview",
     items: [

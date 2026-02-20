@@ -25,6 +25,7 @@
     "mongoose": "^8.18.1",
     "next": "15.1.9",
     "posthog-js": "^1.347.2",
+    "web-vitals": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.8",
@@ -37,7 +38,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@types/node": "^20",
+    "@types/node": "^20.17.57",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

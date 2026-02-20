@@ -32,7 +32,7 @@ export default function CartOverlay({ onClose }: CartOverlayProps) {
                 item_category: item.color,
             })),
         })
-    }, [])
+    }, [cartItems, currency, getTotal])
 
     return (
         <>

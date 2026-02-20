@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
       if (!user.isEmailVerified) {
         return NextResponse.json({ error: "Email not verified" }, { status: 403 })
       }
-    }
-    if ((user.userName || "").trim().toLowerCase() !== userName.trim().toLowerCase()) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+      if ((user.userName || "").trim().toLowerCase() !== userName.trim().toLowerCase()) {
+        return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+      }
     }
 
     // In a real app, you'd verify password here

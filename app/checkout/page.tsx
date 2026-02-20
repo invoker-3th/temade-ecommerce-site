@@ -121,7 +121,7 @@ const CheckoutPage = () => {
         ]
       }
     })
-  }, [user?.email, formData.email, paystackTotal, total, currency, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id, cartItems])
+  }, [user?.email, formData.email, paystackTotal, total, currency, formData.firstname, formData.lastname, formData.phone, pendingOrderId, user?._id])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })

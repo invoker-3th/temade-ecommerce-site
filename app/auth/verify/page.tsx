@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 type VerifyState = "loading" | "success" | "error"
 
-export default function VerifyEmailPage() {
+function VerifyEmailClient() {
   const router = useRouter()
   const params = useSearchParams()
   const token = params.get("token") || ""
@@ -37,7 +37,7 @@ export default function VerifyEmailPage() {
         }
         setState("success")
         setMessage("Your email is verified. You can continue.")
-      } catch (error) {
+      } catch {
         setState("error")
         setMessage("Verification failed.")
       }
@@ -84,5 +84,22 @@ export default function VerifyEmailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white border border-[#EEE7DA] rounded-xl p-6 text-center font-WorkSans">
+            <h1 className="text-2xl font-bold mb-2 font-garamond">Email Verification</h1>
+            <p className="text-sm text-gray-600">Loading verification...</p>
+          </div>
+        </div>
+      }
+    >
+      <VerifyEmailClient />
+    </Suspense>
   )
 }

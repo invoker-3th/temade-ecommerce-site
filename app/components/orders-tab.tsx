@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useEffect, useState, useCallback } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useCurrency } from "../context/CurrencyContext"
@@ -226,14 +227,12 @@ export default function OrdersTab() {
                   {order.items?.map((item, index) => (
                     <div key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
                       <div className="flex-shrink-0">
-                        <img
-                          src={item.image || '/placeholder.svg'}
+                        <Image
+                          src={item.image || "/placeholder.svg"}
                           alt={item.name}
+                          width={64}
+                          height={64}
                           className="w-16 h-16 object-cover rounded-md"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/placeholder.svg';
-                          }}
                         />
                       </div>
                       <div className="flex-1 min-w-0">

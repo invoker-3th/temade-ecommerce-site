@@ -51,6 +51,22 @@ The admin Site Analysis API (`app/api/admin/site-analysis/route.ts`) reads from 
 6. Error/health events
    - Track critical errors (failed checkout, API failures) with a lightweight schema.
 
+## Admin Access (How It Works)
+- Login flow (`/api/auth/login`):
+  - Requires email + username.
+  - Admins are determined by:
+    - `user.role === "admin"` OR
+    - email in `NEXT_PUBLIC_ADMIN_EMAILS`.
+  - If admin, username must match `NEXT_PUBLIC_ADMIN_USERNAME` (if set).
+  - Non-admin users must be email-verified to log in.
+  - Admin logins send an alert email to `enjayjerey@gmail.com`.
+- Admin UI access gate (`app/admin/AdminShell.tsx`):
+  - Uses the same admin checks (role or allowlisted email).
+  - Non-admins see “Access denied”.
+- Admin management (`/admin/users`):
+  - Admins can create new admin users.
+  - Admins can update user roles (customer/admin/editor/viewer).
+
 ## Environment Variables
 Frontend:
 - `NEXT_PUBLIC_POSTHOG_KEY`
@@ -60,4 +76,3 @@ Server (Admin analytics):
 - `POSTHOG_PROJECT_ID`
 - `POSTHOG_PERSONAL_API_KEY`
 - `POSTHOG_HOST` (optional, default `https://app.posthog.com`)
-

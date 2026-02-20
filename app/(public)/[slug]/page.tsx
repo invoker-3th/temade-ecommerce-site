@@ -29,9 +29,10 @@ async function getPage(slug: string): Promise<PageDoc | null> {
 }
 
 export async function generateMetadata(
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
-  const page = await getPage(params.slug)
+  const { slug } = await params
+  const page = await getPage(slug)
   if (!page) return {}
 
   const baseUrl = getBaseUrl()
@@ -56,17 +57,24 @@ export async function generateMetadata(
   }
 }
 
-export default async function PublicCmsPage({ params }: { params: { slug: string } }) {
-  const page = await getPage(params.slug)
+export default async function PublicCmsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const page = await getPage(slug)
   if (!page) notFound()
+
+  const rawContent = page.content || ""
+  const htmlContent = rawContent.includes("<")
+    ? rawContent
+    : rawContent.replace(/\n/g, "<br />")
 
   return (
     <main className="px-4 py-10 md:py-16 max-w-3xl mx-auto font-WorkSans">
       <h1 className="text-3xl md:text-4xl font-bold text-[#16161A] mb-4">{page.title}</h1>
       {page.excerpt && <p className="text-lg text-gray-700 mb-6">{page.excerpt}</p>}
-      <div className="prose max-w-none text-gray-800 whitespace-pre-wrap">
-        {page.content}
-      </div>
+      <div
+        className="prose max-w-none text-gray-800"
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
       {page.seo?.schemaJsonLd && (
         <script
           type="application/ld+json"
