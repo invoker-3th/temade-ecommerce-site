@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { OrderService } from "@/lib/services/orderServices"
 import { UserService } from "@/lib/services/userServices"
+import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
+import { sendEmail } from "@/lib/email"
 // removed unused Order type import
 
 export async function POST(request: NextRequest) {
@@ -37,6 +39,60 @@ export async function POST(request: NextRequest) {
     }
 
     const newOrder = await OrderService.createOrder(orderData)
+
+    try {
+      const db = await getDatabase()
+      const destination = [
+        shippingAddress?.address,
+        shippingAddress?.city,
+        shippingAddress?.state,
+      ]
+        .filter(Boolean)
+        .join(", ")
+
+      await db.collection("notifications").insertOne({
+        type: "new_order",
+        title: "New order placed",
+        message: `${shippingAddress?.userName || "Customer"} placed an order (${newOrder._id}) to ${destination || "provided address"}.`,
+        orderId: String(newOrder._id),
+        amount: Number(total || 0),
+        read: false,
+        createdAt: new Date(),
+      })
+
+      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+        .split(/[,\n;\s]+/)
+        .map((e) => e.trim())
+        .filter(Boolean)
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+      const orderLink = `${baseUrl}/admin/orders?orderId=${encodeURIComponent(String(newOrder._id))}`
+      for (const email of adminEmails) {
+        try {
+          await sendEmail({
+            to: email,
+            subject: `New Order Received (${String(newOrder._id)})`,
+            html: `
+              <div style="font-family: Arial, sans-serif; color: #222;">
+                <h2>New Order Received</h2>
+                <p><strong>Order ID:</strong> ${String(newOrder._id)}</p>
+                <p><strong>Customer:</strong> ${shippingAddress?.userName || "-"}</p>
+                <p><strong>Email:</strong> ${shippingAddress?.email || "-"}</p>
+                <p><strong>Phone:</strong> ${shippingAddress?.phone || "-"}</p>
+                <p><strong>Delivery Address:</strong> ${destination || "-"}</p>
+                <p><strong>Total:</strong> ${Number(total || 0).toLocaleString()} ${currency || "NGN"}</p>
+                <p><a href="${orderLink}" style="background:#8D2741;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Open Order</a></p>
+                <p>${orderLink}</p>
+              </div>
+            `,
+            text: `New order ${String(newOrder._id)} from ${shippingAddress?.userName || "-"}. Open: ${orderLink}`,
+          })
+        } catch (mailErr) {
+          console.error("Admin order email error:", mailErr)
+        }
+      }
+    } catch (notificationError) {
+      console.error("Order notification error:", notificationError)
+    }
 
     // Clear user's cart after successful order (only for logged-in users)
     if (userId) {

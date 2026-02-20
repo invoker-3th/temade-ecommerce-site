@@ -218,8 +218,18 @@ const CheckoutPage = () => {
 
   const handlePaystackSuccess = async (reference: { reference: string }) => {
     try {
-      // Payment initiated successfully - webhook will handle the actual confirmation
-      console.log("Payment initiated, waiting for webhook confirmation...")
+      const verifyRes = await fetch("/api/paystack/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reference: reference.reference,
+          orderId: pendingOrderId || undefined,
+        }),
+      })
+      const verifyData = await verifyRes.json()
+      if (!verifyRes.ok) {
+        throw new Error(verifyData?.error || "Payment verification failed")
+      }
 
       trackPurchase({
         transaction_id: pendingOrderId || reference.reference,
@@ -239,12 +249,11 @@ const CheckoutPage = () => {
       clearCart()
       setIsOverlayVisible(true)
 
-      // Show success message
-      alert(`Payment initiated successfully! Reference: ${reference.reference}. You will receive a confirmation email once payment is verified.`)
+      alert(`Payment successful! Reference: ${reference.reference}. Your order has been confirmed.`)
 
     } catch (error) {
       console.error("Payment success handling error:", error)
-      alert(`Payment successful but there was an issue processing your order. Please contact support with your payment reference: ${reference.reference}`)
+      alert(`Payment received but verification did not complete automatically. Reference: ${reference.reference}. Please contact support if status remains pending.`)
     } finally {
       setIsProcessing(false)
     }

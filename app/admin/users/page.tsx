@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
 
@@ -30,6 +30,22 @@ type OrderRow = {
   orderStatus: string
   paymentStatus: string
   createdAt: string
+  paymentMethod?: string
+  shippingAddress?: {
+    userName?: string
+    email?: string
+    phone?: string
+    city?: string
+    state?: string
+    address?: string
+  }
+  items?: Array<{
+    name?: string
+    quantity?: number
+    price?: number
+    size?: string
+    color?: string
+  }>
 }
 
 export default function AdminUsersPage() {
@@ -41,9 +57,6 @@ export default function AdminUsersPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
-  const [createLoading, setCreateLoading] = useState(false)
-  const [createError, setCreateError] = useState("")
-  const [createForm, setCreateForm] = useState({ userName: "", email: "", phone: "" })
 
   useEffect(() => {
     const run = async () => {
@@ -115,33 +128,6 @@ export default function AdminUsersPage() {
     }
   }
 
-  const createAdmin = async () => {
-    setCreateError("")
-    if (!createForm.email || !createForm.userName) {
-      setCreateError("Email and username are required.")
-      return
-    }
-    setCreateLoading(true)
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(createForm),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to create admin")
-      }
-      setUsers((prev) => [data.user, ...prev])
-      setCount((prev) => prev + 1)
-      setCreateForm({ userName: "", email: "", phone: "" })
-    } catch (error) {
-      setCreateError(error instanceof Error ? error.message : "Failed to create admin")
-    } finally {
-      setCreateLoading(false)
-    }
-  }
-
   return (
     <div className="p-6 md:p-10 font-WorkSans">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
@@ -162,37 +148,6 @@ export default function AdminUsersPage() {
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="md:w-1/2 lg:w-5/12">
-          <div className="bg-white rounded-xl shadow p-4 mb-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Create Admin</p>
-            <div className="grid gap-2 text-sm">
-              <input
-                value={createForm.userName}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, userName: e.target.value }))}
-                placeholder="Username"
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
-              <input
-                value={createForm.email}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
-                placeholder="Email"
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
-              <input
-                value={createForm.phone}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, phone: e.target.value }))}
-                placeholder="Phone (optional)"
-                className="w-full border rounded px-3 py-2 text-sm"
-              />
-              {createError && <div className="text-xs text-red-600">{createError}</div>}
-              <button
-                onClick={createAdmin}
-                disabled={createLoading}
-                className="px-3 py-2 text-xs rounded bg-[#8D2741] text-white disabled:opacity-50"
-              >
-                {createLoading ? "Creating..." : "Create Admin"}
-              </button>
-            </div>
-          </div>
           <div className="bg-white rounded-xl shadow p-4 mb-4">
             <input
               value={query}
@@ -297,7 +252,23 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div className="mt-6">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Order History</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Order History & Delivery Details</p>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/api/admin/users/${selected._id}/orders/export`}
+                        className="px-3 py-1 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
+                      >
+                        Export Orders CSV
+                      </a>
+                      <button
+                        onClick={() => window.print()}
+                        className="px-3 py-1 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
+                      >
+                        Print
+                      </button>
+                    </div>
+                  </div>
                   <div className="bg-white border rounded-lg overflow-hidden">
                     {ordersLoading ? (
                       <div className="p-4 text-sm text-gray-500">Loading orders...</div>
@@ -306,7 +277,7 @@ export default function AdminUsersPage() {
                     ) : (
                       <div className="divide-y">
                         {orders.map((order) => (
-                          <div key={order._id} className="p-4 text-sm">
+                          <div key={order._id} className="p-4 text-sm space-y-3">
                             <div className="flex items-center justify-between">
                               <div>
                                 <div className="font-semibold text-[#16161A]">{order._id}</div>
@@ -317,6 +288,36 @@ export default function AdminUsersPage() {
                                 <div className="text-xs text-gray-500">{order.orderStatus} · {order.paymentStatus}</div>
                               </div>
                             </div>
+                            <div className="rounded-lg border border-[#EEE7DA] bg-[#FBF7F3] p-3">
+                              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Delivery Information</p>
+                              <div className="grid md:grid-cols-2 gap-2 text-xs text-gray-700">
+                                <p>Name: {order.shippingAddress?.userName || "--"}</p>
+                                <p>Email: {order.shippingAddress?.email || "--"}</p>
+                                <p>Phone: {order.shippingAddress?.phone || "--"}</p>
+                                <p>Payment Method: {order.paymentMethod || "--"}</p>
+                                <p className="md:col-span-2">
+                                  Address: {[
+                                    order.shippingAddress?.address,
+                                    order.shippingAddress?.city,
+                                    order.shippingAddress?.state,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(", ") || "--"}
+                                </p>
+                              </div>
+                            </div>
+                            {(order.items || []).length > 0 && (
+                              <div className="rounded-lg border border-[#EEE7DA] p-3">
+                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Items</p>
+                                <div className="space-y-1 text-xs text-gray-700">
+                                  {(order.items || []).map((item, idx) => (
+                                    <p key={`${order._id}-${idx}`}>
+                                      {item.name || "Item"} x{item.quantity || 1} ({item.color || "-"} / {item.size || "-"}) - {Number(item.price || 0).toLocaleString()}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -331,3 +332,5 @@ export default function AdminUsersPage() {
     </div>
   )
 }
+
+

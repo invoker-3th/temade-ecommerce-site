@@ -69,6 +69,16 @@ export async function POST(request: NextRequest) {
       usedAt: null,
     })
 
+    await db.collection("notifications").insertOne({
+      type: "new_user",
+      title: "New user joined",
+      message: `${newUser.userName} (${newUser.email}) created a new account.`,
+      userId: String(newUser._id),
+      userEmail: newUser.email,
+      read: false,
+      createdAt: new Date(),
+    })
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const verifyLink = `${baseUrl}/auth/verify?token=${encodeURIComponent(token)}&otp=${encodeURIComponent(otp)}`
 

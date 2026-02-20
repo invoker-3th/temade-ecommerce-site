@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
         console.error(`Order ${orderId} not found`)
         return NextResponse.json({ error: "Order not found" }, { status: 404 })
       }
+      if (order.paymentStatus === "completed") {
+        return NextResponse.json({ received: true, alreadyCompleted: true })
+      }
 
       // Create invoice
       const invoiceNumber = `INV-${Date.now()}`

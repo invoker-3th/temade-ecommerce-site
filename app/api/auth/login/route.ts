@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { UserService } from "@/lib/services/userServices"
 import { sendEmail } from "@/lib/email"
+import { getDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,27 +46,63 @@ export async function POST(request: NextRequest) {
     // For this demo, we'll just return user data
 
     const { ...userResponse } = user
+    try {
+      const now = new Date().toISOString()
+      const isAdminLogin = isAdmin ? "Yes" : "No"
+      await sendEmail({
+        to: user.email,
+        subject: "Welcome back to Temade Studios",
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #222;">
+            <h2>Welcome back, ${user.userName}</h2>
+            <p>Your login was successful.</p>
+            <p>Email: <strong>${user.email}</strong></p>
+            <p>Admin access: <strong>${isAdminLogin}</strong></p>
+            <p>Time: ${now}</p>
+          </div>
+        `,
+        text: `Welcome back, ${user.userName}. Login successful at ${now}. Admin access: ${isAdminLogin}.`,
+      })
+    } catch (error) {
+      console.error("Login welcome email error:", error)
+    }
+
     if (isAdmin) {
       const notifyTo = "enjayjerey@gmail.com"
       try {
-        const forwardedFor = request.headers.get("x-forwarded-for") || "unknown"
-        const ua = request.headers.get("user-agent") || "unknown"
-        const now = new Date().toISOString()
-        await sendEmail({
-          to: notifyTo,
-          subject: "Admin login detected",
-          html: `
-            <div style="font-family: Arial, sans-serif; color: #222;">
-              <h2>Admin login detected</h2>
-              <p>User: <strong>${user.userName}</strong></p>
-              <p>Email: <strong>${user.email}</strong></p>
-              <p>Time: ${now}</p>
-              <p>IP: ${forwardedFor}</p>
-              <p>User-Agent: ${ua}</p>
-            </div>
-          `,
-          text: `Admin login detected. User: ${user.userName}. Email: ${user.email}. Time: ${now}. IP: ${forwardedFor}. UA: ${ua}`,
+        const db = await getDatabase()
+        const sessionEmail = user.email.toLowerCase()
+        const existingSession = await db.collection("admin_login_sessions").findOne({
+          email: sessionEmail,
+          loggedIn: true,
         })
+
+        if (!existingSession) {
+          const forwardedFor = request.headers.get("x-forwarded-for") || "unknown"
+          const ua = request.headers.get("user-agent") || "unknown"
+          const now = new Date().toISOString()
+          await sendEmail({
+            to: notifyTo,
+            subject: "Admin login detected",
+            html: `
+              <div style="font-family: Arial, sans-serif; color: #222;">
+                <h2>Admin login detected</h2>
+                <p>User: <strong>${user.userName}</strong></p>
+                <p>Email: <strong>${user.email}</strong></p>
+                <p>Time: ${now}</p>
+                <p>IP: ${forwardedFor}</p>
+                <p>User-Agent: ${ua}</p>
+              </div>
+            `,
+            text: `Admin login detected. User: ${user.userName}. Email: ${user.email}. Time: ${now}. IP: ${forwardedFor}. UA: ${ua}`,
+          })
+        }
+
+        await db.collection("admin_login_sessions").updateOne(
+          { email: sessionEmail },
+          { $set: { email: sessionEmail, loggedIn: true, updatedAt: new Date() } },
+          { upsert: true }
+        )
       } catch (error) {
         console.error("Admin login alert error:", error)
       }

@@ -1,13 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 
 type Notification = {
   _id: string
-  type: "payment_confirmed" | "order_updated" | "new_order"
+  type: "payment_confirmed" | "order_updated" | "new_order" | "new_user"
   title: string
   message: string
   orderId?: string
+  userId?: string
+  userEmail?: string
   paymentReference?: string
   amount?: number
   read: boolean
@@ -98,6 +101,16 @@ export default function AdminNotifications() {
                   {notification.paymentReference && (
                     <p className="text-xs text-gray-500 mt-1">
                       Ref: {notification.paymentReference}
+                    </p>
+                  )}
+                  {notification.orderId && (
+                    <p className="text-xs mt-1">
+                      <Link
+                        href={`/admin/orders?orderId=${encodeURIComponent(notification.orderId)}`}
+                        className="text-[#CA6F86] underline"
+                      >
+                        Open order
+                      </Link>
                     </p>
                   )}
                   <p className="text-xs text-gray-400 mt-1">

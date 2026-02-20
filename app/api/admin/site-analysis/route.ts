@@ -30,6 +30,16 @@ type SiteAnalysisResponse = {
     connected: boolean
     topPages: Array<{ page: string; clicks: number; impressions: number; ctr: number; position: number }>
     sitemaps: Array<{ path: string; lastSubmitted?: string; lastDownloaded?: string }>
+    debug?: {
+      selectedSite?: string
+      configuredSites?: string[]
+      accessibleSites?: string[]
+      attemptedSites?: Array<{ site: string; searchAnalyticsStatus?: number; sitemapStatus?: number }>
+    }
+  }
+  technicalSeo?: {
+    sitemap: { url: string; status: number | null; ok: boolean }
+    robots: { url: string; status: number | null; ok: boolean }
   }
   errors: string[]
 }
@@ -103,6 +113,38 @@ async function getAccessToken(scopes: string[]) {
 
 function normalizeHost(host: string) {
   return host.replace(/\/+$/, "")
+}
+
+function normalizeSiteProperty(site: string) {
+  const trimmed = site.trim()
+  if (!trimmed) return ""
+  if (trimmed.startsWith("sc-domain:")) return trimmed
+  return trimmed.endsWith("/") ? trimmed : `${trimmed}/`
+}
+
+function unique(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)))
+}
+
+async function fetchJsonWithStatus(url: string, init: RequestInit) {
+  const res = await fetch(url, init)
+  const text = await res.text()
+  let json: unknown = null
+  try {
+    json = text ? JSON.parse(text) : null
+  } catch {
+    json = null
+  }
+  return { res, text, json }
+}
+
+async function checkUrl(url: string) {
+  try {
+    const res = await fetch(url, { method: "GET", cache: "no-store" })
+    return { status: res.status, ok: res.ok }
+  } catch {
+    return { status: null, ok: false }
+  }
 }
 
 async function runPosthogQuery(posthogHost: string, projectId: string, apiKey: string, query: string) {
@@ -220,82 +262,148 @@ export async function GET(request: Request) {
   }
 
   if (accessToken) {
-    const gscSiteUrl = process.env.GSC_SITE_URL
-    if (gscSiteUrl) {
+    const configured = unique(
+      [
+        normalizeSiteProperty(process.env.GSC_SITE_URL || ""),
+        ...(process.env.GSC_SITE_URLS || "")
+          .split(/[,\n;\s]+/)
+          .map((s) => normalizeSiteProperty(s)),
+      ].filter(Boolean)
+    )
+    const baseUrl = normalizeHost(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000")
+    const baseHost = (() => {
       try {
-        const res = await fetch(
-          `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(gscSiteUrl)}/searchAnalytics/query`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              startDate,
-              endDate,
-              dimensions: ["page"],
-              rowLimit: 10,
-            }),
-          }
-        )
+        return new URL(baseUrl).hostname
+      } catch {
+        return ""
+      }
+    })()
+    const derived = unique(
+      [
+        baseUrl ? `${baseUrl}/` : "",
+        baseHost ? `https://${baseHost}/` : "",
+        baseHost?.startsWith("www.") ? `https://${baseHost.replace(/^www\./, "")}/` : "",
+        baseHost ? `sc-domain:${baseHost.replace(/^www\./, "")}` : "",
+      ].map((s) => normalizeSiteProperty(s))
+    )
+    const candidateSites = unique([...configured, ...derived])
 
-        if (res.ok) {
-          const data = await res.json()
-          response.gsc.topPages = (data?.rows || []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-            page: row.keys?.[0] || "-",
-            clicks: Number(row.clicks || 0),
-            impressions: Number(row.impressions || 0),
-            ctr: Number(row.ctr || 0),
-            position: Number(row.position || 0),
-          }))
-          response.gsc.connected = true
-        } else {
-          response.errors.push("GSC search analytics request failed")
-          if (enableDebug) {
-            const body = await res.text()
-            console.error("GSC search analytics failed", res.status, body)
-          }
+    let accessibleSites: string[] = []
+    try {
+      const list = await fetchJsonWithStatus(
+        "https://searchconsole.googleapis.com/webmasters/v3/sites",
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      )
+      if (list.res.ok) {
+        const listJson = list.json as { siteEntry?: Array<{ siteUrl?: string; permissionLevel?: string }> } | null
+        accessibleSites = unique((listJson?.siteEntry || []).map((x) => normalizeSiteProperty(String(x.siteUrl || ""))))
+      } else if (enableDebug) {
+        console.error("GSC sites list failed", list.res.status, list.text)
+      }
+    } catch (err) {
+      if (enableDebug) {
+        console.error("GSC sites list error", err)
+      }
+    }
+
+    const orderedSites = unique([...candidateSites, ...accessibleSites])
+    const attemptedSites: Array<{ site: string; searchAnalyticsStatus?: number; sitemapStatus?: number }> = []
+    let selectedSite = ""
+    for (const site of orderedSites) {
+      const search = await fetchJsonWithStatus(
+        `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startDate,
+            endDate,
+            dimensions: ["page"],
+            rowLimit: 10,
+          }),
         }
-      } catch (err) {
-        response.errors.push("GSC search analytics request failed")
+      )
+      attemptedSites.push({ site, searchAnalyticsStatus: search.res.status })
+
+      if (!search.res.ok) {
         if (enableDebug) {
-          console.error("GSC search analytics error", err)
+          console.error("GSC search analytics failed", site, search.res.status, search.text)
         }
+        continue
       }
 
-      try {
-        const res = await fetch(
-          `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(gscSiteUrl)}/sitemaps`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }
-        )
+      const data = search.json as {
+        rows?: Array<{ keys: string[]; clicks: number; impressions: number; ctr: number; position: number }>
+      } | null
+      response.gsc.topPages = (data?.rows || []).map((row) => ({
+        page: row.keys?.[0] || "-",
+        clicks: Number(row.clicks || 0),
+        impressions: Number(row.impressions || 0),
+        ctr: Number(row.ctr || 0),
+        position: Number(row.position || 0),
+      }))
+      selectedSite = site
+      response.gsc.connected = true
+      break
+    }
 
-        if (res.ok) {
-          const data = await res.json()
-          response.gsc.sitemaps = (data?.sitemap || []).map((item: { path: string; lastSubmitted?: string; lastDownloaded?: string }) => ({
-            path: item.path,
-            lastSubmitted: item.lastSubmitted,
-            lastDownloaded: item.lastDownloaded,
-          }))
-          response.gsc.connected = true
-        } else {
-          response.errors.push("GSC sitemap request failed")
-          if (enableDebug) {
-            const body = await res.text()
-            console.error("GSC sitemap failed", res.status, body)
-          }
-        }
-      } catch (err) {
+    if (selectedSite) {
+      const sitemapRes = await fetchJsonWithStatus(
+        `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(selectedSite)}/sitemaps`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      )
+      const attempted = attemptedSites.find((x) => x.site === selectedSite)
+      if (attempted) {
+        attempted.sitemapStatus = sitemapRes.res.status
+      }
+
+      if (sitemapRes.res.ok) {
+        const sitemapJson = sitemapRes.json as {
+          sitemap?: Array<{ path: string; lastSubmitted?: string; lastDownloaded?: string }>
+        } | null
+        response.gsc.sitemaps = (sitemapJson?.sitemap || []).map((item) => ({
+          path: item.path,
+          lastSubmitted: item.lastSubmitted,
+          lastDownloaded: item.lastDownloaded,
+        }))
+      } else {
         response.errors.push("GSC sitemap request failed")
         if (enableDebug) {
-          console.error("GSC sitemap error", err)
+          console.error("GSC sitemap failed", selectedSite, sitemapRes.res.status, sitemapRes.text)
         }
+      }
+    } else {
+      response.errors.push("GSC search analytics request failed")
+      response.errors.push("GSC sitemap request failed")
+      if (accessibleSites.length > 0) {
+        response.errors.push("GSC permission mismatch: service account cannot access configured site property")
+      }
+    }
+
+    if (enableDebug) {
+      response.gsc.debug = {
+        selectedSite: selectedSite || undefined,
+        configuredSites: configured,
+        accessibleSites,
+        attemptedSites,
       }
     }
   } else {
     response.errors.push("Google API credentials are missing or invalid")
+  }
+
+  {
+    const base = normalizeHost(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000")
+    const sitemapUrl = `${base}/sitemap.xml`
+    const robotsUrl = `${base}/robots.txt`
+    const [sitemap, robots] = await Promise.all([checkUrl(sitemapUrl), checkUrl(robotsUrl)])
+    response.technicalSeo = {
+      sitemap: { url: sitemapUrl, status: sitemap.status, ok: sitemap.ok },
+      robots: { url: robotsUrl, status: robots.status, ok: robots.ok },
+    }
   }
 
   try {

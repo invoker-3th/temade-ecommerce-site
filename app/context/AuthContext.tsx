@@ -103,6 +103,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoggingOut(true)
     
     try {
+      if (user?.email) {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email }),
+        })
+      }
+
       // Clear user data
       setUser(null)
       localStorage.removeItem("user")

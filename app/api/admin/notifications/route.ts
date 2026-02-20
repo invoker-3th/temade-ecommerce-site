@@ -4,10 +4,12 @@ import { ObjectId } from "mongodb"
 
 type Notification = {
   _id?: ObjectId
-  type: "payment_confirmed" | "order_updated" | "new_order"
+  type: "payment_confirmed" | "order_updated" | "new_order" | "new_user"
   title: string
   message: string
   orderId?: string
+  userId?: string
+  userEmail?: string
   paymentReference?: string
   amount?: number
   read: boolean
