@@ -47,7 +47,7 @@ function AdminInviteClient() {
     }
 
     run()
-  }, [token])
+  }, [router, token])
 
   return (
     <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center px-4">

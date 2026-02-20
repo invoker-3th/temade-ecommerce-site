@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // Handle successful payment
     if (event.event === "charge.success") {
-      const { reference, amount, metadata } = event.data
+      const { reference, amount, metadata, channel, gateway_response, paid_at, id, status } = event.data
 
       // Find the pending order by reference
       const orderId = metadata?.orderId || reference
@@ -99,8 +99,14 @@ export async function POST(request: NextRequest) {
         paymentStatus: "completed",
         orderStatus: "processing",
         paymentReference: reference,
-        paymentAmount: amount,
-        paymentDate: new Date(),
+        paymentAmountMinor: Number(amount || 0),
+        paymentAmountMajor: Number(amount || 0) / 100,
+        paymentDate: paid_at ? new Date(paid_at) : new Date(),
+        paymentLastCheckedAt: new Date(),
+        paymentProviderStatus: String(status || "success"),
+        paymentGatewayResponse: String(gateway_response || ""),
+        paymentChannel: String(channel || ""),
+        paymentTransactionId: String(id || ""),
         invoice
       })
 

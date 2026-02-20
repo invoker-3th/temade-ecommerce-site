@@ -36,7 +36,7 @@ const nav: NavSection[] = [
   {
     title: "Settings",
     items: [
-      { label: "SEO Settings", href: "/admin/settings/seo", disabled: true },
+      { label: "SEO Settings", href: "/admin/settings/seo" },
       { label: "Team & Roles", href: "/admin/settings/team" },
     ],
   },

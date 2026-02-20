@@ -48,6 +48,9 @@ export async function POST(request: NextRequest) {
       paymentChannel: String(tx?.channel || ""),
       paymentLastCheckedAt: new Date(),
       paymentProviderStatus: String(tx?.status || ""),
+      paymentTransactionId: String(tx?.id || ""),
+      paymentAmountMinor: Number(tx?.amount || 0),
+      paymentAmountMajor: Number(tx?.amount || 0) / 100,
       paymentDate: tx?.paid_at ? new Date(tx.paid_at) : undefined,
     })
 
@@ -84,7 +87,8 @@ export async function POST(request: NextRequest) {
       paymentStatus: "completed",
       orderStatus: "processing",
       paymentReference: reference,
-      paymentAmount: tx.amount,
+      paymentAmountMinor: Number(tx?.amount || 0),
+      paymentAmountMajor: Number(tx?.amount || 0) / 100,
       paymentDate: new Date(tx.paid_at || Date.now()),
       invoice,
     })

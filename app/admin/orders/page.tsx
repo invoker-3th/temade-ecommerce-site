@@ -26,6 +26,10 @@ type Order = {
   paymentProviderStatus?: string
   paymentGatewayResponse?: string
   paymentChannel?: string
+  paymentTransactionId?: string
+  paymentAmountMinor?: number
+  paymentAmountMajor?: number
+  paymentLastCheckedAt?: string
   total: number
   currency?: "NGN" | "USD" | "GBP"
   shipment?: { etaDays?: number; etaAt?: string; shippedAt?: string; reminderSentAt?: string | null }
@@ -177,6 +181,27 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-[#16161A] mb-2">Order Items</p>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {o.items.map((it, idx) => (
+                    <div key={`${o._id}-card-${idx}`} className="rounded border border-[#EEE7DA] p-2 flex items-center gap-3">
+                      <div className="relative w-14 h-14 rounded overflow-hidden bg-gray-100 shrink-0">
+                        {it.image ? (
+                          <Image src={it.image} alt={it.name} fill className="object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-semibold">{it.name}</p>
+                        <p>Qty: {it.quantity}</p>
+                        <p>{it.color || "-"} / {it.size || "-"}</p>
+                        <p>{(it.price * it.quantity).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {shipTargetId === o._id && (
                 <div className="mt-3 rounded-lg border border-[#EEE7DA] p-3 bg-[#FBF7F3]">
                   <p className="text-sm mb-2">How long until this order arrives? (days)</p>
@@ -230,10 +255,16 @@ export default function AdminOrdersPage() {
                     <p className="font-semibold mb-1">Payment</p>
                     <p>Method: {o.invoice?.payment.method || "paystack"}</p>
                     <p>Reference: {o.paymentReference || o.invoice?.payment.reference || "-"}</p>
+                    <p>Transaction ID: {o.paymentTransactionId || "-"}</p>
                     <p>Provider Status: {o.paymentProviderStatus || "-"}</p>
                     <p>Gateway Response: {o.paymentGatewayResponse || "-"}</p>
                     <p>Channel: {o.paymentChannel || "-"}</p>
+                    <p>
+                      Amount: {o.currency || "NGN"}{" "}
+                      {(o.paymentAmountMajor ?? (o.paymentAmountMinor ? o.paymentAmountMinor / 100 : o.total)).toLocaleString()}
+                    </p>
                     <p>Transaction Time: {o.paymentDate ? new Date(o.paymentDate).toLocaleString() : "-"}</p>
+                    <p>Last Checked: {o.paymentLastCheckedAt ? new Date(o.paymentLastCheckedAt).toLocaleString() : "-"}</p>
                   </div>
 
                   <div className="md:col-span-2">

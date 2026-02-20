@@ -171,6 +171,9 @@ export default function AdminUsersPage() {
                 >
                   <div className="font-semibold text-[#16161A]">{user.userName || "Unnamed User"}</div>
                   <div className="text-xs text-gray-500">{user.email}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Joined: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "--"}
+                  </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
                     <span>Orders: {user.orders}</span>
                     <span>Revenue: {user.revenue.toLocaleString()}</span>
@@ -223,6 +226,21 @@ export default function AdminUsersPage() {
                   <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Last Order</p>
                     <p className="text-sm mt-2">{selected.lastOrderAt ? new Date(selected.lastOrderAt).toLocaleDateString() : "--"}</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Joined</p>
+                    <p className="text-sm mt-2">
+                      {selected.createdAt ? new Date(selected.createdAt).toLocaleString() : "--"}
+                    </p>
+                  </div>
+                  <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Last Profile Update</p>
+                    <p className="text-sm mt-2">
+                      {selected.updatedAt ? new Date(selected.updatedAt).toLocaleString() : "--"}
+                    </p>
                   </div>
                 </div>
 

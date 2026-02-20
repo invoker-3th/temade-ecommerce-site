@@ -1,4 +1,5 @@
 import type React from "react"
+import { Suspense } from "react"
 import type { Metadata } from "next"
 import { EB_Garamond, Work_Sans } from "next/font/google"
 import Script from "next/script"
@@ -73,7 +74,9 @@ export default function RootLayout({
                 <RegionDialog />
                 {/* Update cart prices when currency changes */}
                 <CartCurrencyUpdater />
-                <PostHogClient />
+                <Suspense fallback={null}>
+                  <PostHogClient />
+                </Suspense>
                 <WebVitalsClient />
                 {children}
                 <TextMarqueeBar />
