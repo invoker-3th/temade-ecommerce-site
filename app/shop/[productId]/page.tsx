@@ -14,6 +14,7 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ProductDetailSkeleton from '@/app/components/skeletons/ProductDetailSkeleton';
 import { normalizeSize, normalizeSizes, getDetailImages } from '@/lib/utils';
 import { trackViewItem } from '@/lib/analytics';
+import SizeGuideModal from '@/app/components/SizeGuideModal';
 
 const workSans = Work_Sans({
     subsets: ['latin'],
@@ -76,6 +77,7 @@ export default function ProductDetailPage({ params }: Props) {
     const [quantity, setQuantity] = useState<number>(1);
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+    const [sizeGuideOpen, setSizeGuideOpen] = useState<boolean>(false);
     const viewTrackedRef = useRef<string | null>(null);
 
     useEffect(() => {
@@ -377,7 +379,7 @@ export default function ProductDetailPage({ params }: Props) {
 
                     <div className="space-y-3">
                         <h2 className="font-semibold text-[#16161A]">Size: {normalizeSize(selectedSize)}</h2>
-                        <div className="flex gap-3 flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap">
                             {normalizeSizes(product.sizes).map((normalizedSize) => {
                                 const isSelected = normalizeSize(selectedSize) === normalizedSize;
                                 return (
@@ -394,6 +396,12 @@ export default function ProductDetailPage({ params }: Props) {
                                     </button>
                                 );
                             })}
+                            <button
+                                onClick={() => setSizeGuideOpen(true)}
+                                className="ml-2 text-sm underline text-[#8D2741] hover:text-[#551827]"
+                            >
+                                Size Guide
+                            </button>
                         </div>
                     </div>
 
@@ -469,6 +477,7 @@ export default function ProductDetailPage({ params }: Props) {
                     <span>{notification.message}</span>
                 </div>
             )}
+            <SizeGuideModal open={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
         </div>
     );
 }

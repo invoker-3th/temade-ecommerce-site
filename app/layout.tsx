@@ -10,7 +10,6 @@ import { CartProvider } from "./context/CartContext"
 import { WishlistProvider } from "./context/WishlistContext"
 import { AuthProvider } from "./context/AuthContext"
 import Footer from "./components/Footer"
-import TextMarqueeBar from "./components/TextMarqueeBar"
 import { CurrencyProvider } from "./context/CurrencyContext"
 import RegionDialog from "./components/RegionDialog"
 import CartCurrencyUpdater from "./components/CartCurrencyUpdater"
@@ -79,7 +78,6 @@ export default function RootLayout({
                 </Suspense>
                 <WebVitalsClient />
                 {children}
-                <TextMarqueeBar />
                 <div className="w-full flex justify-center">
                   <Footer />
                 </div>
