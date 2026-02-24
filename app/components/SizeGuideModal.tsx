@@ -62,7 +62,6 @@ export default function SizeGuideModal({ open, onClose }: SizeGuideModalProps) {
                     className="w-full h-auto object-contain"
                   />
                 </div>
-                <p className="text-center text-sm text-gray-500 mt-3">If the image does not show, place the size guide image at <code>/public/temade-size-guide.jpeg</code>.</p>
               </div>
             </div>
           </ScrollArea>
