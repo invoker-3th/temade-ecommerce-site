@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useAuth } from "@/app/context/AuthContext"
 
 type UserRow = {
   _id: string
@@ -57,13 +58,16 @@ export default function AdminUsersPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     const run = async () => {
       setLoading(true)
       try {
         const qs = query ? `?q=${encodeURIComponent(query)}` : ""
-        const res = await fetch(`/api/admin/users${qs}`, { cache: "no-store" })
+        const adminEmail = user?.email?.trim().toLowerCase() || ""
+        const headers: Record<string, string> = adminEmail ? { "x-admin-email": adminEmail } : {}
+        const res = await fetch(`/api/admin/users${qs}`, { cache: "no-store", headers })
         if (!res.ok) throw new Error("Failed to load users")
         const data = await res.json()
         setUsers(data.users || [])
@@ -93,7 +97,9 @@ export default function AdminUsersPage() {
       }
       setOrdersLoading(true)
       try {
-        const res = await fetch(`/api/admin/users/${selectedId}/orders`, { cache: "no-store" })
+        const adminEmail = user?.email?.trim().toLowerCase() || ""
+        const headers: Record<string, string> = adminEmail ? { "x-admin-email": adminEmail } : {}
+        const res = await fetch(`/api/admin/users/${selectedId}/orders`, { cache: "no-store", headers })
         if (!res.ok) throw new Error("Failed to load orders")
         const data = await res.json()
         setOrders(data.orders || [])
@@ -111,9 +117,12 @@ export default function AdminUsersPage() {
     if (!selectedId) return
     setActionLoading(true)
     try {
+      const adminEmail = user?.email?.trim().toLowerCase() || ""
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (adminEmail) headers["x-admin-email"] = adminEmail
       const res = await fetch(`/api/admin/users/${selectedId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error("Failed to update user")
@@ -138,7 +147,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-3 text-sm text-gray-600">
           <div>Total users: <span className="font-semibold">{count.toLocaleString()}</span></div>
           <a
-            href={`/api/admin/users/export${query ? `?q=${encodeURIComponent(query)}` : ""}`}
+            href={`/api/admin/users/export${query ? `?q=${encodeURIComponent(query)}` : ""}${user?.email ? `&email=${encodeURIComponent(user.email)}` : ""}`}
             className="px-3 py-2 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
           >
             Export CSV

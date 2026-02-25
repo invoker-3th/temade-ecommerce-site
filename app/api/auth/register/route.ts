@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb"
 import { UserService } from "@/lib/services/userServices"
 import { getDatabase } from "@/lib/mongodb"
 import { sendEmail } from "@/lib/email"
+import { signupVerificationEmail, adminNewUserEmail } from "@/lib/emailTemplates"
 import { generateOtp, signEmailVerificationJwt } from "@/lib/verificationTokens"
 import type { User } from "@/lib/models/User"
 
@@ -82,30 +83,46 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const verifyLink = `${baseUrl}/auth/verify?token=${encodeURIComponent(token)}&otp=${encodeURIComponent(otp)}`
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; color: #222;">
-        <h2>Welcome to Temade Studios</h2>
-        <p>Hi ${newUser.userName || "there"},</p>
-        <p>Thanks for joining Temade. Your one-time passcode (OTP) is:</p>
-        <p style="font-size: 22px; font-weight: bold; letter-spacing: 2px;">${otp}</p>
-        <p>Click the button below to verify your email:</p>
-        <p><a href="${verifyLink}" style="background:#8D2741;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Verify Email</a></p>
-        <p>If the button doesn't work, open this link:</p>
-        <p>${verifyLink}</p>
-      </div>
-    `
+    const verificationTemplate = signupVerificationEmail({
+      userName: newUser.userName,
+      otp,
+      verifyLink,
+    })
 
     let emailSent = true
     try {
       await sendEmail({
         to: newUser.email,
-        subject: "Verify your Temade account",
-        html,
-        text: `Welcome to Temade. Your OTP is ${otp}. Verify here: ${verifyLink}`,
+        subject: verificationTemplate.subject,
+        html: verificationTemplate.html,
+        text: verificationTemplate.text,
       })
     } catch (error) {
       emailSent = false
       console.error("Verification email error:", error)
+    }
+
+    // Notify admins via email about new user signups (in addition to in-app notification)
+    try {
+      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+        .split(/[,\n;\s]+/)
+        .map((e) => e.trim())
+        .filter(Boolean)
+
+      if (adminEmails.length) {
+        const baseUrlNotify = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+        const adminLink = `${baseUrlNotify}/admin/users?userId=${encodeURIComponent(String(newUser._id))}`
+        const adminTemplate = adminNewUserEmail({ userName: newUser.userName, email: newUser.email, userId: String(newUser._id), userLink: adminLink })
+        for (const a of adminEmails) {
+          try {
+            await sendEmail({ to: a, subject: adminTemplate.subject, html: adminTemplate.html, text: adminTemplate.text })
+          } catch (mailErr) {
+            console.error("Admin new user email error:", mailErr)
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to send admin new user emails:", err)
     }
 
     // Remove sensitive data before sending response

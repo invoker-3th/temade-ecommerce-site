@@ -13,6 +13,7 @@ type AuthContextType = {
   register: (userData: RegisterData) => Promise<{ success: boolean; otp?: string; verificationLink?: string; error?: string }>
   logout: () => Promise<void>
   syncUserData: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 type RegisterData = {
@@ -169,6 +170,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const refreshUser = async () => {
+    if (!user?.email) return
+    try {
+      const res = await fetch(`/api/admin/me?email=${encodeURIComponent(user.email)}`)
+      if (!res.ok) return
+      const data = await res.json()
+      if (data?.user) {
+        setUser(data.user as User)
+        localStorage.setItem("user", JSON.stringify(data.user))
+        identifyPosthogUser(data.user as User)
+      }
+    } catch (err) {
+      console.error("refreshUser error", err)
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -179,6 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         register,
         logout,
         syncUserData,
+        refreshUser,
       }}
     >
       {children}

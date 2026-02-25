@@ -2,11 +2,12 @@
 
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { Toaster } from "react-hot-toast"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
 
-type NavItem = { label: string; href: string; disabled?: boolean }
+type NavItem = { label: string; href: string; disabled?: boolean; permission?: string }
 type NavSection = { title: string; items: NavItem[] }
 
 const nav: NavSection[] = [
@@ -14,31 +15,32 @@ const nav: NavSection[] = [
     title: "Overview",
     items: [
       { label: "Dashboard", href: "/admin" },
-      { label: "Site Analysis", href: "/admin/site-analysis" },
+      { label: "Site Analysis", href: "/admin/site-analysis", permission: "seo:view" },
     ],
   },
   {
     title: "Operations",
     items: [
-      { label: "Users", href: "/admin/users" },
-      { label: "Orders", href: "/admin/orders" },
-      { label: "Finance", href: "/admin/finance" },
+      { label: "Users", href: "/admin/users", permission: "users:view" },
+      { label: "Orders", href: "/admin/orders", permission: "orders:view" },
+      { label: "Finance", href: "/admin/finance", permission: "finance:reports" },
     ],
   },
   {
     title: "Catalog & CMS",
     items: [
-      { label: "Inventory", href: "/admin/inventory" },
-      { label: "Lookbook", href: "/admin/lookbook" },
-      { label: "CMS Pages", href: "/admin/cms/pages" },
+      { label: "Inventory", href: "/admin/inventory", permission: "catalog:view" },
+      { label: "Lookbook", href: "/admin/lookbook", permission: "content:edit" },
+      { label: "CMS Pages", href: "/admin/cms/pages", permission: "content:edit" },
     ],
   },
   {
     title: "Settings",
     items: [
-      { label: "Banner Settings", href: "/admin/settings/banner" },
-      { label: "SEO Settings", href: "/admin/settings/seo" },
-      { label: "Team & Roles", href: "/admin/settings/team" },
+      { label: "Banner Settings", href: "/admin/settings/banner", permission: "content:edit" },
+      { label: "SEO Settings", href: "/admin/settings/seo", permission: "seo:edit" },
+      { label: "Team & Roles", href: "/admin/settings/team", permission: "admin:roles:view" },
+      { label: "Roles", href: "/admin/settings/roles", permission: "admin:roles:view" },
     ],
   },
 ]
@@ -92,6 +94,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     }
   }, [mobileOpen])
 
+  const [permissions, setPermissions] = useState<string[] | null>(null)
   const isAdmin = useMemo(() => {
     if (!user?.email) return false
     if (user.role === "admin") return true
@@ -101,6 +104,22 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       .filter(Boolean)
     return allow.includes(user.email.toLowerCase())
   }, [user?.email, user?.role])
+
+  useEffect(() => {
+    if (!user?.email) return
+    const fetchPerms = async () => {
+      try {
+        const res = await fetch(`/api/admin/me?email=${encodeURIComponent(user.email)}`)
+        if (!res.ok) return setPermissions([])
+        const data = await res.json()
+        setPermissions(Array.isArray(data.permissions) ? data.permissions : [])
+      } catch (err) {
+        console.error(err)
+        setPermissions([])
+      }
+    }
+    fetchPerms()
+  }, [user?.email])
 
   if (isLoading) {
     return (
@@ -146,6 +165,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                         <span className="text-[10px] uppercase tracking-wide">Soon</span>
                       </div>
                     )
+                  }
+
+                  // hide item if permission required and not present (permissions null -> loading -> hide until known)
+                  if (item.permission) {
+                    if (!permissions) return null
+                    if (!(permissions.includes("*") || permissions.includes(item.permission))) return null
                   }
 
                   return (
@@ -285,6 +310,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <main className="min-h-screen">
           {children}
         </main>
+        <Toaster position="bottom-right" />
       </div>
     </div>
   )

@@ -15,6 +15,7 @@ import RegionDialog from "./components/RegionDialog"
 import CartCurrencyUpdater from "./components/CartCurrencyUpdater"
 import PostHogClient from "./components/PostHogClient"
 import WebVitalsClient from "./components/WebVitalsClient"
+import VercelAnalytics from "./components/VercelAnalytics"
 import CookieConsentBanner from "./components/CookieConsentBanner"
 
 
@@ -75,6 +76,9 @@ export default function RootLayout({
                 <CartCurrencyUpdater />
                 <Suspense fallback={null}>
                   <PostHogClient />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <VercelAnalytics />
                 </Suspense>
                 <WebVitalsClient />
                 {children}

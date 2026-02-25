@@ -3,6 +3,7 @@ import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 import { UserService } from "@/lib/services/userServices"
 import type { User } from "@/lib/models/User"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 type UserRow = {
   _id: ObjectId
@@ -23,6 +24,8 @@ type UserRow = {
 }
 
 export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "users:view")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
   try {
     const { searchParams } = new URL(request.url)
     const q = searchParams.get("q")?.trim()
@@ -91,6 +94,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "users:manage")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
   try {
     const body = await request.json()
     const { email, userName, phone } = body

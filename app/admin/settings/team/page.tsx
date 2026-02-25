@@ -1,7 +1,25 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useRouter } from 'next/navigation'
 import { useAuth } from "@/app/context/AuthContext"
+
+const mapPermissionToLabel = (p: string) => {
+  switch (p) {
+    case "email:send": return "Can send emails"
+    case "orders:receive": return "Receives orders"
+    case "seo:view": return "View SEO & campaigns"
+    case "seo:edit": return "Edit SEO & campaigns"
+    case "users:view": return "View users"
+    case "admin:roles:view": return "View roles"
+    case "admin:roles:assign": return "Assign roles"
+    case "finance:reports": return "Finance reports"
+    case "catalog:view": return "View catalog"
+    case "content:edit": return "Edit content"
+    default: return p
+  }
+}
 
 type AdminUser = {
   _id: string
@@ -9,6 +27,7 @@ type AdminUser = {
   userName: string
   isEmailVerified?: boolean
   updatedAt?: string
+  roles?: string[]
 }
 
 type PendingInvite = {
@@ -20,9 +39,12 @@ type PendingInvite = {
 }
 
 export default function AdminTeamPage() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [admins, setAdmins] = useState<AdminUser[]>([])
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
+  const [availableRoles, setAvailableRoles] = useState<Array<{ _id: string; name: string; description?: string; permissions?: string[]; emailSubscriptions?: string[] }>>([])
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [editingRoles, setEditingRoles] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -47,6 +69,15 @@ export default function AdminTeamPage() {
       if (!res.ok) throw new Error(data?.error || "Failed to load team")
       setAdmins(data.admins || [])
       setPendingInvites(data.pendingInvites || [])
+
+      // fetch roles (full docs)
+      try {
+        const rres = await fetch("/api/admin/roles", { headers: { "x-admin-email": adminEmail } })
+        const rdata = await rres.json()
+        setAvailableRoles((rdata.roles || []).map((r: { _id: unknown; name?: string; description?: string; permissions?: string[]; emailSubscriptions?: string[] }) => ({ _id: String(r._id), name: r.name || "", description: r.description, permissions: r.permissions || [], emailSubscriptions: r.emailSubscriptions || [] })))
+      } catch (e) {
+        console.error("Failed loading roles (full)", e)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load team")
     } finally {
@@ -145,11 +176,65 @@ export default function AdminTeamPage() {
     }
   }
 
+  
+
+  const openUserRoleEditor = (admin: AdminUser) => {
+    // navigate to Roles page and open the user editor there
+    const router = (typeof window !== 'undefined') ? (window as any).next?.router : null
+    try {
+      // prefer next/navigation router if available
+      // fallback to location change
+      const url = `/admin/settings/roles?targetUser=${encodeURIComponent(admin.email)}`
+      if (typeof window !== 'undefined') window.location.href = url
+    } catch (e) {
+      const url = `/admin/settings/roles?targetUser=${encodeURIComponent(admin.email)}`
+      window.location.href = url
+    }
+  }
+
+  const toggleEditingRole = (roleId: string) => {
+    setEditingRoles((prev) => (prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]))
+  }
+
+  const saveRolesForUser = async () => {
+    if (!editingUser) return
+    setActionLoadingId("save")
+    try {
+      const res = await fetch('/api/admin/roles/set', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-email': adminEmail }, body: JSON.stringify({ email: editingUser.email, roleIds: editingRoles }) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to save roles')
+      setEditingUser(null)
+      await loadTeam()
+      try { await refreshUser() } catch { }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save roles')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  
+
+  // scroll to roles helper
+  const scrollToRoles = () => {
+    if (typeof window === "undefined") return
+    const el = document.getElementById("roles-section")
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (window.location.hash === "#roles") scrollToRoles()
+  }, [])
+
   return (
     <div className="p-6 md:p-10 font-WorkSans">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Team Setup</h1>
         <p className="text-sm text-gray-600">Invite admins by username and email. They become admins after email confirmation.</p>
+        <div className="mt-3">
+          <Link href="/admin/settings/roles" className="inline-block px-3 py-1 text-sm rounded border border-[#8D2741] text-[#8D2741]">Manage Roles</Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -233,11 +318,51 @@ export default function AdminTeamPage() {
                 <p className="text-xs text-gray-500 mt-1">
                   {admin.isEmailVerified ? "Email verified" : "Email not verified"}
                 </p>
+                <div className="mt-3">
+                  <div className="text-xs text-gray-500">Roles</div>
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    <button onClick={() => openUserRoleEditor(admin)} className="px-2 py-1 text-xs rounded border text-gray-700">Manage</button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* roles moved to dedicated Roles page */}
+
+      
+      {/* Role editor modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg w-full max-w-lg p-6">
+            <h3 className="text-lg font-semibold mb-3">Manage roles for {editingUser.userName}</h3>
+            <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+                    {availableRoles.map((r) => (
+                      <label key={r._id} className="flex items-start gap-3">
+                        <input className="mt-1" type="checkbox" checked={editingRoles.includes(r._id)} onChange={() => toggleEditingRole(r._id)} />
+                        <div>
+                          <div className="font-semibold">{r.name}</div>
+                          {r.description && <div className="text-xs text-gray-600">{r.description}</div>}
+                          {Array.isArray(r.permissions) && r.permissions.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {r.permissions.map((p) => (
+                                <span key={p} className="text-xs px-2 py-0.5 rounded bg-gray-100 border text-gray-700">{mapPermissionToLabel(p)}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setEditingUser(null)} className="px-3 py-2 border rounded">Cancel</button>
+              <button onClick={saveRolesForUser} disabled={actionLoadingId === 'save'} className="px-3 py-2 bg-[#8D2741] text-white rounded">{actionLoadingId === 'save' ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

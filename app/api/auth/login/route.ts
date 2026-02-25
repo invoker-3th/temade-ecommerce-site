@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { UserService } from "@/lib/services/userServices"
 import { sendEmail } from "@/lib/email"
+import { loginWelcomeEmail } from "@/lib/emailTemplates"
 import { getDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
@@ -48,21 +49,8 @@ export async function POST(request: NextRequest) {
     const { ...userResponse } = user
     try {
       const now = new Date().toISOString()
-      const isAdminLogin = isAdmin ? "Yes" : "No"
-      await sendEmail({
-        to: user.email,
-        subject: "Welcome back to Temade Studios",
-        html: `
-          <div style="font-family: Arial, sans-serif; color: #222;">
-            <h2>Welcome back, ${user.userName}</h2>
-            <p>Your login was successful.</p>
-            <p>Email: <strong>${user.email}</strong></p>
-            <p>Admin access: <strong>${isAdminLogin}</strong></p>
-            <p>Time: ${now}</p>
-          </div>
-        `,
-        text: `Welcome back, ${user.userName}. Login successful at ${now}. Admin access: ${isAdminLogin}.`,
-      })
+      const welcomeTpl = loginWelcomeEmail({ userName: user.userName, email: user.email, isAdmin, timeISO: now })
+      await sendEmail({ to: user.email, subject: welcomeTpl.subject, html: welcomeTpl.html, text: welcomeTpl.text })
     } catch (error) {
       console.error("Login welcome email error:", error)
     }
