@@ -21,6 +21,24 @@ type UserHit = {
   role?: string
 }
 
+type RoleApiDoc = {
+  _id: unknown
+  name?: unknown
+  description?: unknown
+  permissions?: unknown
+  emailSubscriptions?: unknown
+  createdAt?: unknown
+  updatedAt?: unknown
+  createdBy?: unknown
+}
+
+type UserApiHit = {
+  _id: unknown
+  email?: unknown
+  userName?: unknown
+  role?: unknown
+}
+
 function uniqTrimLines(raw: string) {
   const items = String(raw || "")
     .split(/[\n,]+/g)
@@ -114,12 +132,12 @@ export default function RolesPage() {
       const res = await fetch("/api/admin/roles", { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load roles")
-      const docs = (data?.roles || []).map((r: any) => ({
+      const docs = (data?.roles || []).map((r: RoleApiDoc) => ({
         _id: String(r._id),
         name: String(r.name || ""),
-        description: r.description || "",
-        permissions: Array.isArray(r.permissions) ? r.permissions : [],
-        emailSubscriptions: Array.isArray(r.emailSubscriptions) ? r.emailSubscriptions : [],
+        description: typeof r.description === "string" ? r.description : "",
+        permissions: Array.isArray(r.permissions) ? r.permissions.map((p) => String(p)) : [],
+        emailSubscriptions: Array.isArray(r.emailSubscriptions) ? r.emailSubscriptions.map((e) => String(e)) : [],
         createdAt: r.createdAt ? String(r.createdAt) : undefined,
         updatedAt: r.updatedAt ? String(r.updatedAt) : undefined,
         createdBy: r.createdBy ? String(r.createdBy) : undefined,
@@ -179,7 +197,12 @@ export default function RolesPage() {
 
     setEditorSaving(true)
     try {
-      const payload: any = {
+      const payload: {
+        name: string
+        description: string
+        permissions: string[]
+        emailSubscriptions: string[]
+      } = {
         name,
         description: editorForm.description,
         permissions,
@@ -243,11 +266,11 @@ export default function RolesPage() {
       const res = await fetch(`/api/admin/users${qs}`, { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to search users")
-      const hits = (data?.users || []).map((u: any) => ({
+      const hits = (data?.users || []).map((u: UserApiHit) => ({
         _id: String(u._id),
         email: String(u.email || ""),
         userName: String(u.userName || ""),
-        role: u.role,
+        role: typeof u.role === "string" ? u.role : undefined,
       })) as UserHit[]
       setAssignHits(hits)
     } catch (e) {
@@ -266,7 +289,7 @@ export default function RolesPage() {
       const res = await fetch(`/api/admin/users/${u._id}`, { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load user roles")
-      const roleIds = Array.isArray(data?.user?.roles) ? data.user.roles.map((x: any) => String(x)) : []
+      const roleIds = Array.isArray(data?.user?.roles) ? data.user.roles.map((x: unknown) => String(x)) : []
       setAssignUserRoleIds(roleIds)
     } catch (e) {
       setAssignError(e instanceof Error ? e.message : "Failed to load user roles")

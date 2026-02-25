@@ -4,13 +4,6 @@ import { sendEmail, sendForEvent } from "@/lib/email"
 import { loginWelcomeEmail } from "@/lib/emailTemplates"
 import { getDatabase } from "@/lib/mongodb"
 
-function parseEmailList(raw: string) {
-  return String(raw || "")
-    .split(/[,\n;\s]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from 'next/navigation'
 import { useAuth } from "@/app/context/AuthContext"
 
 const mapPermissionToLabel = (p: string) => {
@@ -182,13 +181,10 @@ export default function AdminTeamPage() {
 
   const openUserRoleEditor = (admin: AdminUser) => {
     // navigate to Roles page and open the user editor there
-    const router = (typeof window !== 'undefined') ? (window as any).next?.router : null
     try {
-      // prefer next/navigation router if available
-      // fallback to location change
       const url = `/admin/settings/roles?targetUser=${encodeURIComponent(admin.email)}`
       if (typeof window !== 'undefined') window.location.href = url
-    } catch (e) {
+    } catch {
       const url = `/admin/settings/roles?targetUser=${encodeURIComponent(admin.email)}`
       window.location.href = url
     }

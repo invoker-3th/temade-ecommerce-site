@@ -9,13 +9,18 @@ export async function GET(request: Request) {
   const { user, permissions, roles } = await getPermissionsForUser(email)
   if (!user) return NextResponse.json({ error: "not found" }, { status: 404 })
 
+  const userWithExtras = user as {
+    fullName?: unknown
+    roles?: unknown
+  }
+
   return NextResponse.json({
     user: {
       email: user.email,
       userName: user.userName,
-      fullName: (user as any).fullName,
+      fullName: typeof userWithExtras.fullName === "string" ? userWithExtras.fullName : undefined,
       role: user.role,
-      roles: (user as any).roles || [],
+      roles: Array.isArray(userWithExtras.roles) ? userWithExtras.roles.map((r) => String(r)) : [],
     },
     permissions,
     roles,
