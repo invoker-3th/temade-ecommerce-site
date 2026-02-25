@@ -11,6 +11,7 @@ const mapPermissionToLabel = (p: string) => {
     case "orders:receive": return "Receives orders"
     case "seo:view": return "View SEO & campaigns"
     case "seo:edit": return "Edit SEO & campaigns"
+    case "banner:edit": return "Edit promo banner"
     case "users:view": return "View users"
     case "admin:roles:view": return "View roles"
     case "admin:roles:assign": return "Assign roles"
@@ -50,7 +51,7 @@ export default function AdminTeamPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ userName: "", email: "" })
+  const [form, setForm] = useState({ fullName: "", userName: "", email: "" })
 
   const adminEmail = user?.email?.trim().toLowerCase() || ""
 
@@ -98,8 +99,8 @@ export default function AdminTeamPage() {
       setError("Admin session not ready. Please refresh and try again.")
       return
     }
-    if (!form.userName.trim() || !form.email.trim()) {
-      setError("Username and email are required.")
+    if (!form.fullName.trim() || !form.userName.trim() || !form.email.trim()) {
+      setError("Full name, username, and email are required.")
       return
     }
 
@@ -109,6 +110,7 @@ export default function AdminTeamPage() {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
         body: JSON.stringify({
+          fullName: form.fullName.trim(),
           userName: form.userName.trim(),
           email: form.email.trim(),
         }),
@@ -116,7 +118,7 @@ export default function AdminTeamPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to send invite")
 
-      setForm({ userName: "", email: "" })
+      setForm({ fullName: "", userName: "", email: "" })
       setSuccess("Admin invite sent successfully.")
       await loadTeam()
     } catch (e) {
@@ -243,7 +245,13 @@ export default function AdminTeamPage() {
           <div className="space-y-3">
             <input
               className="w-full border rounded px-3 py-2 text-sm"
-              placeholder="Username"
+              placeholder="Full name (e.g. Jane Doe)"
+              value={form.fullName}
+              onChange={(e) => setForm((prev) => ({ ...prev, fullName: e.target.value }))}
+            />
+            <input
+              className="w-full border rounded px-3 py-2 text-sm"
+              placeholder="Username (unique handle)"
               value={form.userName}
               onChange={(e) => setForm((prev) => ({ ...prev, userName: e.target.value }))}
             />

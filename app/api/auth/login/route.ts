@@ -1,8 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { UserService } from "@/lib/services/userServices"
-import { sendEmail } from "@/lib/email"
+import { sendEmail, sendForEvent } from "@/lib/email"
 import { loginWelcomeEmail } from "@/lib/emailTemplates"
 import { getDatabase } from "@/lib/mongodb"
+
+function parseEmailList(raw: string) {
+  return String(raw || "")
+    .split(/[,\n;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,7 +63,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (isAdmin) {
-      const notifyTo = "enjayjerey@gmail.com"
       try {
         const db = await getDatabase()
         const sessionEmail = user.email.toLowerCase()
@@ -69,21 +75,20 @@ export async function POST(request: NextRequest) {
           const forwardedFor = request.headers.get("x-forwarded-for") || "unknown"
           const ua = request.headers.get("user-agent") || "unknown"
           const now = new Date().toISOString()
-          await sendEmail({
-            to: notifyTo,
-            subject: "Admin login detected",
-            html: `
-              <div style="font-family: Arial, sans-serif; color: #222;">
-                <h2>Admin login detected</h2>
-                <p>User: <strong>${user.userName}</strong></p>
-                <p>Email: <strong>${user.email}</strong></p>
-                <p>Time: ${now}</p>
-                <p>IP: ${forwardedFor}</p>
-                <p>User-Agent: ${ua}</p>
-              </div>
-            `,
-            text: `Admin login detected. User: ${user.userName}. Email: ${user.email}. Time: ${now}. IP: ${forwardedFor}. UA: ${ua}`,
-          })
+          const subject = "Admin login detected"
+          const html = `
+            <div style="font-family: Arial, sans-serif; color: #222;">
+              <h2>Admin login detected</h2>
+              <p>User: <strong>${user.userName}</strong></p>
+              <p>Email: <strong>${user.email}</strong></p>
+              <p>Time: ${now}</p>
+              <p>IP: ${forwardedFor}</p>
+              <p>User-Agent: ${ua}</p>
+            </div>
+          `
+          const text = `Admin login detected. User: ${user.userName}. Email: ${user.email}. Time: ${now}. IP: ${forwardedFor}. UA: ${ua}`
+          // Send to admin + manager roles via RBAC emailSubscriptions for "admin.login"
+          await sendForEvent("admin.login", subject, html, text)
         }
 
         await db.collection("admin_login_sessions").updateOne(

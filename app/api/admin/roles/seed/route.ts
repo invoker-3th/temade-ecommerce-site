@@ -7,13 +7,13 @@ const defaults = [
     name: "admin",
     description: "Full super-admin. Can manage roles, users, settings, and view all audit logs. Intended for Owner-level accounts.",
     permissions: ["*"],
-    emailSubscriptions: ["*"]
+    emailSubscriptions: ["*", "admin.login"]
   },
   {
     name: "manager",
     description: "Manage content overview (SEO analytics & CMS pages), orders, and customers. Cannot change billing or assign roles or platform-wide settings.",
     permissions: ["seo:view","site:analytics:view","content:edit","orders:view","orders:edit","users:view"],
-    emailSubscriptions: ["order.created","seo.report.available"]
+    emailSubscriptions: ["order.created","seo.report.available","admin.login"]
   },
   {
     name: "content_editor",

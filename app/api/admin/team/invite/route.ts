@@ -13,6 +13,7 @@ type InviteDoc = {
   userId: ObjectId
   email: string
   userName: string
+  fullName?: string
   token: string
   expiresAt: Date
   usedAt: Date | null
@@ -22,12 +23,12 @@ type InviteDoc = {
   createdByEmail?: string
 }
 
-function buildInviteEmail(params: { userName: string; inviteLink: string }) {
+function buildInviteEmail(params: { displayName: string; inviteLink: string }) {
   return {
     html: `
       <div style="font-family: Arial, sans-serif; color: #222;">
         <h2>You're invited as a Temade Admin</h2>
-        <p>Hello ${params.userName},</p>
+        <p>Hello ${params.displayName},</p>
         <p>Click the button below to confirm your admin account and verify your email.</p>
         <p><a href="${params.inviteLink}" style="background:#8D2741;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Confirm Admin Access</a></p>
         <p>If the button doesn't work, use this link:</p>
@@ -83,9 +84,10 @@ export async function POST(request: Request) {
     const body = await request.json()
     const email = String(body.email || "").trim().toLowerCase()
     const userName = String(body.userName || "").trim()
+    const fullName = String(body.fullName || "").trim()
 
-    if (!email || !userName) {
-      return NextResponse.json({ error: "Email and username are required" }, { status: 400 })
+    if (!email || !userName || !fullName) {
+      return NextResponse.json({ error: "Full name, username, and email are required" }, { status: 400 })
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -104,6 +106,7 @@ export async function POST(request: Request) {
     if (!user) {
       const userData: Omit<User, "_id" | "createdAt" | "updatedAt"> = {
         email,
+        fullName,
         userName,
         phone: "",
         cart: [],
@@ -118,11 +121,20 @@ export async function POST(request: Request) {
         },
       }
       user = await UserService.createUser(userData)
-    } else if (!user.userName || user.userName !== userName) {
+    } else {
+      const updates: Record<string, unknown> = {}
+      if (!user.userName || user.userName !== userName) {
+        updates.userName = userName
+      }
+      if (!user.fullName || user.fullName !== fullName) {
+        updates.fullName = fullName
+      }
+      if (Object.keys(updates).length) {
       await db.collection("users").updateOne(
         { _id: user._id },
-        { $set: { userName, updatedAt: new Date() } }
+        { $set: { ...updates, updatedAt: new Date() } }
       )
+      }
     }
 
     const tokenTtlMinutes = Number(process.env.ADMIN_INVITE_TOKEN_TTL_MINUTES || 60 * 24)
@@ -149,6 +161,7 @@ export async function POST(request: Request) {
       userId: new ObjectId(userId),
       email,
       userName,
+      fullName,
       token,
       expiresAt,
       usedAt: null,
@@ -159,7 +172,7 @@ export async function POST(request: Request) {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const inviteLink = `${baseUrl}/auth/admin-invite?token=${encodeURIComponent(token)}`
-    const inviteEmail = buildInviteEmail({ userName, inviteLink })
+    const inviteEmail = buildInviteEmail({ displayName: fullName || userName, inviteLink })
 
     await sendEmail({
       to: email,
@@ -234,7 +247,7 @@ export async function PATCH(request: Request) {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const inviteLink = `${baseUrl}/auth/admin-invite?token=${encodeURIComponent(token)}`
-    const inviteEmail = buildInviteEmail({ userName: invite.userName, inviteLink })
+    const inviteEmail = buildInviteEmail({ displayName: invite.fullName || invite.userName, inviteLink })
     await sendEmail({
       to: invite.email,
       subject: "Temade Admin Invite (Resent)",

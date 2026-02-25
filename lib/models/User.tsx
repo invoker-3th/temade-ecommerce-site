@@ -20,6 +20,7 @@ export interface WishlistItem {
 export interface User {
   _id?: ObjectId
   email: string
+  fullName?: string
   userName: string
   phone?: string
   role?: "customer" | "admin" | "editor" | "viewer"

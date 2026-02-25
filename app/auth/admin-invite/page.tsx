@@ -34,12 +34,12 @@ function AdminInviteClient() {
           localStorage.setItem("user", JSON.stringify(data.user))
         }
         setState("success")
-        setMessage("Email verified. Redirecting to admin dashboard...")
+        setMessage("Your admin access has been verified. You’ll be redirected to your dashboard shortly.")
         setShowDialog(true)
         setTimeout(() => {
           setShowDialog(false)
           router.push("/admin")
-        }, 1800)
+        }, 3000)
       } catch {
         setState("error")
         setMessage("Invite confirmation failed.")
@@ -52,28 +52,32 @@ function AdminInviteClient() {
   return (
     <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-white border border-[#EEE7DA] rounded-xl p-6 text-center font-WorkSans">
-        <h1 className="text-2xl font-bold mb-2 font-garamond">Admin Invite</h1>
+        <h1 className="text-2xl font-bold mb-2 font-garamond">Admin Access Confirmed</h1>
         <p className="text-sm text-gray-600 mb-4">{message}</p>
         {showDialog && (
           <div className="mx-auto mb-4 max-w-xs rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
-            Email verified. Redirecting...
+            You have been verified. Redirecting to your admin dashboard...
           </div>
         )}
 
         {state === "success" && (
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-col items-center justify-center gap-3">
             <button
               onClick={() => router.push("/admin")}
               className="px-4 py-2 rounded bg-[#8D2741] text-white"
             >
-              Go to Admin
+              Go to Admin dashboard
             </button>
-            <button
-              onClick={() => router.push("/")}
-              className="px-4 py-2 rounded border border-[#EEE7DA] text-gray-700"
-            >
-              Home
-            </button>
+            <p className="text-[11px] text-gray-500">
+              If you are not redirected automatically, click{" "}
+              <button
+                onClick={() => router.push("/admin")}
+                className="underline text-[#8D2741]"
+              >
+                here
+              </button>
+              .
+            </p>
           </div>
         )}
 

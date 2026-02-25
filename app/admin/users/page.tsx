@@ -24,6 +24,24 @@ type UserRow = {
   lastOrderAt?: string | null
 }
 
+type UserProfile = {
+  _id: string
+  email: string
+  userName: string
+  phone?: string
+  role?: string
+  roles?: string[]
+  disabled?: boolean
+  isEmailVerified?: boolean
+  emailVerifiedAt?: string | null
+  preferences?: { newsletter: boolean; notifications: boolean } | null
+  address?: UserRow["address"] | null
+  cart?: unknown[]
+  wishlist?: unknown[]
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 type OrderRow = {
   _id: string
   total: number
@@ -58,6 +76,13 @@ export default function AdminUsersPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailForm, setEmailForm] = useState({ subject: "", message: "" })
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailError, setEmailError] = useState("")
+  const [emailSuccess, setEmailSuccess] = useState("")
   const { user } = useAuth()
 
   useEffect(() => {
@@ -82,12 +107,40 @@ export default function AdminUsersPage() {
       }
     }
     run()
-  }, [query])
+  }, [query, user?.email])
 
   const selected = useMemo(
     () => users.find((u) => u._id === selectedId) || null,
     [users, selectedId]
   )
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!selectedId) {
+        setProfile(null)
+        return
+      }
+      const adminEmail = user?.email?.trim().toLowerCase() || ""
+      if (!adminEmail) return
+
+      setProfileLoading(true)
+      try {
+        const res = await fetch(`/api/admin/users/${selectedId}`, {
+          cache: "no-store",
+          headers: { "x-admin-email": adminEmail },
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.error || "Failed to load user profile")
+        setProfile(data?.user || null)
+      } catch (e) {
+        console.error(e)
+        setProfile(null)
+      } finally {
+        setProfileLoading(false)
+      }
+    }
+    loadProfile()
+  }, [selectedId, user?.email])
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -111,7 +164,7 @@ export default function AdminUsersPage() {
       }
     }
     loadOrders()
-  }, [selectedId])
+  }, [selectedId, user?.email])
 
   const updateUser = async (payload: { role?: string; disabled?: boolean }) => {
     if (!selectedId) return
@@ -129,11 +182,46 @@ export default function AdminUsersPage() {
       setUsers((prev) =>
         prev.map((u) => (u._id === selectedId ? { ...u, ...payload } : u))
       )
+      setProfile((prev) => (prev ? { ...prev, ...payload } : prev))
     } catch (error) {
       console.error(error)
       alert("Failed to update user")
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  const sendEmailToUser = async () => {
+    if (!selectedId) return
+    setEmailError("")
+    setEmailSuccess("")
+    const adminEmail = user?.email?.trim().toLowerCase() || ""
+    if (!adminEmail) {
+      setEmailError("Admin session not ready.")
+      return
+    }
+    const subject = emailForm.subject.trim()
+    const message = emailForm.message.trim()
+    if (!subject || !message) {
+      setEmailError("Subject and message are required.")
+      return
+    }
+    setEmailSending(true)
+    try {
+      const res = await fetch(`/api/admin/users/${selectedId}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
+        body: JSON.stringify({ subject, message }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Failed to send email")
+      setEmailSuccess("Email sent.")
+      setEmailForm({ subject: "", message: "" })
+      setTimeout(() => setEmailOpen(false), 600)
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Failed to send email")
+    } finally {
+      setEmailSending(false)
     }
   }
 
@@ -204,6 +292,18 @@ export default function AdminUsersPage() {
                     <h2 className="text-xl font-semibold text-[#16161A]">{selected.userName || "Unnamed User"}</h2>
                     <p className="text-sm text-gray-600">{selected.email}</p>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setEmailError("")
+                        setEmailSuccess("")
+                        setEmailOpen(true)
+                      }}
+                      className="px-3 py-2 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
+                    >
+                      Send email
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-4 mt-6">
@@ -240,6 +340,40 @@ export default function AdminUsersPage() {
 
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Email verification</p>
+                    {profileLoading ? (
+                      <p className="text-sm mt-2 text-gray-500">Loading...</p>
+                    ) : (
+                      <>
+                        <p className="text-sm mt-2">{profile?.isEmailVerified ? "Verified" : "Not verified"}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Verified at: {profile?.emailVerifiedAt ? new Date(profile.emailVerifiedAt).toLocaleString() : "--"}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">RBAC roles</p>
+                    {profileLoading ? (
+                      <p className="text-sm mt-2 text-gray-500">Loading...</p>
+                    ) : (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(profile?.roles || []).length ? (
+                          (profile?.roles || []).map((r) => (
+                            <span key={String(r)} className="text-xs px-2 py-0.5 rounded bg-white border text-gray-700">
+                              {String(r)}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-500">--</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Joined</p>
                     <p className="text-sm mt-2">
                       {selected.createdAt ? new Date(selected.createdAt).toLocaleString() : "--"}
@@ -264,6 +398,31 @@ export default function AdminUsersPage() {
                     <p className="mt-2">{selected.address?.address || "--"}</p>
                     <p>{selected.address?.city || "--"}, {selected.address?.state || "--"}</p>
                     <p>{selected.address?.country || "--"}</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 mt-4 text-sm text-gray-700">
+                  <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Preferences</p>
+                    {profileLoading ? (
+                      <p className="text-sm mt-2 text-gray-500">Loading...</p>
+                    ) : (
+                      <>
+                        <p className="mt-2">Newsletter: {profile?.preferences?.newsletter ? "Yes" : "No"}</p>
+                        <p>Notifications: {profile?.preferences?.notifications ? "Yes" : "No"}</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Saved items</p>
+                    {profileLoading ? (
+                      <p className="text-sm mt-2 text-gray-500">Loading...</p>
+                    ) : (
+                      <>
+                        <p className="mt-2">Cart items: {Array.isArray(profile?.cart) ? profile?.cart?.length : 0}</p>
+                        <p>Wishlist items: {Array.isArray(profile?.wishlist) ? profile?.wishlist?.length : 0}</p>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -356,6 +515,67 @@ export default function AdminUsersPage() {
           </div>
         </div>
       </div>
+
+      {emailOpen && selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-gray-500">Email user</p>
+                <h3 className="text-lg font-semibold text-[#16161A]">{selected.userName}</h3>
+                <p className="text-xs text-gray-500">{selected.email}</p>
+              </div>
+              <button
+                onClick={() => setEmailOpen(false)}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Subject</label>
+                <input
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm((p) => ({ ...p, subject: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  placeholder="Subject"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Message</label>
+                <textarea
+                  value={emailForm.message}
+                  onChange={(e) => setEmailForm((p) => ({ ...p, message: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm min-h-[120px]"
+                  placeholder="Write your message..."
+                />
+              </div>
+              {emailError && <p className="text-xs text-red-600">{emailError}</p>}
+              {emailSuccess && <p className="text-xs text-green-700">{emailSuccess}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setEmailOpen(false)}
+                  className="px-3 py-2 text-sm rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sendEmailToUser}
+                  disabled={emailSending}
+                  className="px-3 py-2 text-sm rounded bg-[#8D2741] text-white disabled:opacity-50"
+                >
+                  {emailSending ? "Sending..." : "Send"}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Requires the RBAC permission <span className="font-semibold">email:send</span>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

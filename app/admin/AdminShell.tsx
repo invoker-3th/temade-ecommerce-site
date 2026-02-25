@@ -37,7 +37,7 @@ const nav: NavSection[] = [
   {
     title: "Settings",
     items: [
-      { label: "Banner Settings", href: "/admin/settings/banner", permission: "content:edit" },
+      { label: "Banner Settings", href: "/admin/settings/banner", permission: "banner:edit" },
       { label: "SEO Settings", href: "/admin/settings/seo", permission: "seo:edit" },
       { label: "Team & Roles", href: "/admin/settings/team", permission: "admin:roles:view" },
       { label: "Roles", href: "/admin/settings/roles", permission: "admin:roles:view" },
@@ -190,7 +190,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
         <div className="pt-4 border-t border-[#EEE7DA]">
           <div className="text-xs text-gray-500 mb-2">Signed in as</div>
-          <div className="text-sm font-semibold truncate mb-3">{user?.email || "Admin"}</div>
+          <div className="text-sm font-semibold truncate mb-0">
+            {user?.fullName || user?.userName || "Admin"}
+          </div>
+          <div className="text-xs text-gray-500 truncate mb-3">
+            {user?.email}
+          </div>
           <button
             onClick={logout}
             disabled={isLoggingOut}
@@ -295,7 +300,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
             <div className="pt-4 border-t border-[#EEE7DA]">
               <div className="text-xs text-gray-500 mb-2">Signed in as</div>
-              <div className="text-sm font-semibold truncate mb-3">{user?.email || "Admin"}</div>
+              <div className="text-sm font-semibold truncate mb-0">
+                {user?.fullName || user?.userName || "Admin"}
+              </div>
+              <div className="text-xs text-gray-500 truncate mb-3">
+                {user?.email}
+              </div>
               <button
                 onClick={logout}
                 disabled={isLoggingOut}

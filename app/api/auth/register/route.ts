@@ -7,6 +7,13 @@ import { signupVerificationEmail, adminNewUserEmail } from "@/lib/emailTemplates
 import { generateOtp, signEmailVerificationJwt } from "@/lib/verificationTokens"
 import type { User } from "@/lib/models/User"
 
+function parseEmailList(raw: string) {
+  return String(raw || "")
+    .split(/[,\n;\s]+/)
+    .map((e) => e.trim())
+    .filter(Boolean)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -104,10 +111,11 @@ export async function POST(request: NextRequest) {
 
     // Notify admins via email about new user signups (in addition to in-app notification)
     try {
-      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-        .split(/[,\n;\s]+/)
-        .map((e) => e.trim())
-        .filter(Boolean)
+      const adminEmails = parseEmailList(
+        process.env.ADMIN_SIGNUP_NOTIFY_EMAILS ||
+          process.env.NEXT_PUBLIC_ADMIN_EMAILS ||
+          ""
+      )
 
       if (adminEmails.length) {
         const baseUrlNotify = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"

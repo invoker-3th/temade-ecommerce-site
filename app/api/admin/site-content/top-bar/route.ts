@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
-import { requireAdminFromRequest } from "@/lib/server/adminGuard"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 const COLLECTION = "site_content"
 const KEY = "top_bar"
@@ -16,9 +16,9 @@ type TopBarDoc = {
 
 export async function GET(request: Request) {
   try {
-    const admin = await requireAdminFromRequest(request)
-    if (!admin.ok) {
-      return NextResponse.json({ error: admin.error }, { status: admin.status })
+    const perm = await requirePermissionFromRequest(request, "banner:edit")
+    if (!perm.ok) {
+      return NextResponse.json({ error: perm.error }, { status: perm.status })
     }
 
     const db = await getDatabase()
@@ -33,9 +33,9 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const admin = await requireAdminFromRequest(request)
-    if (!admin.ok) {
-      return NextResponse.json({ error: admin.error }, { status: admin.status })
+    const perm = await requirePermissionFromRequest(request, "banner:edit")
+    if (!perm.ok) {
+      return NextResponse.json({ error: perm.error }, { status: perm.status })
     }
 
     const body = await request.json()
@@ -56,7 +56,7 @@ export async function PUT(request: Request) {
           key: KEY,
           message,
           updatedAt: new Date(),
-          updatedBy: admin.adminEmail,
+          updatedBy: perm.adminEmail,
         },
       },
       { upsert: true }
