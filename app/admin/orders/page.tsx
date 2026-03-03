@@ -44,6 +44,7 @@ export default function AdminOrdersPage() {
   const { user } = useAuth()
   const adminEmail = user?.email?.trim().toLowerCase() || ""
   const searchParams = useSearchParams()
+  const [permissions, setPermissions] = useState<string[] | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [filterUserId, setFilterUserId] = useState("")
@@ -52,6 +53,35 @@ export default function AdminOrdersPage() {
   const [etaDaysInput, setEtaDaysInput] = useState("3")
 
   const orderIdParam = useMemo(() => searchParams.get("orderId") || "", [searchParams])
+  const hasPermission = useCallback(
+    (permission: string) => {
+      if (!permissions) return false
+      return permissions.includes("*") || permissions.includes(permission)
+    },
+    [permissions]
+  )
+  const canEditOrders = hasPermission("orders:edit")
+
+  useEffect(() => {
+    if (!adminEmail) return
+    const loadPermissions = async () => {
+      try {
+        const res = await fetch(`/api/admin/me?email=${encodeURIComponent(adminEmail)}`, {
+          cache: "no-store",
+          headers: { "x-admin-email": adminEmail },
+        })
+        if (!res.ok) {
+          setPermissions([])
+          return
+        }
+        const data = await res.json()
+        setPermissions(Array.isArray(data?.permissions) ? data.permissions : [])
+      } catch {
+        setPermissions([])
+      }
+    }
+    loadPermissions()
+  }, [adminEmail])
 
   const loadOrders = useCallback(async () => {
     if (!adminEmail) return
@@ -69,12 +99,13 @@ export default function AdminOrdersPage() {
 
   const verifyPendingAndReminders = useCallback(async () => {
     if (!adminEmail) return
+    if (!canEditOrders) return
     await fetch("/api/admin/orders/verify-pending", { method: "POST", headers: { "x-admin-email": adminEmail } })
     await fetch("/api/admin/orders/process-reminders", { method: "POST", headers: { "x-admin-email": adminEmail } })
-  }, [adminEmail])
+  }, [adminEmail, canEditOrders])
 
   useEffect(() => {
-    if (!adminEmail) return
+    if (!adminEmail || permissions === null) return
     const run = async () => {
       setLoading(true)
       try {
@@ -85,15 +116,15 @@ export default function AdminOrdersPage() {
       }
     }
     run()
-  }, [adminEmail, loadOrders, verifyPendingAndReminders])
+  }, [adminEmail, loadOrders, permissions, verifyPendingAndReminders])
 
   useEffect(() => {
-    if (!adminEmail) return
+    if (!adminEmail || !canEditOrders) return
     const timer = setInterval(() => {
       verifyPendingAndReminders().catch(() => null)
     }, 30000)
     return () => clearInterval(timer)
-  }, [adminEmail, verifyPendingAndReminders])
+  }, [adminEmail, canEditOrders, verifyPendingAndReminders])
 
   return (
     <div className="p-6 md:p-10 font-WorkSans">
@@ -110,6 +141,11 @@ export default function AdminOrdersPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-700">Total Orders: <span className="font-bold">{orders.length}</span></div>
+            {!canEditOrders && (
+              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                Read-only orders access
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 className="border rounded px-2 py-1"
@@ -145,7 +181,9 @@ export default function AdminOrdersPage() {
                     <button
                       key={s}
                       className={`px-2 py-1 rounded border ${o.orderStatus === s ? "bg-[#CA6F86] text-white" : "bg-white"}`}
+                      disabled={!canEditOrders}
                       onClick={async () => {
+                        if (!canEditOrders) return
                         await fetch("/api/admin/orders", {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
@@ -160,7 +198,9 @@ export default function AdminOrdersPage() {
 
                   <button
                     className={`px-2 py-1 rounded border ${o.orderStatus === "shipped" ? "bg-[#CA6F86] text-white" : "bg-white"}`}
+                    disabled={!canEditOrders}
                     onClick={() => {
+                      if (!canEditOrders) return
                       setShipTargetId(o._id)
                       setEtaDaysInput(o.shipment?.etaDays ? String(o.shipment.etaDays) : "3")
                     }}
@@ -170,7 +210,9 @@ export default function AdminOrdersPage() {
 
                   <button
                     className="px-2 py-1 rounded border bg-white"
+                    disabled={!canEditOrders}
                     onClick={async () => {
+                      if (!canEditOrders) return
                       if (!o.paymentReference) {
                         alert("No payment reference found yet for this order.")
                         return

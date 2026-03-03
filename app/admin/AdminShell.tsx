@@ -40,7 +40,7 @@ const nav: NavSection[] = [
       { label: "Banner Settings", href: "/admin/settings/banner", permission: "banner:edit" },
       { label: "SEO Settings", href: "/admin/settings/seo", permission: "seo:edit" },
       { label: "Team & Roles", href: "/admin/settings/team", permission: ["team:view", "users:view"] },
-      { label: "Roles", href: "/admin/settings/roles", permission: "admin:roles:view" },
+      { label: "Roles", href: "/admin/settings/roles" },
       { label: "Admin Logs", href: "/admin/audit", permission: "admin:audit:view" },
     ],
   },
@@ -57,7 +57,6 @@ const routeAccessRules: Array<{ prefix: string; anyOf: string[] }> = [
   { prefix: "/admin/settings/banner", anyOf: ["banner:edit"] },
   { prefix: "/admin/settings/seo", anyOf: ["seo:edit"] },
   { prefix: "/admin/settings/team", anyOf: ["team:view", "users:view"] },
-  { prefix: "/admin/settings/roles", anyOf: ["admin:roles:view"] },
   { prefix: "/admin/audit", anyOf: ["admin:audit:view"] },
 ]
 

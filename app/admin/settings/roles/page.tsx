@@ -127,6 +127,7 @@ export default function RolesPage() {
   const [error, setError] = useState("")
   const [roles, setRoles] = useState<RoleDoc[]>([])
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   const selectedRole = useMemo(
     () => roles.find((r) => r._id === selectedRoleId) || null,
@@ -169,6 +170,7 @@ export default function RolesPage() {
       const res = await fetch("/api/admin/roles", { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load roles")
+      setIsSuperAdmin(Boolean(data?.isSuperAdmin))
       const docs = (data?.roles || []).map((r: RoleApiDoc) => ({
         _id: String(r._id),
         name: String(r.name || ""),
@@ -208,6 +210,7 @@ export default function RolesPage() {
   }, [isAnyModalOpen])
 
   const openCreate = () => {
+    if (!isSuperAdmin) return
     setEditorMode("create")
     setEditorForm({
       roleId: "",
@@ -222,6 +225,7 @@ export default function RolesPage() {
   }
 
   const openEdit = (role: RoleDoc) => {
+    if (!isSuperAdmin) return
     setEditorMode("edit")
     setEditorForm({
       roleId: role._id,
@@ -243,6 +247,7 @@ export default function RolesPage() {
   }
 
   const saveRole = async () => {
+    if (!isSuperAdmin) return
     setEditorError("")
     if (!adminEmail) return setEditorError("Admin session not ready.")
     const name = editorForm.name.trim()
@@ -284,6 +289,7 @@ export default function RolesPage() {
   }
 
   const deleteRole = async () => {
+    if (!isSuperAdmin) return
     if (!selectedRole) return
     setDeleteError("")
     if (!adminEmail) return setDeleteError("Admin session not ready.")
@@ -307,6 +313,7 @@ export default function RolesPage() {
   }
 
   const openAssign = async () => {
+    if (!isSuperAdmin) return
     setAssignError("")
     setAssignSuccess("")
     setAssignQuery("")
@@ -361,6 +368,7 @@ export default function RolesPage() {
   }
 
   const saveAssignment = async () => {
+    if (!isSuperAdmin) return
     setAssignError("")
     setAssignSuccess("")
     if (!adminEmail) return setAssignError("Admin session not ready.")
@@ -388,25 +396,31 @@ export default function RolesPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-[#16161A]">Roles</h1>
-          <p className="text-sm text-gray-600">Manage RBAC roles, permissions, and assignments.</p>
-          {adminEmail && (
+          <p className="text-sm text-gray-600">
+            {isSuperAdmin
+              ? "Manage RBAC roles, permissions, and assignments."
+              : "Read-only view of your assigned role permissions."}
+          </p>
+          {isSuperAdmin && adminEmail && (
             <p className="text-xs text-gray-500 mt-1">Signed in as <span className="font-semibold">{adminEmail}</span></p>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={openAssign}
-            className="px-3 py-2 text-sm rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
-          >
-            Assign roles
-          </button>
-          <button
-            onClick={openCreate}
-            className="px-3 py-2 text-sm rounded bg-[#8D2741] text-white"
-          >
-            Create role
-          </button>
-        </div>
+        {isSuperAdmin && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={openAssign}
+              className="px-3 py-2 text-sm rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
+            >
+              Assign roles
+            </button>
+            <button
+              onClick={openCreate}
+              className="px-3 py-2 text-sm rounded bg-[#8D2741] text-white"
+            >
+              Create role
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -464,23 +478,25 @@ export default function RolesPage() {
                   <h2 className="text-xl font-semibold text-[#16161A]">{selectedRole.name}</h2>
                   <p className="text-sm text-gray-600 mt-1">{selectedRole.description || "No description."}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => openEdit(selectedRole)}
-                    className="px-3 py-2 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDeleteError("")
-                      setDeleteOpen(true)
-                    }}
-                    className="px-3 py-2 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
-                </div>
+                {isSuperAdmin && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(selectedRole)}
+                      className="px-3 py-2 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDeleteError("")
+                        setDeleteOpen(true)
+                      }}
+                      className="px-3 py-2 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="mt-5">
@@ -545,7 +561,7 @@ export default function RolesPage() {
       </div>
 
       {/* Role editor modal */}
-      {editorOpen && (
+      {isSuperAdmin && editorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
           <div className="bg-white rounded-xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
             <div className="p-4 md:p-5 border-b border-[#EEE7DA]">
@@ -707,7 +723,7 @@ export default function RolesPage() {
       )}
 
       {/* Delete confirm */}
-      {deleteOpen && selectedRole && (
+      {isSuperAdmin && deleteOpen && selectedRole && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl w-full max-w-lg p-5">
             <div className="flex items-start justify-between gap-3">
@@ -743,7 +759,7 @@ export default function RolesPage() {
       )}
 
       {/* Assign roles modal */}
-      {assignOpen && (
+      {isSuperAdmin && assignOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
           <div className="bg-white rounded-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
             <div className="p-4 md:p-5 border-b border-[#EEE7DA]">

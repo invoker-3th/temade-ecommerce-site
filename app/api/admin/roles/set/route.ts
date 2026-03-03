@@ -4,8 +4,8 @@ import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 import { writeAuditLog } from "@/lib/audit"
 
 export async function POST(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:assign")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can set role assignments" }, { status: 403 })
 
   try {
     const body = await request.json()

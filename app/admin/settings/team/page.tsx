@@ -6,8 +6,8 @@ import { useAuth } from "@/app/context/AuthContext"
 
 type TeamMember = {
   _id: string
-  email: string
-  userName: string
+  email?: string
+  userName?: string
   fullName?: string
   role?: string
   isEmailVerified?: boolean
@@ -17,8 +17,10 @@ type TeamMember = {
 
 type PendingInvite = {
   _id: string
-  email: string
-  userName: string
+  userId?: string
+  email?: string
+  userName?: string
+  fullName?: string
   createdAt: string
   expiresAt: string
   roleId?: string
@@ -71,7 +73,12 @@ export default function AdminTeamPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [selectedRoleByUser, setSelectedRoleByUser] = useState<Record<string, string>>({})
   const [form, setForm] = useState({ fullName: "", userName: "", email: "", roleId: "" })
-  const [capabilities, setCapabilities] = useState({ canManageTeam: false, canMessageTeam: false, canSendDirectEmail: false })
+  const [capabilities, setCapabilities] = useState({
+    canManageTeam: false,
+    canMessageTeam: false,
+    canSendDirectEmail: false,
+    canViewSensitiveTeamIdentity: false,
+  })
 
   const [messageOpenForUserId, setMessageOpenForUserId] = useState<string | null>(null)
   const [messageDraft, setMessageDraft] = useState({ subject: "", message: "", deliverEmail: true, deliverNotification: true })
@@ -89,6 +96,13 @@ export default function AdminTeamPage() {
     return new Set(
       pendingInvites
         .map((invite) => String(invite.email || "").trim().toLowerCase())
+        .filter(Boolean)
+    )
+  }, [pendingInvites])
+  const pendingInviteUserIds = useMemo(() => {
+    return new Set(
+      pendingInvites
+        .map((invite) => String(invite.userId || "").trim())
         .filter(Boolean)
     )
   }, [pendingInvites])
@@ -123,6 +137,7 @@ export default function AdminTeamPage() {
         canManageTeam: !!teamData?.capabilities?.canManageTeam,
         canMessageTeam: !!teamData?.capabilities?.canMessageTeam,
         canSendDirectEmail: !!teamData?.capabilities?.canSendDirectEmail,
+        canViewSensitiveTeamIdentity: !!teamData?.capabilities?.canViewSensitiveTeamIdentity,
       })
 
       const roleData = await rolesRes.json()
@@ -255,6 +270,10 @@ export default function AdminTeamPage() {
 
   const saveSingleRole = async (member: TeamMember) => {
     if (!capabilities.canManageTeam) return
+    if (!member.email) {
+      setError("Member email is hidden or unavailable.")
+      return
+    }
     const selectedRole = selectedRoleByUser[member._id] || ""
     if (!selectedRole) {
       setError("Select a role before saving, or click Remove role.")
@@ -285,6 +304,10 @@ export default function AdminTeamPage() {
 
   const removeRole = async (member: TeamMember) => {
     if (!capabilities.canManageTeam) return
+    if (!member.email) {
+      setError("Member email is hidden or unavailable.")
+      return
+    }
     setActionLoadingId(`remove-${member._id}`)
     setError("")
     setSuccess("")
@@ -346,7 +369,7 @@ export default function AdminTeamPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to send message")
-      setSuccess(`Message sent to ${activeMessageUser.email}.`)
+      setSuccess(`Message sent to ${activeMessageUser.fullName || activeMessageUser.userName || activeMessageUser._id}.`)
       setMessageOpenForUserId(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to send message")
@@ -356,6 +379,8 @@ export default function AdminTeamPage() {
   }
 
   const getRoleStatus = (member: TeamMember): RoleStatus => {
+    const memberId = String(member._id || "").trim()
+    if (memberId && pendingInviteUserIds.has(memberId)) return "pending"
     const email = String(member.email || "").trim().toLowerCase()
     if (pendingInviteEmails.has(email)) return "pending"
     if (Array.isArray(member.roles) && member.roles.length > 0) return "assigned"
@@ -439,8 +464,11 @@ export default function AdminTeamPage() {
             <div className="space-y-2">
               {pendingInvites.map((invite, idx) => (
                 <motion.div key={invite._id} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.03 }} className="border border-[#EEE7DA] rounded p-3 text-sm">
-                  <p className="font-semibold text-[#16161A]">{invite.userName}</p>
-                  <p className="text-gray-600">{invite.email}</p>
+                  <p className="font-semibold text-[#16161A]">{invite.fullName || invite.userName || "Team member"}</p>
+                  {capabilities.canViewSensitiveTeamIdentity && invite.email && (
+                    <p className="text-gray-600">{invite.email}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Invite ID: {invite._id}</p>
                   <p className="text-xs text-gray-500 mt-1">Role: {invite.roleName || "Not set"}</p>
                   <p className="text-xs text-gray-500 mt-1">Expires: {new Date(invite.expiresAt).toLocaleString()}</p>
                   {capabilities.canManageTeam && (
@@ -478,12 +506,14 @@ export default function AdminTeamPage() {
               return (
                 <motion.div key={member._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }} className="border border-[#EEE7DA] rounded p-3 text-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold text-[#16161A]">{member.userName || member.fullName || "Unnamed user"}</p>
+                    <p className="font-semibold text-[#16161A]">{member.fullName || member.userName || "Unnamed user"}</p>
                     <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ${statusBadgeClass(roleStatus)}`}>
                       {statusLabel(roleStatus)}
                     </span>
                   </div>
-                  <p className="text-gray-600">{member.email}</p>
+                  {capabilities.canViewSensitiveTeamIdentity && member.email && (
+                    <p className="text-gray-600">{member.email}</p>
+                  )}
                   <p className="text-xs text-gray-500 mt-1">
                     {member.isEmailVerified ? "Email verified" : "Email not verified"}
                   </p>
@@ -549,8 +579,12 @@ export default function AdminTeamPage() {
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
               className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-[#EEE7DA] p-5"
             >
-              <h3 className="text-lg font-bold text-[#16161A]">Message {activeMessageUser.userName || activeMessageUser.email}</h3>
-              <p className="text-xs text-gray-500 mt-1">Recipient: {activeMessageUser.email}</p>
+              <h3 className="text-lg font-bold text-[#16161A]">Message {activeMessageUser.fullName || activeMessageUser.userName || activeMessageUser._id}</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Recipient: {capabilities.canViewSensitiveTeamIdentity && activeMessageUser.email
+                  ? activeMessageUser.email
+                  : `ID ${activeMessageUser._id}`}
+              </p>
 
               <div className="mt-4 space-y-3">
                 <input

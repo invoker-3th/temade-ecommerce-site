@@ -4,8 +4,8 @@ import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 import { writeAuditLog } from "@/lib/audit"
 
 export async function POST(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:assign")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can assign roles" }, { status: 403 })
 
   const body = await request.json()
   const { roleId, email } = body
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:assign")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can unassign roles" }, { status: 403 })
 
   const body = await request.json()
   const { roleId, email } = body

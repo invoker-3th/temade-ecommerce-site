@@ -59,8 +59,8 @@ const defaults = [
 ]
 
 export async function POST(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:create")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can seed roles" }, { status: 403 })
 
   try {
     const db = await getDatabase()

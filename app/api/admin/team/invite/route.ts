@@ -7,7 +7,7 @@ import { signAdminInviteJwt } from "@/lib/verificationTokens"
 import type { User } from "@/lib/models/User"
 import type { Role } from "@/lib/models/role"
 import { requireAdminFromRequest } from "@/lib/server/adminGuard"
-import { requireAnyPermissionFromRequest, requirePermissionFromRequest } from "@/lib/server/permissionGuard"
+import { getPermissionsForUser, requireAnyPermissionFromRequest, requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 import { writeAuditLog } from "@/lib/audit"
 import { permissionMeaning } from "@/lib/server/permissionMeanings"
 
@@ -69,7 +69,9 @@ export async function GET(request: Request) {
     const admin = await requireAdminFromRequest(request)
     const canManageTeam = admin.ok
     const canMessage = await requirePermissionFromRequest(request, "team:message")
-    const canSendDirectEmail = await requirePermissionFromRequest(request, "email:send")
+  const canSendDirectEmail = await requirePermissionFromRequest(request, "email:send")
+  const viewerState = await getPermissionsForUser(viewer.adminEmail)
+  const canViewSensitiveTeamIdentity = viewerState.permissions.includes("*")
 
     const db = await getDatabase()
     const usersCol = db.collection<User>("users")
@@ -86,6 +88,7 @@ export async function GET(request: Request) {
               userName: 1,
               roleId: 1,
               roleName: 1,
+              fullName: 1,
               permissionSnapshot: 1,
               usedAt: 1,
               createdAt: 1,
@@ -104,8 +107,24 @@ export async function GET(request: Request) {
       .filter((x) => !x.usedAt && x.expiresAt > new Date())
       .map((x) => ({
         ...x,
+        _id: x._id ? String(x._id) : "",
+        userId: String(x.userId),
         roleName: x.roleName || roleNameById.get(x.roleId) || "role",
       }))
+
+    const safePendingInvites = canViewSensitiveTeamIdentity
+      ? pendingInvites
+      : pendingInvites.map((x) => ({
+          _id: x._id,
+          userId: x.userId,
+          fullName: x.fullName || undefined,
+          roleId: x.roleId,
+          roleName: x.roleName,
+          permissionSnapshot: x.permissionSnapshot,
+          usedAt: x.usedAt,
+          createdAt: x.createdAt,
+          expiresAt: x.expiresAt,
+        }))
 
     const invitedUserIds = Array.from(
       new Set(
@@ -140,13 +159,29 @@ export async function GET(request: Request) {
       .sort({ updatedAt: -1 })
       .toArray()
 
+    const safeTeamMembers = canViewSensitiveTeamIdentity
+      ? teamMembers.map((member) => ({
+          ...member,
+          _id: member._id ? String(member._id) : "",
+        }))
+      : teamMembers.map((member) => ({
+          _id: member._id ? String(member._id) : "",
+          fullName: member.fullName || undefined,
+          isEmailVerified: member.isEmailVerified,
+          updatedAt: member.updatedAt,
+          createdAt: member.createdAt,
+          roles: Array.isArray((member as { roles?: unknown }).roles) ? (member as { roles?: unknown[] }).roles : [],
+          role: member.role,
+        }))
+
     return NextResponse.json({
-      teamMembers,
-      pendingInvites,
+      teamMembers: safeTeamMembers,
+      pendingInvites: safePendingInvites,
       capabilities: {
         canManageTeam,
         canMessageTeam: canMessage.ok,
         canSendDirectEmail: canSendDirectEmail.ok,
+        canViewSensitiveTeamIdentity,
       },
     })
   } catch (error) {

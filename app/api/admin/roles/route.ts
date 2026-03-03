@@ -1,21 +1,31 @@
 import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import { getDatabase } from "@/lib/mongodb"
-import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
+import { getPermissionsForUser, requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 import { writeAuditLog } from "@/lib/audit"
+import { getAdminSessionFromRequest } from "@/lib/server/sessionAuth"
 
 export async function GET(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:view")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const session = await getAdminSessionFromRequest(request)
+  const email = String(session?.email || "").trim().toLowerCase()
+  if (!email) return NextResponse.json({ error: "Missing admin identity" }, { status: 401 })
 
-  const db = await getDatabase()
-  const roles = await db.collection("roles").find().sort({ createdAt: -1 }).toArray()
-  return NextResponse.json({ roles })
+  const { user, permissions, roles } = await getPermissionsForUser(email)
+  if (!user) return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+
+  const isSuperAdmin = permissions.includes("*")
+  if (isSuperAdmin) {
+    const db = await getDatabase()
+    const allRoles = await db.collection("roles").find().sort({ createdAt: -1 }).toArray()
+    return NextResponse.json({ roles: allRoles, isSuperAdmin: true, readOnly: false })
+  }
+
+  return NextResponse.json({ roles, isSuperAdmin: false, readOnly: true })
 }
 
 export async function POST(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:create")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can create roles" }, { status: 403 })
 
   const body = await request.json()
   const { name, description, permissions, emailSubscriptions } = body
@@ -45,8 +55,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:edit")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can edit roles" }, { status: 403 })
 
   const body = await request.json()
   const { roleId, name, description, permissions, emailSubscriptions } = body
@@ -70,8 +80,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const perm = await requirePermissionFromRequest(request, "admin:roles:delete")
-  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can delete roles" }, { status: 403 })
 
   const body = await request.json()
   const { roleId } = body
