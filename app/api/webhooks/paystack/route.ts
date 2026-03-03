@@ -143,6 +143,11 @@ export async function POST(request: NextRequest) {
           .map((item) => `${item.name} x${item.quantity} (${currencySymbol}${item.price.toLocaleString()})`)
           .join("<br/>")
 
+        console.info("[webhooks.paystack] Sending payment confirmation email", {
+          orderId,
+          reference,
+          to: String(order.shippingAddress.email || "").toLowerCase(),
+        })
         await sendEmail({
           to: order.shippingAddress.email,
           subject,
@@ -156,8 +161,17 @@ export async function POST(request: NextRequest) {
           `,
           text: `Thanks for your order! Order ${invoiceNumber}, total ${totalFormatted}.`,
         })
+        console.info("[webhooks.paystack] Payment confirmation email sent", {
+          orderId,
+          reference,
+          to: String(order.shippingAddress.email || "").toLowerCase(),
+        })
       } catch (error) {
-        console.error("Failed to send confirmation email:", error)
+        console.error("[webhooks.paystack] Payment confirmation email failed", {
+          orderId,
+          reference,
+          error: error instanceof Error ? error.message : String(error),
+        })
       }
 
       // Authoritative server-side purchase tracking in PostHog

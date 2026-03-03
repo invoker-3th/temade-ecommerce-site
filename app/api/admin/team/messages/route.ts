@@ -72,7 +72,26 @@ export async function POST(request: Request) {
         </div>
       `
       const text = `${message}\n\nFrom Temade Admin: ${perm.adminEmail}\nSent: ${new Date().toLocaleString()}`
-      await sendEmail({ to, subject, html, text })
+      try {
+        console.info("[admin.team.messages] Sending team message email", {
+          from: perm.adminEmail,
+          to,
+          subject,
+        })
+        await sendEmail({ to, subject, html, text })
+        console.info("[admin.team.messages] Team message email sent", {
+          to,
+          subject,
+        })
+      } catch (emailError) {
+        console.error("[admin.team.messages] Team message email failed", {
+          from: perm.adminEmail,
+          to,
+          subject,
+          error: emailError instanceof Error ? emailError.message : String(emailError),
+        })
+        return NextResponse.json({ error: "Failed to send team email" }, { status: 502 })
+      }
     }
 
     if (deliverNotification) {

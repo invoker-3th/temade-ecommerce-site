@@ -42,7 +42,29 @@ export async function POST(
     `
     const text = `${message}\n\n— Sent by Temade Admin: ${perm.adminEmail}`
 
-    await sendEmail({ to, subject, html, text })
+    try {
+      console.info("[admin.users.email] Sending direct user email", {
+        from: perm.adminEmail,
+        to: to.toLowerCase(),
+        subject,
+        userId: id,
+      })
+      await sendEmail({ to, subject, html, text })
+      console.info("[admin.users.email] Direct user email sent", {
+        to: to.toLowerCase(),
+        subject,
+        userId: id,
+      })
+    } catch (emailError) {
+      console.error("[admin.users.email] Direct user email failed", {
+        from: perm.adminEmail,
+        to: to.toLowerCase(),
+        subject,
+        userId: id,
+        error: emailError instanceof Error ? emailError.message : String(emailError),
+      })
+      return NextResponse.json({ error: "Failed to send email" }, { status: 502 })
+    }
 
     await writeAuditLog({
       actorEmail: perm.adminEmail,

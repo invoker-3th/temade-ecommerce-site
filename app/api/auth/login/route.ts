@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       : []
     const hasAssignedRbacRoles = userRoles.length > 0
     const canAccessAdminConsole = isAdmin || hasAssignedRbacRoles
-    if (isAdmin) {
+    if (isOwnerAllowlisted) {
       const adminUserName = (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "").trim().toLowerCase()
       if (adminUserName && userName.trim().toLowerCase() !== adminUserName) {
         return NextResponse.json({ error: "Invalid admin credentials" }, { status: 401 })
@@ -89,7 +89,16 @@ export async function POST(request: NextRequest) {
           `
           const text = `Admin login detected. User: ${user.userName}. Email: ${user.email}. Time: ${now}. IP: ${forwardedFor}. UA: ${ua}`
           // Send to admin + manager roles via RBAC emailSubscriptions for "admin.login"
+          console.info("[auth.login] Triggering admin.login email event", {
+            email: sessionEmail,
+            userName: user.userName,
+            hasExistingSession: false,
+          })
           await sendForEvent("admin.login", subject, html, text)
+          console.info("[auth.login] admin.login email event completed", {
+            email: sessionEmail,
+            userName: user.userName,
+          })
         }
 
         await db.collection("admin_login_sessions").updateOne(
@@ -104,12 +113,26 @@ export async function POST(request: NextRequest) {
 
     // Owner allowlisted admins can still use direct login.
     if (canAccessAdminConsole && !isOwnerAllowlisted) {
+      console.info("[auth.login] Admin OTP flow starting", {
+        email: user.email.toLowerCase(),
+        isAdmin,
+        hasAssignedRbacRoles,
+        canAccessAdminConsole,
+        isOwnerAllowlisted,
+      })
+
       if (!user.isEmailVerified) {
+        console.warn("[auth.login] Admin OTP blocked because email is not verified", {
+          email: user.email.toLowerCase(),
+        })
         return NextResponse.json({ error: "Verified email is required for admin OTP login." }, { status: 403 })
       }
 
       const secret = process.env.EMAIL_VERIFICATION_JWT_SECRET
       if (!secret) {
+        console.error("[auth.login] Admin OTP failed because EMAIL_VERIFICATION_JWT_SECRET is missing", {
+          email: user.email.toLowerCase(),
+        })
         return NextResponse.json({ error: "Email verification secret is missing" }, { status: 500 })
       }
 
@@ -129,6 +152,10 @@ export async function POST(request: NextRequest) {
         usedAt: null,
         createdAt: new Date(),
       })
+      console.info("[auth.login] Admin OTP token persisted", {
+        email: user.email.toLowerCase(),
+        expiresAt: new Date(payload.exp * 1000).toISOString(),
+      })
 
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
       const loginLink = `${baseUrl}/auth/admin-otp?token=${encodeURIComponent(token)}`
@@ -137,12 +164,27 @@ export async function POST(request: NextRequest) {
         loginLink,
         expiresMinutes: otpTtlMinutes,
       })
-      await sendEmail({
-        to: user.email,
-        subject: otpTpl.subject,
-        html: otpTpl.html,
-        text: otpTpl.text,
-      })
+      try {
+        console.info("[auth.login] Sending admin OTP email", {
+          email: user.email.toLowerCase(),
+          expiresMinutes: otpTtlMinutes,
+        })
+        await sendEmail({
+          to: user.email,
+          subject: otpTpl.subject,
+          html: otpTpl.html,
+          text: otpTpl.text,
+        })
+        console.info("[auth.login] Admin OTP email sent", {
+          email: user.email.toLowerCase(),
+        })
+      } catch (otpEmailError) {
+        console.error("[auth.login] Admin OTP email failed", {
+          email: user.email.toLowerCase(),
+          error: otpEmailError instanceof Error ? otpEmailError.message : String(otpEmailError),
+        })
+        return NextResponse.json({ error: "Could not send admin OTP email. Please try again." }, { status: 502 })
+      }
 
       return NextResponse.json(
         {

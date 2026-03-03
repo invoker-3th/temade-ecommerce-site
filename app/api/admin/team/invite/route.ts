@@ -267,7 +267,7 @@ export async function POST(request: Request) {
       meaning: permissionMeaning(p),
     }))
 
-    await invitesCol.insertOne({
+    const inviteInsert = await invitesCol.insertOne({
       userId: new ObjectId(userId),
       email,
       userName,
@@ -282,6 +282,13 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       createdByEmail: admin.adminEmail || undefined,
     })
+    console.info("[admin.team.invite] Invite record created", {
+      inviteId: String(inviteInsert.insertedId),
+      email,
+      roleId,
+      roleName: roleDoc.name,
+      createdByEmail: admin.adminEmail || undefined,
+    })
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const inviteLink = `${baseUrl}/auth/admin-invite?token=${encodeURIComponent(token)}`
@@ -292,12 +299,37 @@ export async function POST(request: Request) {
       permissionDetails,
     })
 
-    await sendEmail({
-      to: email,
-      subject: `Temade Admin Invite - ${roleDoc.name}`,
-      html: inviteEmail.html,
-      text: inviteEmail.text,
-    })
+    try {
+      console.info("[admin.team.invite] Sending invite email", {
+        inviteId: String(inviteInsert.insertedId),
+        email,
+        roleName: roleDoc.name,
+      })
+      await sendEmail({
+        to: email,
+        subject: `Temade Admin Invite - ${roleDoc.name}`,
+        html: inviteEmail.html,
+        text: inviteEmail.text,
+      })
+      console.info("[admin.team.invite] Invite email sent", {
+        inviteId: String(inviteInsert.insertedId),
+        email,
+      })
+    } catch (inviteEmailError) {
+      console.error("[admin.team.invite] Invite email failed, revoking invite", {
+        inviteId: String(inviteInsert.insertedId),
+        email,
+        error: inviteEmailError instanceof Error ? inviteEmailError.message : String(inviteEmailError),
+      })
+      await invitesCol.updateOne(
+        { _id: inviteInsert.insertedId },
+        { $set: { revokedAt: new Date() } }
+      )
+      return NextResponse.json(
+        { error: "Invite was created but email delivery failed. Please retry invite/resend after checking email config." },
+        { status: 502 }
+      )
+    }
 
     await writeAuditLog({
       actorEmail: admin.adminEmail,
@@ -381,12 +413,30 @@ export async function PATCH(request: Request) {
       roleName,
       permissionDetails: permissionSnapshot.map((p) => ({ key: p, meaning: permissionMeaning(p) })),
     })
-    await sendEmail({
-      to: invite.email,
-      subject: `Temade Admin Invite (Resent) - ${roleName}`,
-      html: inviteEmail.html,
-      text: inviteEmail.text,
-    })
+    try {
+      console.info("[admin.team.invite] Resending invite email", {
+        inviteId,
+        email: invite.email,
+        roleName,
+      })
+      await sendEmail({
+        to: invite.email,
+        subject: `Temade Admin Invite (Resent) - ${roleName}`,
+        html: inviteEmail.html,
+        text: inviteEmail.text,
+      })
+      console.info("[admin.team.invite] Invite resend email sent", {
+        inviteId,
+        email: invite.email,
+      })
+    } catch (resendError) {
+      console.error("[admin.team.invite] Invite resend failed", {
+        inviteId,
+        email: invite.email,
+        error: resendError instanceof Error ? resendError.message : String(resendError),
+      })
+      return NextResponse.json({ error: "Failed to resend invite email" }, { status: 502 })
+    }
 
     await writeAuditLog({
       actorEmail: admin.adminEmail,
