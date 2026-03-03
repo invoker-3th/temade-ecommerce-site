@@ -1,6 +1,6 @@
 ## RBAC + Admin Console Status (Temade)
 
-Last verified: 2026-03-02 (Phase 3 continued)
+Last verified: 2026-03-03 (Phase 3 security extended + Phase 4 continued)
 
 This file documents the current RBAC implementation, current admin UI behavior, API dependency model, design/style guardrails, and what to build next.
 
@@ -23,7 +23,7 @@ This file documents the current RBAC implementation, current admin UI behavior, 
 
 ### Canonical seeded roles
 - Seed route: `app/api/admin/roles/seed/route.ts`
-- Roles: `admin`, `manager`, `content_editor`, `support`, `finance`
+- Roles: `admin`, `general_admin`, `manager`, `content_editor`, `support`, `finance`
 - Key seeded permission families:
   - `admin:roles:*`, `admin:audit:view`
   - `users:view`, `users:manage`, `email:send`
@@ -102,11 +102,11 @@ This file documents the current RBAC implementation, current admin UI behavior, 
 - Added permission helper:
   - `requireAnyPermissionFromRequest(...)` in `lib/server/permissionGuard.ts`
   - Used for migration-safe dual permission checks.
-- Migrated catalog mutation routes to explicit taxonomy, with backward compatibility:
+- Migrated catalog mutation routes to explicit taxonomy:
   - `app/api/admin/products/route.ts` (`POST/PUT/DELETE`)
   - `app/api/admin/products/[id]/route.ts` (`PUT/DELETE`)
   - `app/api/admin/categories/route.ts` (`POST/PUT/DELETE`)
-  - Current check: `catalog:edit` OR legacy `content:edit`
+  - Current check: `catalog:edit` only
 - Migrated analytics destructive operation:
   - `app/api/admin/clear-analytics/route.ts`
   - from admin-only guard -> permission `site:analytics:manage`
@@ -115,6 +115,47 @@ This file documents the current RBAC implementation, current admin UI behavior, 
   - `app/admin/settings/roles/page.tsx` known permissions now include:
     - `catalog:edit`
     - `site:analytics:manage`
+
+### Phase 3 owner UX improvements (continued)
+- Updated role editor modal UX in `app/admin/settings/roles/page.tsx`:
+  - responsive modal container
+  - blurred background overlay
+  - body scroll lock while modal is open
+  - modal-internal scrolling for long content
+- Implemented in-UI permission meanings (item 8.1):
+  - selected role panel now shows plain-language meaning per permission key.
+- Extended permission-meaning UX inside Edit Role modal:
+  - permission chips are now explain-first.
+  - clicking a permission shows what it does before adding it to the role.
+  - explicit `Add selected permission` action reduces accidental grants.
+- Team/Invite role assignment flow updated for owner safety:
+  - role is required at invite time (`/api/admin/team/invite`).
+  - invite email now includes assigned role + plain-language permission list.
+  - Team page uses single-role assign/edit/remove UX per invited account.
+  - top `Manage Roles` shortcut removed from Team page.
+- Admin Logs navigation visibility:
+  - `Admin Logs` is now in the sidebar (route: `/admin/audit`).
+  - intended for owners and general admins with audit permission.
+- Team page visibility and message flow for general admins:
+  - general admins can open Team view (read-only for invite/revoke).
+  - general admins can send team messages to verified admin accounts.
+  - messages can be delivered to in-app notifications by all team members with `team:message`.
+  - direct team email delivery is restricted to accounts with `email:send` (general admin + owner/super-admin).
+  - notifications now support click-to-open message details with sender + timestamp.
+  - Team cards now include compact status badges: `No role`, `Pending`, `Assigned`.
+- Team UI/notification styling upgraded:
+  - motion/animation added to cards and message modals.
+  - animated transitions on message viewer and compose dialog.
+
+### Phase 3 role catalog update
+- Added canonical `general_admin` role in seed defaults (`app/api/admin/roles/seed/route.ts`):
+  - includes operational permissions + `admin:audit:view` + `email:send` + team permissions.
+- Updated seed behavior from "insert only when empty" to per-role upsert:
+  - existing role docs are refreshed to current defaults.
+  - missing default roles are created.
+- Added explicit team permissions and seeded across team roles:
+  - `team:view`
+  - `team:message`
 
 ### Phase 3 admin UI behavior normalization (single dashboard model)
 - Updated login/session issuance:
@@ -157,6 +198,19 @@ This file documents the current RBAC implementation, current admin UI behavior, 
 - `/api/admin/me` behavior:
   - session user can fetch self identity/permissions.
   - querying another user requires strict admin guard.
+- Team API behavior:
+  - `GET /api/admin/team/invite` now requires `team:view` (compatibility accepts `users:view`) and returns team roster + pending invites.
+  - invite lifecycle mutations (`POST/PATCH/DELETE`) remain strict-admin only.
+- Team messaging behavior:
+  - `POST /api/admin/team/messages` requires `team:message`.
+  - direct email delivery path requires `email:send`.
+  - recipient must have verified email.
+  - stores in-app notification entries with sender identity and timestamp.
+- Admin login security behavior:
+  - owner allowlisted email(s) can still use direct admin login.
+  - all other admin-console users use one-time OTP login links sent to verified email.
+  - OTP link route: `/auth/admin-otp` -> `/api/auth/admin/otp/verify`.
+  - OTP links are single-use, expiring, and required again after explicit logout.
 
 ## 4. Admin layout and UI architecture
 
@@ -180,6 +234,8 @@ This file documents the current RBAC implementation, current admin UI behavior, 
 - CMS pages: `/api/admin/pages*`, `/api/admin/upload`
 - Users: `/api/admin/users*`, `/api/admin/users/export`
 - Roles/Team: `/api/admin/roles*`, `/api/admin/roles/set`, `/api/admin/team/invite`
+- Team Messaging: `/api/admin/team/messages`
+- Admin OTP: `/api/auth/admin/otp/verify`
 - Finance: `/api/admin/finance`
 
 ## 5A. Route-to-Permission Matrix
@@ -187,7 +243,9 @@ This file documents the current RBAC implementation, current admin UI behavior, 
 | Route | Methods | Guard Type | Required Permission |
 |---|---|---|---|
 | `/api/admin/me` | `GET` | admin-only | `requireAdminFromRequest` |
-| `/api/admin/team/invite` | `GET/POST/PATCH/DELETE` | admin-only | `requireAdminFromRequest` |
+| `/api/admin/team/invite` | `GET` | permission | `team:view` (compat `users:view`) |
+| `/api/admin/team/invite` | `POST/PATCH/DELETE` | admin-only | `requireAdminFromRequest` |
+| `/api/admin/team/messages` | `POST` | permission | `team:message` (+ `email:send` for direct email path) |
 | `/api/admin/seed` | `POST` | admin-only | `requireAdminFromRequest` |
 | `/api/admin/clear-analytics` | `DELETE` | permission | `site:analytics:manage` |
 | `/api/admin/audit` | `GET` | permission | `admin:audit:view` |
@@ -211,15 +269,16 @@ This file documents the current RBAC implementation, current admin UI behavior, 
 | `/api/admin/orders/ship` | `POST` | permission | `orders:edit` |
 | `/api/admin/orders/process-reminders` | `POST` | permission | `orders:edit` |
 | `/api/admin/orders/verify-pending` | `POST` | permission | `orders:edit` |
-| `/api/admin/notifications` | `GET` | permission | `orders:view` |
+| `/api/admin/notifications` | `GET` | permission | any of `orders:view`, `users:view`, `email:send`, `team:message` |
 | `/api/admin/notifications` | `POST` | permission | `orders:edit` |
-| `/api/admin/notifications` | `PATCH` | permission | `orders:view` |
+| `/api/admin/notifications` | `PATCH` | permission | any of `orders:view`, `users:view`, `email:send`, `team:message` |
+| `/api/auth/admin/otp/verify` | `GET` | token verification | valid unused `admin_otp` token |
 | `/api/admin/products` | `GET` | permission | `catalog:view` |
-| `/api/admin/products` | `POST/PUT/DELETE` | permission | `catalog:edit` (or legacy `content:edit`) |
+| `/api/admin/products` | `POST/PUT/DELETE` | permission | `catalog:edit` |
 | `/api/admin/products/[id]` | `GET` | permission | `catalog:view` |
-| `/api/admin/products/[id]` | `PUT/DELETE` | permission | `catalog:edit` (or legacy `content:edit`) |
+| `/api/admin/products/[id]` | `PUT/DELETE` | permission | `catalog:edit` |
 | `/api/admin/categories` | `GET` | permission | `catalog:view` |
-| `/api/admin/categories` | `POST/PUT/DELETE` | permission | `catalog:edit` (or legacy `content:edit`) |
+| `/api/admin/categories` | `POST/PUT/DELETE` | permission | `catalog:edit` |
 | `/api/admin/pages` | `GET/POST` | permission | `content:edit` |
 | `/api/admin/pages/[id]` | `GET/PUT/DELETE` | permission | `content:edit` |
 | `/api/admin/upload` | `POST` | permission | `content:edit` |
@@ -287,25 +346,47 @@ This file documents the current RBAC implementation, current admin UI behavior, 
 - Completed in this pass:
   - Route-to-permission matrix added to this file.
   - `ROLES_README.md` synced with current behavior.
-  - `catalog:edit` introduced and applied to catalog writes (compatibility mode).
+  - `catalog:edit` introduced and now fully enforced on catalog writes.
   - `site:analytics:manage` introduced and applied to analytics clear operation.
   - Admin shell + dashboard behavior updated to be permission-driven for a single shared dashboard UX.
+  - Roles page now includes plain-language permission meanings and responsive modal behavior.
 - Remaining:
-  - Remove compatibility fallback (`content:edit`) from catalog write routes after role migration.
   - Assign/seed `site:analytics:manage` only for privileged operations owners.
 
 ### Phase 4: Test and audit coverage
-- Add integration tests per role for allow/deny paths on critical admin endpoints.
-- Enrich audit records to include permission key used for authorization.
+- Started:
+  - Added RBAC guard unit tests in `tests/rbac-permissions.test.ts`:
+    - exact match allow
+    - wildcard allow
+    - deny on missing permission
+    - known/unknown permission meaning behavior
+  - Added test command: `npm run test:rbac`
+- Continued:
+  - Added team/admin messaging route and recipient-scoped notification read model.
+  - build verified after Team messaging + animated UI changes.
+  - Added OTP-link admin login flow for non-owner admin accounts.
+- Remaining:
+  - Add integration tests per role for allow/deny paths on critical admin endpoints.
+  - Add integration tests for new Team controls:
+    - team-role users can `GET /api/admin/team/invite` and send in-app messages.
+    - only owner/super-admin can `POST/PATCH/DELETE` invites.
+    - only `email:send` holders can deliver direct team email.
+    - team_message notifications are visible only to recipient account.
+  - Add OTP login integration tests:
+    - non-owner admin login returns `requiresAdminOtp`.
+    - owner allowlisted login remains direct session.
+    - OTP tokens expire and are single-use.
+  - Enrich audit records to include permission key used for authorization.
 
 ## 9. Immediate execution backlog
 
-1. Decide permission split for content/catalog and analytics management:
-   - migration is active: catalog writes accept `catalog:edit` OR `content:edit`
-   - analytics clear now requires `site:analytics:manage`
-2. Complete migration:
-   - remove legacy `content:edit` fallback from catalog writes after assignments are updated
-3. Add RBAC integration tests for:
+1. Add RBAC integration tests for:
    - `admin`, `manager`, `content_editor`, `support`, `finance`
-4. Add guard integration tests using real route handlers + session cookie fixture.
-5. Add permission key used to audit metadata for protected route writes.
+2. Add role integration tests for `general_admin` (new seeded role).
+3. Add guard integration tests using real route handlers + session cookie fixture.
+4. Add Team route integration tests:
+   - invite read vs write behavior by role
+   - team message send + recipient visibility + email path restriction.
+5. Add OTP flow integration tests (owner direct login vs non-owner OTP).
+6. Add permission key used to audit metadata for protected route writes.
+7. Confirm seeded/assigned ownership policy for `site:analytics:manage` and restrict to privileged roles.

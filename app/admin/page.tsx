@@ -110,6 +110,8 @@ export default function AdminDashboardPage() {
   const canViewAnalytics = hasPermission("site:analytics:view")
   const canManageAnalytics = hasPermission("site:analytics:manage")
   const canViewOrders = hasPermission("orders:view")
+  const canMessageTeam = hasPermission("team:message")
+  const canUseNotifications = canViewOrders || canMessageTeam
   const canViewCatalog = hasPermission("catalog:view") || hasPermission("catalog:edit")
   const canEditLookbook = hasPermission("lookbook:edit")
 
@@ -400,7 +402,7 @@ export default function AdminDashboardPage() {
             </>
           )}
 
-          {canViewOrders && <AdminNotifications />}
+          {canUseNotifications && <AdminNotifications />}
 
           {canViewAnalytics && (
             <div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { CategoryService } from "@/lib/services/categoryService"
-import { requireAnyPermissionFromRequest, requirePermissionFromRequest } from "@/lib/server/permissionGuard"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 export async function GET(request: Request) {
   const perm = await requirePermissionFromRequest(request, "catalog:view")
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const perm = await requireAnyPermissionFromRequest(request, ["catalog:edit", "content:edit"])
+  const perm = await requirePermissionFromRequest(request, "catalog:edit")
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
 
   const body = await request.json()
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const perm = await requireAnyPermissionFromRequest(request, ["catalog:edit", "content:edit"])
+  const perm = await requirePermissionFromRequest(request, "catalog:edit")
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
 
   const body = await request.json()
@@ -30,7 +30,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const perm = await requireAnyPermissionFromRequest(request, ["catalog:edit", "content:edit"])
+  const perm = await requirePermissionFromRequest(request, "catalog:edit")
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
 
   const { searchParams } = new URL(request.url)

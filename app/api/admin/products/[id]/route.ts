@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
-import { requireAnyPermissionFromRequest, requirePermissionFromRequest } from "@/lib/server/permissionGuard"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 export async function GET(
   request: Request,
@@ -33,7 +33,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const perm = await requireAnyPermissionFromRequest(request, ["catalog:edit", "content:edit"])
+  const perm = await requirePermissionFromRequest(request, "catalog:edit")
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
 
   try {
@@ -111,7 +111,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const perm = await requireAnyPermissionFromRequest(request, ["catalog:edit", "content:edit"])
+  const perm = await requirePermissionFromRequest(request, "catalog:edit")
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
 
   try {

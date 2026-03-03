@@ -39,8 +39,9 @@ const nav: NavSection[] = [
     items: [
       { label: "Banner Settings", href: "/admin/settings/banner", permission: "banner:edit" },
       { label: "SEO Settings", href: "/admin/settings/seo", permission: "seo:edit" },
-      { label: "Team & Roles", href: "/admin/settings/team", permission: "admin:roles:view" },
+      { label: "Team & Roles", href: "/admin/settings/team", permission: "team:view" },
       { label: "Roles", href: "/admin/settings/roles", permission: "admin:roles:view" },
+      { label: "Admin Logs", href: "/admin/audit", permission: "admin:audit:view" },
     ],
   },
 ]
@@ -155,8 +156,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] text-[#16161A] flex admin-scope font-WorkSans">
-      <aside className="w-64 bg-white border-r border-[#EEE7DA] px-5 py-6 hidden md:flex md:flex-col">
+    <div className="h-screen overflow-hidden bg-[#FFFBEB] text-[#16161A] flex admin-scope font-WorkSans">
+      <aside className="w-64 h-screen bg-white border-r border-[#EEE7DA] px-5 py-6 hidden md:flex md:flex-col overflow-y-auto">
         <div className="mb-6">
           <p className="text-xs tracking-widest text-gray-500">TEMADE STUDIOS</p>
           <p className="text-lg font-bold">Admin Console</p>
@@ -222,7 +223,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 h-screen flex flex-col">
         <div className="md:hidden bg-white border-b border-[#EEE7DA] px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500">TEMADE ADMIN</p>
@@ -338,7 +339,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <main className="min-h-screen">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
         <Toaster position="bottom-right" />

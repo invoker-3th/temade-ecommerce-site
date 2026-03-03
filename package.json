@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test:session": "node --import tsx --test tests/session-auth.test.ts"
+    "test:session": "node --import tsx --test tests/session-auth.test.ts",
+    "test:rbac": "node --import tsx --test tests/rbac-permissions.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
