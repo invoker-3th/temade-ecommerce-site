@@ -183,7 +183,14 @@ export async function POST(request: NextRequest) {
           email: user.email.toLowerCase(),
           error: otpEmailError instanceof Error ? otpEmailError.message : String(otpEmailError),
         })
-        return NextResponse.json({ error: "Could not send admin OTP email. Please try again." }, { status: 502 })
+        return NextResponse.json(
+          {
+            message: "Admin login verification started. If your OTP email is delayed, check spam or try signing in again.",
+            requiresAdminOtp: true,
+            otpEmailStatus: "delivery_uncertain",
+          },
+          { status: 200 },
+        )
       }
 
       return NextResponse.json(

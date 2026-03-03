@@ -47,6 +47,12 @@ function AdminOtpClient() {
       <div className="max-w-md w-full bg-white border border-[#EEE7DA] rounded-xl p-6 text-center font-WorkSans">
         <h1 className="text-2xl font-bold mb-2">Admin OTP Login</h1>
         <p className="text-sm text-gray-600 mb-4">{message}</p>
+        {state === "loading" && (
+          <div className="inline-flex items-center gap-2 text-xs text-gray-500 mb-4">
+            <span className="inline-block h-4 w-4 border-2 border-[#8D2741]/30 border-t-[#8D2741] rounded-full animate-spin" />
+            <span>Please wait...</span>
+          </div>
+        )}
         {state === "error" && (
           <button onClick={() => router.push("/auth/login")} className="px-4 py-2 rounded bg-[#8D2741] text-white">
             Back to login
@@ -64,7 +70,10 @@ export default function AdminOtpPage() {
         <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center px-4">
           <div className="max-w-md w-full bg-white border border-[#EEE7DA] rounded-xl p-6 text-center font-WorkSans">
             <h1 className="text-2xl font-bold mb-2">Admin OTP Login</h1>
-            <p className="text-sm text-gray-600">Loading secure login link...</p>
+            <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+              <span className="inline-block h-4 w-4 border-2 border-[#8D2741]/30 border-t-[#8D2741] rounded-full animate-spin" />
+              <span>Loading secure login link...</span>
+            </div>
           </div>
         </div>
       }
@@ -73,4 +82,3 @@ export default function AdminOtpPage() {
     </Suspense>
   )
 }
-

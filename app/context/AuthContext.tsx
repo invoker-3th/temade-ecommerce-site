@@ -62,9 +62,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
         body: JSON.stringify({ email, userName }),
       })
+      const data = await response.json().catch(() => ({}))
 
       if (response.ok) {
-        const data = await response.json()
         if (data?.requiresAdminOtp) {
           return { success: false, requiresAdminOtp: true, message: data?.message || "OTP link sent." }
         }
@@ -77,8 +77,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         return { success: true }
       }
-      const err = await response.json().catch(() => ({}))
-      return { success: false, message: err?.error || "Login failed." }
+      if (data?.requiresAdminOtp) {
+        return { success: false, requiresAdminOtp: true, message: data?.message || "OTP link sent." }
+      }
+      return { success: false, message: data?.error || "Login failed." }
     } catch (error) {
       console.error("Login error:", error)
       return { success: false, message: "Login failed." }

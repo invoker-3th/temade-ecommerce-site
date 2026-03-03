@@ -11,6 +11,7 @@ function LoginClient() {
   const [userName, setUserName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [notice, setNotice] = useState("")
   const { login } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -19,6 +20,7 @@ function LoginClient() {
   const doLogin = async (emailInput: string, userNameInput: string) => {
     setIsLoading(true)
     setError("")
+    setNotice("")
 
     const result = await login(emailInput, userNameInput)
 
@@ -33,7 +35,7 @@ function LoginClient() {
         router.push("/")
       }
     } else if (result.requiresAdminOtp) {
-      setError(result.message || "A secure OTP login link has been sent to your verified email.")
+      setNotice(result.message || "A secure OTP login link has been sent to your verified email.")
     } else {
       setError(result.message || "Login failed. Please check your email.")
     }
@@ -107,14 +109,24 @@ function LoginClient() {
               />
             </div>
 
+            {notice && (
+              <div className="text-[#0f5132] bg-[#d1e7dd] border border-[#badbcc] rounded px-3 py-2 text-sm text-center">
+                {notice}
+              </div>
+            )}
             {error && <div className="text-red-600 text-sm text-center">{error}</div>}
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full md:w-fit bg-[#8D2741] text-white p-3 rounded-md hover:bg-[#111] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full md:w-fit bg-[#8D2741] text-white p-3 rounded-md hover:bg-[#111] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
-              {isLoading ? "Checking..." : "Sign In"}
+              {isLoading ? (
+                <>
+                  <span className="inline-block h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Checking...
+                </>
+              ) : "Sign In"}
             </button>
           </form>
 
@@ -134,7 +146,16 @@ function LoginClient() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading login...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">
+          <div className="inline-flex items-center gap-3 text-[#222]">
+            <span className="inline-block h-5 w-5 border-2 border-[#8D2741]/30 border-t-[#8D2741] rounded-full animate-spin" />
+            <span>Loading login...</span>
+          </div>
+        </div>
+      }
+    >
       <LoginClient />
     </Suspense>
   )

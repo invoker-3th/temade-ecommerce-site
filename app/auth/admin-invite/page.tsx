@@ -68,7 +68,12 @@ function AdminInviteClient() {
           </button>
         )}
 
-        {state === "loading" && <div className="text-xs text-gray-500">Please wait...</div>}
+        {state === "loading" && (
+          <div className="inline-flex items-center gap-2 text-xs text-gray-500">
+            <span className="inline-block h-4 w-4 border-2 border-[#8D2741]/30 border-t-[#8D2741] rounded-full animate-spin" />
+            <span>Please wait...</span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -81,7 +86,10 @@ export default function AdminInvitePage() {
         <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center px-4">
           <div className="max-w-md w-full bg-white border border-[#EEE7DA] rounded-xl p-6 text-center font-WorkSans">
             <h1 className="text-2xl font-bold mb-2 font-garamond">Admin Invite</h1>
-            <p className="text-sm text-gray-600">Loading invite...</p>
+            <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+              <span className="inline-block h-4 w-4 border-2 border-[#8D2741]/30 border-t-[#8D2741] rounded-full animate-spin" />
+              <span>Loading invite...</span>
+            </div>
           </div>
         </div>
       }
