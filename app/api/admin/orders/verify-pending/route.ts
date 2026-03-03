@@ -2,8 +2,12 @@ import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { OrderService } from "@/lib/services/orderServices"
 import { verifyPaystackTransaction } from "@/lib/paystack"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
-export async function POST() {
+export async function POST(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "orders:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const db = await getDatabase()
     const pendingOrders = await db

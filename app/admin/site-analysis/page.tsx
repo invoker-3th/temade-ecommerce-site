@@ -1,6 +1,19 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useMemo, useState } from "react"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
+import { useAuth } from "@/app/context/AuthContext"
 
 type SiteAnalysisData = {
   range: { startDate: string; endDate: string }
@@ -43,34 +56,6 @@ type SiteAnalysisData = {
   errors: string[]
 }
 
-type SeriesPoint = { date: string; lcp: number; cls: number; inp: number }
-
-function buildPath(points: Array<{ x: number; y: number }>) {
-  if (points.length === 0) return ""
-  return points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
-}
-
-function scaleSeries(
-  series: SeriesPoint[],
-  key: "lcp" | "cls" | "inp",
-  width: number,
-  height: number
-) {
-  const values = series.map((p) => p[key]).filter((v) => Number.isFinite(v))
-  if (values.length === 0) return ""
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-  const step = series.length > 1 ? width / (series.length - 1) : width
-  const points = series.map((p, idx) => {
-    const value = p[key]
-    const x = idx * step
-    const y = height - ((value - min) / range) * height
-    return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) }
-  })
-  return buildPath(points)
-}
-
 const ranges = [
   { id: "1d", label: "Daily" },
   { id: "1m", label: "Monthly" },
@@ -87,6 +72,9 @@ const granularities = [
 ]
 
 export default function AdminSiteAnalysisPage() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
+
   const [range, setRange] = useState("1y")
   const [granularity, setGranularity] = useState("monthly")
   const [loading, setLoading] = useState(true)
@@ -94,11 +82,15 @@ export default function AdminSiteAnalysisPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!adminEmail) return
     const run = async () => {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/admin/site-analysis?range=${range}&granularity=${granularity}`, { cache: "no-store" })
+        const res = await fetch(`/api/admin/site-analysis?range=${range}&granularity=${granularity}`, {
+          cache: "no-store",
+          headers: { "x-admin-email": adminEmail },
+        })
         if (!res.ok) throw new Error("Failed to load site analysis")
         const payload = await res.json()
         setData(payload)
@@ -109,7 +101,7 @@ export default function AdminSiteAnalysisPage() {
       }
     }
     run()
-  }, [range, granularity])
+  }, [adminEmail, range, granularity])
 
   const lastUpdated = useMemo(() => {
     if (!data) return "Not connected"
@@ -119,42 +111,16 @@ export default function AdminSiteAnalysisPage() {
   const posthogSeries = data?.posthog.series || []
   const hasTechnicalSeoConfigured = Boolean(data?.technicalSeo?.sitemap.ok && data?.technicalSeo?.robots.ok)
   const hasSubmittedSitemapsInGsc = Boolean((data?.gsc.sitemaps || []).length > 0)
-
-  const buildMetricPath = (metric: "activeUsers" | "sessions" | "pageViews" | "averageSessionDuration") => {
-    if (posthogSeries.length === 0) return ""
-    const values = posthogSeries.map((item) => Number(item[metric] || 0))
-    const min = Math.min(...values)
-    const max = Math.max(...values)
-    const rangeValue = max - min || 1
-    const width = 240
-    const height = 56
-    const step = posthogSeries.length > 1 ? width / (posthogSeries.length - 1) : width
-    const points = values.map((value, idx) => {
-      const x = idx * step
-      const y = height - ((value - min) / rangeValue) * height
-      return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) }
-    })
-    return buildPath(points)
-  }
-
-  const buildCombinedMetricPath = (
-    metric: "activeUsers" | "sessions" | "pageViews" | "averageSessionDuration",
-    width: number,
-    height: number
-  ) => {
-    if (posthogSeries.length === 0) return ""
-    const values = posthogSeries.map((item) => Number(item[metric] || 0))
-    const min = Math.min(...values)
-    const max = Math.max(...values)
-    const rangeValue = max - min || 1
-    const step = posthogSeries.length > 1 ? width / (posthogSeries.length - 1) : width
-    const points = values.map((value, idx) => {
-      const x = idx * step
-      const y = height - ((value - min) / rangeValue) * height
-      return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) }
-    })
-    return buildPath(points)
-  }
+  const topPosthogPages = (data?.posthog.topPages || []).slice(0, 10).map((row) => ({
+    label: row.path.length > 24 ? `${row.path.slice(0, 24)}...` : row.path,
+    views: row.views,
+  }))
+  const topGscPages = (data?.gsc.topPages || []).slice(0, 10).map((row) => ({
+    label: row.page.length > 24 ? `${row.page.slice(0, 24)}...` : row.page,
+    clicks: row.clicks,
+    impressions: row.impressions,
+  }))
+  const webVitalsSeries = data?.webVitals.series || []
 
   return (
     <div className="p-6 md:p-10 font-WorkSans">
@@ -231,83 +197,47 @@ export default function AdminSiteAnalysisPage() {
             <div className="bg-white rounded-xl shadow p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Active Users</p>
               <p className="text-2xl font-semibold mt-2">{data?.posthog.summary?.activeUsers?.toLocaleString() || 0}</p>
-              {posthogSeries.length > 0 && (
-                <svg viewBox="0 0 240 56" className="w-full h-14 mt-2">
-                  <path d={buildMetricPath("activeUsers")} fill="none" stroke="#8D2741" strokeWidth="2" />
-                </svg>
-              )}
             </div>
             <div className="bg-white rounded-xl shadow p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Sessions</p>
               <p className="text-2xl font-semibold mt-2">{data?.posthog.summary?.sessions?.toLocaleString() || 0}</p>
-              {posthogSeries.length > 0 && (
-                <svg viewBox="0 0 240 56" className="w-full h-14 mt-2">
-                  <path d={buildMetricPath("sessions")} fill="none" stroke="#2C2C2C" strokeWidth="2" />
-                </svg>
-              )}
             </div>
             <div className="bg-white rounded-xl shadow p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Page Views</p>
               <p className="text-2xl font-semibold mt-2">{data?.posthog.summary?.pageViews?.toLocaleString() || 0}</p>
-              {posthogSeries.length > 0 && (
-                <svg viewBox="0 0 240 56" className="w-full h-14 mt-2">
-                  <path d={buildMetricPath("pageViews")} fill="none" stroke="#CA6F86" strokeWidth="2" />
-                </svg>
-              )}
             </div>
             <div className="bg-white rounded-xl shadow p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Avg Session (sec)</p>
               <p className="text-2xl font-semibold mt-2">{Math.round(data?.posthog.summary?.averageSessionDuration || 0)}</p>
-              {posthogSeries.length > 0 && (
-                <svg viewBox="0 0 240 56" className="w-full h-14 mt-2">
-                  <path d={buildMetricPath("averageSessionDuration")} fill="none" stroke="#7A1E33" strokeWidth="2" />
-                </svg>
-              )}
             </div>
           </div>
 
-          <div className="mt-6">
-            <div className="bg-white rounded-xl shadow p-5">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">PostHog Trends (Combined)</p>
-                <span className="text-xs text-gray-400">
-                  {posthogSeries.length > 0 ? `${posthogSeries.length} points` : "No series"}
-                </span>
-              </div>
-              {posthogSeries.length === 0 ? (
-                <div className="text-sm text-gray-400">No trend data available for the selected range.</div>
-              ) : (
-                <div>
-                  <svg viewBox="0 0 960 260" className="w-full h-64">
-                    <path d={buildCombinedMetricPath("activeUsers", 960, 220)} fill="none" stroke="#8D2741" strokeWidth="3" />
-                    <path d={buildCombinedMetricPath("sessions", 960, 220)} fill="none" stroke="#2C2C2C" strokeWidth="3" />
-                    <path d={buildCombinedMetricPath("pageViews", 960, 220)} fill="none" stroke="#CA6F86" strokeWidth="3" />
-                    <path d={buildCombinedMetricPath("averageSessionDuration", 960, 220)} fill="none" stroke="#7A1E33" strokeWidth="3" />
-                  </svg>
-                  <div className="flex flex-wrap gap-4 text-xs text-gray-600 mt-2">
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-3 h-3 rounded-full bg-[#8D2741]" />
-                      Active Users
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-3 h-3 rounded-full bg-[#2C2C2C]" />
-                      Sessions
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-3 h-3 rounded-full bg-[#CA6F86]" />
-                      Page Views
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-3 h-3 rounded-full bg-[#7A1E33]" />
-                      Avg Session (sec)
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Note: each line is normalized to its own min/max scale for clearer trend comparison.
-                  </p>
-                </div>
-              )}
+          <div className="mt-6 bg-white rounded-xl shadow p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">PostHog Trends (Combined)</p>
+              <span className="text-xs text-gray-400">
+                {posthogSeries.length > 0 ? `${posthogSeries.length} points` : "No series"}
+              </span>
             </div>
+            {posthogSeries.length === 0 ? (
+              <div className="text-sm text-gray-400">No trend data available for the selected range.</div>
+            ) : (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={posthogSeries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#EEE7DA" />
+                    <XAxis dataKey="bucket" hide />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="activeUsers" stroke="#8D2741" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="sessions" stroke="#2C2C2C" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="pageViews" stroke="#CA6F86" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="averageSessionDuration" stroke="#7A1E33" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 mt-6">
@@ -316,17 +246,21 @@ export default function AdminSiteAnalysisPage() {
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Top Landing Pages (PostHog)</p>
                 <span className="text-xs text-gray-400">{data?.posthog.connected ? "Live" : "Awaiting PostHog"}</span>
               </div>
-              <div className="space-y-3 text-sm text-gray-600">
-                {(data?.posthog.topPages || []).length === 0 && (
-                  <div className="text-sm text-gray-400">No data available.</div>
-                )}
-                {(data?.posthog.topPages || []).map((row) => (
-                  <div key={row.path} className="flex items-center justify-between border-b pb-2">
-                    <span className="truncate">{row.path}</span>
-                    <span>{row.views.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
+              {topPosthogPages.length === 0 ? (
+                <div className="text-sm text-gray-400">No data available.</div>
+              ) : (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topPosthogPages} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#EEE7DA" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="label" type="category" width={180} />
+                      <Tooltip />
+                      <Bar dataKey="views" fill="#CA6F86" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-xl shadow p-5">
@@ -334,17 +268,23 @@ export default function AdminSiteAnalysisPage() {
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Top Pages (GSC)</p>
                 <span className="text-xs text-gray-400">{data?.gsc.connected ? "Live" : "Awaiting GSC"}</span>
               </div>
-              <div className="space-y-3 text-sm text-gray-600">
-                {(data?.gsc.topPages || []).length === 0 && (
-                  <div className="text-sm text-gray-400">No data available.</div>
-                )}
-                {(data?.gsc.topPages || []).map((row) => (
-                  <div key={row.page} className="flex items-center justify-between border-b pb-2">
-                    <span className="truncate">{row.page}</span>
-                    <span>{row.clicks.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
+              {topGscPages.length === 0 ? (
+                <div className="text-sm text-gray-400">No data available.</div>
+              ) : (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topGscPages}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#EEE7DA" />
+                      <XAxis dataKey="label" hide />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="clicks" fill="#8D2741" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="impressions" fill="#2C2C2C" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           </div>
 
@@ -388,44 +328,22 @@ export default function AdminSiteAnalysisPage() {
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Core Web Vitals (P75)</p>
                 <span className="text-xs text-gray-400">{data?.webVitals.connected ? "Live" : "Awaiting data"}</span>
               </div>
-              {!data?.webVitals.series || data.webVitals.series.length === 0 ? (
+              {webVitalsSeries.length === 0 ? (
                 <div className="text-sm text-gray-400">No web vitals data available yet.</div>
               ) : (
-                <div className="w-full">
-                  <svg viewBox="0 0 600 200" className="w-full h-52">
-                    <path
-                      d={scaleSeries(data.webVitals.series, "lcp", 600, 160)}
-                      fill="none"
-                      stroke="#8D2741"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d={scaleSeries(data.webVitals.series, "cls", 600, 160)}
-                      fill="none"
-                      stroke="#2C2C2C"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d={scaleSeries(data.webVitals.series, "inp", 600, 160)}
-                      fill="none"
-                      stroke="#CA6F86"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  <div className="flex flex-wrap gap-4 text-xs text-gray-600 mt-2">
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-3 h-3 rounded-full bg-[#8D2741]" />
-                      LCP
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-3 h-3 rounded-full bg-[#2C2C2C]" />
-                      CLS
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-3 h-3 rounded-full bg-[#CA6F86]" />
-                      INP
-                    </span>
-                  </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={webVitalsSeries}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#EEE7DA" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="lcp" stroke="#8D2741" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="cls" stroke="#2C2C2C" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="inp" stroke="#CA6F86" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </div>
@@ -435,4 +353,3 @@ export default function AdminSiteAnalysisPage() {
     </div>
   )
 }
-

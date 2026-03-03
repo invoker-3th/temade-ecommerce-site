@@ -57,3 +57,22 @@ export function adminNewUserEmail(opts: { userName?: string; email: string; user
     text: `New user ${name} (${opts.email || "-"}) joined. ${link}`,
   }
 }
+
+export function adminOtpLoginEmail(opts: { userName?: string; loginLink: string; expiresMinutes: number }): EmailTemplate {
+  const name = opts.userName || "there"
+  return {
+    subject: "Your Temade admin login link",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #222;">
+        <h2>Admin login verification</h2>
+        <p>Hi ${name},</p>
+        <p>Use this one-time secure link to open your admin dashboard.</p>
+        <p><a href="${opts.loginLink}" style="background:#8D2741;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Log in to Admin Dashboard</a></p>
+        <p>This link expires in ${opts.expiresMinutes} minutes and can be used once.</p>
+        <p>If the button does not work, open this link:</p>
+        <p>${opts.loginLink}</p>
+      </div>
+    `,
+    text: `Hi ${name}, use this one-time link to log in: ${opts.loginLink}. It expires in ${opts.expiresMinutes} minutes.`,
+  }
+}

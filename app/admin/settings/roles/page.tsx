@@ -21,6 +21,24 @@ type UserHit = {
   role?: string
 }
 
+type RoleApiDoc = {
+  _id: unknown
+  name?: unknown
+  description?: unknown
+  permissions?: unknown
+  emailSubscriptions?: unknown
+  createdAt?: unknown
+  updatedAt?: unknown
+  createdBy?: unknown
+}
+
+type UserApiHit = {
+  _id: unknown
+  email?: unknown
+  userName?: unknown
+  role?: unknown
+}
+
 function uniqTrimLines(raw: string) {
   const items = String(raw || "")
     .split(/[\n,]+/g)
@@ -36,18 +54,22 @@ const KNOWN_PERMISSIONS = [
   "admin:roles:delete",
   "admin:roles:assign",
   "admin:audit:view",
+  "team:view",
+  "team:message",
   "users:view",
   "users:manage",
   "orders:view",
   "orders:edit",
   "finance:reports",
   "catalog:view",
+  "catalog:edit",
   "content:edit",
   "lookbook:edit",
   "banner:edit",
   "seo:view",
   "seo:edit",
   "site:analytics:view",
+  "site:analytics:manage",
   "email:send",
   "support:ticket:view",
   "support:ticket:reply",
@@ -65,6 +87,37 @@ const KNOWN_EMAIL_EVENTS = [
   "payment.failed",
   "refund.processed",
 ] as const
+
+const PERMISSION_MEANINGS: Record<string, string> = {
+  "admin:roles:view": "View all roles in the admin console.",
+  "admin:roles:create": "Create new roles.",
+  "admin:roles:edit": "Edit role name, description, and permissions.",
+  "admin:roles:delete": "Delete existing roles.",
+  "admin:roles:assign": "Assign and remove roles for users.",
+  "admin:audit:view": "View admin activity and audit logs.",
+  "team:view": "View team roster (nickname, email, role, and member id).",
+  "team:message": "Send in-app team messages.",
+  "users:view": "View user profiles and lists.",
+  "users:manage": "Edit user details, status, and account controls.",
+  "orders:view": "View order records and order status.",
+  "orders:edit": "Update order workflow and shipping state.",
+  "finance:reports": "View finance and revenue reports.",
+  "catalog:view": "View catalog records in admin.",
+  "catalog:edit": "Create, edit, and delete catalog entities.",
+  "content:edit": "Edit CMS content and content blocks.",
+  "lookbook:edit": "Update lookbook content and entries.",
+  "banner:edit": "Edit top bar and promotional banners.",
+  "seo:view": "View SEO and site analysis data.",
+  "seo:edit": "Edit SEO settings and metadata.",
+  "site:analytics:view": "View analytics dashboards.",
+  "site:analytics:manage": "Run sensitive analytics actions such as clear/reset.",
+  "email:send": "Send manual emails from admin tools.",
+  "support:ticket:view": "View support tickets.",
+  "support:ticket:reply": "Reply to support tickets.",
+  "payouts:view": "View payout records and status.",
+  "orders:refunds": "Handle and approve refund operations.",
+  "finance:reconcile": "Perform finance reconciliation tasks.",
+}
 
 export default function RolesPage() {
   const { user } = useAuth()
@@ -91,6 +144,7 @@ export default function RolesPage() {
   })
   const [editorSaving, setEditorSaving] = useState(false)
   const [editorError, setEditorError] = useState("")
+  const [editorPermissionPreview, setEditorPermissionPreview] = useState<string>("")
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -105,6 +159,7 @@ export default function RolesPage() {
   const [assignSaving, setAssignSaving] = useState(false)
   const [assignError, setAssignError] = useState("")
   const [assignSuccess, setAssignSuccess] = useState("")
+  const isAnyModalOpen = editorOpen || deleteOpen || assignOpen
 
   const loadRoles = async () => {
     if (!adminEmail) return
@@ -114,12 +169,12 @@ export default function RolesPage() {
       const res = await fetch("/api/admin/roles", { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load roles")
-      const docs = (data?.roles || []).map((r: any) => ({
+      const docs = (data?.roles || []).map((r: RoleApiDoc) => ({
         _id: String(r._id),
         name: String(r.name || ""),
-        description: r.description || "",
-        permissions: Array.isArray(r.permissions) ? r.permissions : [],
-        emailSubscriptions: Array.isArray(r.emailSubscriptions) ? r.emailSubscriptions : [],
+        description: typeof r.description === "string" ? r.description : "",
+        permissions: Array.isArray(r.permissions) ? r.permissions.map((p) => String(p)) : [],
+        emailSubscriptions: Array.isArray(r.emailSubscriptions) ? r.emailSubscriptions.map((e) => String(e)) : [],
         createdAt: r.createdAt ? String(r.createdAt) : undefined,
         updatedAt: r.updatedAt ? String(r.updatedAt) : undefined,
         createdBy: r.createdBy ? String(r.createdBy) : undefined,
@@ -139,6 +194,19 @@ export default function RolesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminEmail])
 
+  useEffect(() => {
+    if (!isAnyModalOpen) return
+    const originalBodyOverflow = document.body.style.overflow
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    document.body.style.overflow = "hidden"
+    document.documentElement.style.overflow = "hidden"
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow
+      document.documentElement.style.overflow = originalHtmlOverflow
+    }
+  }, [isAnyModalOpen])
+
   const openCreate = () => {
     setEditorMode("create")
     setEditorForm({
@@ -149,6 +217,7 @@ export default function RolesPage() {
       emailSubsText: "",
     })
     setEditorError("")
+    setEditorPermissionPreview(KNOWN_PERMISSIONS[0])
     setEditorOpen(true)
   }
 
@@ -162,7 +231,15 @@ export default function RolesPage() {
       emailSubsText: (role.emailSubscriptions || []).join("\n"),
     })
     setEditorError("")
+    setEditorPermissionPreview((role.permissions && role.permissions[0]) || KNOWN_PERMISSIONS[0])
     setEditorOpen(true)
+  }
+
+  const addPermissionToEditor = (permission: string) => {
+    setEditorForm((prev) => ({
+      ...prev,
+      permissionsText: uniqTrimLines(`${prev.permissionsText}\n${permission}`).join("\n"),
+    }))
   }
 
   const saveRole = async () => {
@@ -179,7 +256,12 @@ export default function RolesPage() {
 
     setEditorSaving(true)
     try {
-      const payload: any = {
+      const payload: {
+        name: string
+        description: string
+        permissions: string[]
+        emailSubscriptions: string[]
+      } = {
         name,
         description: editorForm.description,
         permissions,
@@ -243,11 +325,11 @@ export default function RolesPage() {
       const res = await fetch(`/api/admin/users${qs}`, { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to search users")
-      const hits = (data?.users || []).map((u: any) => ({
+      const hits = (data?.users || []).map((u: UserApiHit) => ({
         _id: String(u._id),
         email: String(u.email || ""),
         userName: String(u.userName || ""),
-        role: u.role,
+        role: typeof u.role === "string" ? u.role : undefined,
       })) as UserHit[]
       setAssignHits(hits)
     } catch (e) {
@@ -266,7 +348,7 @@ export default function RolesPage() {
       const res = await fetch(`/api/admin/users/${u._id}`, { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load user roles")
-      const roleIds = Array.isArray(data?.user?.roles) ? data.user.roles.map((x: any) => String(x)) : []
+      const roleIds = Array.isArray(data?.user?.roles) ? data.user.roles.map((x: unknown) => String(x)) : []
       setAssignUserRoleIds(roleIds)
     } catch (e) {
       setAssignError(e instanceof Error ? e.message : "Failed to load user roles")
@@ -417,6 +499,22 @@ export default function RolesPage() {
               </div>
 
               <div className="mt-5">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Permission meanings</p>
+                <div className="mt-2 space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {(selectedRole.permissions || []).length ? (
+                    selectedRole.permissions.map((p) => (
+                      <div key={`meaning-${p}`} className="rounded-lg border border-[#E4D9C6] bg-[#FBF7F3] p-2">
+                        <div className="text-xs font-semibold text-[#16161A]">{p}</div>
+                        <div className="text-xs text-gray-600 mt-1">{PERMISSION_MEANINGS[p] || "No plain-language description yet."}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-500">--</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Email subscriptions</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(selectedRole.emailSubscriptions || []).length ? (
@@ -448,8 +546,9 @@ export default function RolesPage() {
 
       {/* Role editor modal */}
       {editorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
+          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="p-4 md:p-5 border-b border-[#EEE7DA]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm text-gray-500">{editorMode === "create" ? "Create role" : "Edit role"}</p>
@@ -461,8 +560,10 @@ export default function RolesPage() {
                 Close
               </button>
             </div>
+            </div>
 
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="overflow-y-auto px-4 md:px-5 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Name</label>
                 <input
@@ -504,26 +605,38 @@ export default function RolesPage() {
                 <textarea
                   value={editorForm.permissionsText}
                   onChange={(e) => setEditorForm((p) => ({ ...p, permissionsText: e.target.value }))}
-                  className="w-full border rounded px-3 py-2 text-sm min-h-[180px]"
+                  className="w-full border rounded px-3 py-2 text-sm min-h-[160px]"
                   placeholder={"users:view\norders:view\nbanner:edit"}
                 />
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
                   {KNOWN_PERMISSIONS.map((p) => (
                     <button
                       key={p}
                       type="button"
-                      onClick={() =>
-                        setEditorForm((prev) => ({
-                          ...prev,
-                          permissionsText: uniqTrimLines(`${prev.permissionsText}\n${p}`).join("\n"),
-                        }))
-                      }
-                      className="text-[11px] px-2 py-1 rounded bg-gray-100 border text-gray-700 hover:bg-gray-50"
+                      onClick={() => setEditorPermissionPreview(p)}
+                      className={`text-[11px] px-2 py-1 rounded border text-gray-700 hover:bg-gray-50 ${
+                        editorPermissionPreview === p ? "bg-[#F4EFE7] border-[#CA6F86]" : "bg-gray-100"
+                      }`}
                     >
-                      + {p}
+                      {p}
                     </button>
                   ))}
                 </div>
+                {!!editorPermissionPreview && (
+                  <div className="mt-2 rounded border border-[#E4D9C6] bg-[#FBF7F3] p-2">
+                    <p className="text-xs font-semibold text-[#16161A]">{editorPermissionPreview}</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {PERMISSION_MEANINGS[editorPermissionPreview] || "No plain-language description yet."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => addPermissionToEditor(editorPermissionPreview)}
+                      className="mt-2 px-2 py-1 text-[11px] rounded bg-[#8D2741] text-white"
+                    >
+                      Add selected permission
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
                 <div className="flex items-center justify-between">
@@ -544,10 +657,10 @@ export default function RolesPage() {
                 <textarea
                   value={editorForm.emailSubsText}
                   onChange={(e) => setEditorForm((p) => ({ ...p, emailSubsText: e.target.value }))}
-                  className="w-full border rounded px-3 py-2 text-sm min-h-[180px]"
+                  className="w-full border rounded px-3 py-2 text-sm min-h-[160px]"
                   placeholder={"order.created\nrefund.processed"}
                 />
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
                   {KNOWN_EMAIL_EVENTS.map((ev) => (
                     <button
                       key={ev}
@@ -566,10 +679,11 @@ export default function RolesPage() {
                 </div>
               </div>
             </div>
+            </div>
 
-            {editorError && <p className="mt-3 text-xs text-red-600">{editorError}</p>}
-
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="p-4 md:p-5 border-t border-[#EEE7DA]">
+            {editorError && <p className="text-xs text-red-600">{editorError}</p>}
+            <div className="mt-3 flex justify-end gap-2">
               <button
                 onClick={() => setEditorOpen(false)}
                 className="px-3 py-2 text-sm rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
@@ -587,13 +701,14 @@ export default function RolesPage() {
             <p className="mt-3 text-[11px] text-gray-500">
               Uses: <span className="font-semibold">GET/POST/PATCH/DELETE</span> <span className="font-mono">/api/admin/roles</span>
             </p>
+            </div>
           </div>
         </div>
       )}
 
       {/* Delete confirm */}
       {deleteOpen && selectedRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl w-full max-w-lg p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -629,8 +744,9 @@ export default function RolesPage() {
 
       {/* Assign roles modal */}
       {assignOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl w-full max-w-3xl p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
+          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="p-4 md:p-5 border-b border-[#EEE7DA]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm text-gray-500">Assignments</p>
@@ -640,8 +756,10 @@ export default function RolesPage() {
                 Close
               </button>
             </div>
+            </div>
 
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="overflow-y-auto px-4 md:px-5 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-lg p-3">
                 <p className="text-xs font-semibold text-gray-600 mb-2">Find user</p>
                 <div className="flex gap-2">
@@ -728,6 +846,7 @@ export default function RolesPage() {
                   </>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </div>

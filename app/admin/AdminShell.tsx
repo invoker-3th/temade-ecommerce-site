@@ -39,8 +39,9 @@ const nav: NavSection[] = [
     items: [
       { label: "Banner Settings", href: "/admin/settings/banner", permission: "banner:edit" },
       { label: "SEO Settings", href: "/admin/settings/seo", permission: "seo:edit" },
-      { label: "Team & Roles", href: "/admin/settings/team", permission: "admin:roles:view" },
+      { label: "Team & Roles", href: "/admin/settings/team", permission: "team:view" },
       { label: "Roles", href: "/admin/settings/roles", permission: "admin:roles:view" },
+      { label: "Admin Logs", href: "/admin/audit", permission: "admin:audit:view" },
     ],
   },
 ]
@@ -95,7 +96,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }, [mobileOpen])
 
   const [permissions, setPermissions] = useState<string[] | null>(null)
-  const isAdmin = useMemo(() => {
+  const isAdminPrincipal = useMemo(() => {
     if (!user?.email) return false
     if (user.role === "admin") return true
     const allow = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
@@ -104,12 +105,20 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       .filter(Boolean)
     return allow.includes(user.email.toLowerCase())
   }, [user?.email, user?.role])
+  const canAccessAdmin = useMemo(() => {
+    if (isAdminPrincipal) return true
+    if (!permissions) return false
+    return permissions.length > 0
+  }, [isAdminPrincipal, permissions])
 
   useEffect(() => {
     if (!user?.email) return
     const fetchPerms = async () => {
       try {
-        const res = await fetch(`/api/admin/me?email=${encodeURIComponent(user.email)}`)
+        const adminEmail = user.email.trim().toLowerCase()
+        const res = await fetch(`/api/admin/me?email=${encodeURIComponent(adminEmail)}`, {
+          headers: { "x-admin-email": adminEmail },
+        })
         if (!res.ok) return setPermissions([])
         const data = await res.json()
         setPermissions(Array.isArray(data.permissions) ? data.permissions : [])
@@ -129,7 +138,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!isAdmin) {
+  if (!isAdminPrincipal && permissions === null) {
+    return (
+      <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center font-WorkSans">
+        Loading...
+      </div>
+    )
+  }
+
+  if (!canAccessAdmin) {
     return (
       <div className="min-h-screen bg-[#FFFBEB] flex flex-col items-center justify-center gap-3 font-WorkSans">
         <p className="text-lg">Access denied</p>
@@ -139,8 +156,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBEB] text-[#16161A] flex admin-scope font-WorkSans">
-      <aside className="w-64 bg-white border-r border-[#EEE7DA] px-5 py-6 hidden md:flex md:flex-col">
+    <div className="h-screen overflow-hidden bg-[#FFFBEB] text-[#16161A] flex admin-scope font-WorkSans">
+      <aside className="w-64 h-screen bg-white border-r border-[#EEE7DA] px-5 py-6 hidden md:flex md:flex-col overflow-y-auto">
         <div className="mb-6">
           <p className="text-xs tracking-widest text-gray-500">TEMADE STUDIOS</p>
           <p className="text-lg font-bold">Admin Console</p>
@@ -206,7 +223,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 h-screen flex flex-col">
         <div className="md:hidden bg-white border-b border-[#EEE7DA] px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500">TEMADE ADMIN</p>
@@ -282,6 +299,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                         )
                       }
 
+                      if (item.permission) {
+                        if (!permissions) return null
+                        if (!(permissions.includes("*") || permissions.includes(item.permission))) return null
+                      }
+
                       return (
                         <Link
                           key={item.label}
@@ -317,7 +339,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <main className="min-h-screen">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
         <Toaster position="bottom-right" />

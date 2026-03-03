@@ -2,8 +2,12 @@ import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 import type { Order, User } from "@/lib/models/User"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "orders:view")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get("userId")
@@ -59,6 +63,9 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "orders:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const body = await request.json()
     const { orderId, status } = body as {

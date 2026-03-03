@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useMemo, useState } from "react"
 import FileUploadZone from "@/app/components/FileUploadZone"
+import { useAuth } from "@/app/context/AuthContext"
 
 type LookbookSection = {
   material: string
@@ -8,6 +9,8 @@ type LookbookSection = {
 }
 
 export default function AdminLookbookPage() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
   const [sections, setSections] = useState<LookbookSection[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>("")
@@ -33,8 +36,9 @@ export default function AdminLookbookPage() {
   }
 
   useEffect(() => {
+    if (!adminEmail) return
     load()
-  }, [])
+  }, [adminEmail])
 
   const handleUploadSuccess = async (urls: string[]) => {
     const material = (newMaterial?.trim() || selectedMaterial)?.trim()
@@ -48,7 +52,7 @@ export default function AdminLookbookPage() {
       for (const url of urls) {
         const res = await fetch('/api/admin/lookbook', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', "x-admin-email": adminEmail },
           body: JSON.stringify({ material, image: url })
         })
         if (!res.ok) {
@@ -73,7 +77,8 @@ export default function AdminLookbookPage() {
     setSuccess("")
     try {
       const res = await fetch(`/api/admin/lookbook?material=${encodeURIComponent(material)}&image=${encodeURIComponent(image)}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { "x-admin-email": adminEmail },
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -111,7 +116,7 @@ export default function AdminLookbookPage() {
 
           <div>
             <label className="block text-sm font-medium mb-2">Upload Images (Cloudinary)</label>
-            <FileUploadZone onUploadSuccess={handleUploadSuccess} onUploadError={handleUploadError} maxFiles={10} />
+            <FileUploadZone onUploadSuccess={handleUploadSuccess} onUploadError={handleUploadError} maxFiles={10} adminEmail={adminEmail} />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 function getStartDate(range: string, now: Date) {
   const start = new Date(now)
@@ -24,6 +25,9 @@ function getStartDate(range: string, now: Date) {
 }
 
 export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "site:analytics:view")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const { searchParams } = new URL(request.url)
     const range = searchParams.get("range") || "30d"

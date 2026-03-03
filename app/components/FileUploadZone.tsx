@@ -8,12 +8,14 @@ interface FileUploadZoneProps {
   onUploadError: (error: string) => void
   maxFiles?: number
   acceptedFileTypes?: string[]
+  adminEmail?: string
 }
 
 export default function FileUploadZone({
   onUploadSuccess,
   onUploadError,
   maxFiles = 5,
+  adminEmail,
 }: FileUploadZoneProps) {
   const [uploading, setUploading] = useState(false)
 
@@ -28,6 +30,7 @@ export default function FileUploadZone({
     try {
       const response = await fetch('/api/admin/upload', {
         method: 'POST',
+        headers: adminEmail ? { "x-admin-email": adminEmail } : undefined,
         body: formData,
       })
 
@@ -43,7 +46,7 @@ export default function FileUploadZone({
     } finally {
       setUploading(false)
     }
-  }, [onUploadSuccess, onUploadError])
+  }, [adminEmail, onUploadSuccess, onUploadError])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

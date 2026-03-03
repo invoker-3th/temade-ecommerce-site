@@ -1,112 +1,125 @@
-## Admin roles and permissions
+## Admin Roles and Permissions
 
-This document describes the **current admin roles**, how they map to permissions, and **implementable roles** you can safely add using the existing RBAC system.
+This document reflects the current RBAC behavior in the Temade admin console.
 
-### Current canonical roles (seeded by `/api/admin/roles/seed`)
+## 1. Canonical seeded roles
 
-These roles are defined in `app/api/admin/roles/seed/route.ts` and treated as the canonical baseline:
+Seed source: `app/api/admin/roles/seed/route.ts`
 
-- **admin**
-  - **Purpose**: Owner / super-admin.
-  - **Effective permissions**: `["*"]` (all permissions).
-  - **Notes**: Can manage roles, users, settings, and view all audit logs. Intended for a very small number of trusted accounts.
+- `admin`
+  - Purpose: owner/super-admin.
+  - Effective permissions: `["*"]`.
+  - Notes: full platform control.
 
-- **manager**
-  - **Purpose**: Operations / ecommerce manager.
-  - **Key permissions**:
-    - `seo:view` – View site analysis and SEO health.
-    - `site:analytics:view` – View extended analytics dashboards (where present).
-    - `content:edit` – Edit CMS pages and high-level content.
-    - `orders:view`, `orders:edit` – View and manage orders.
-    - `users:view` – View customer information.
-  - **Notes**: Cannot assign roles, change billing, or adjust platform-wide settings.
-
-- **content_editor**
-  - **Purpose**: CMS / content team (including promo banners).
-  - **Key permissions**:
-    - `content:edit` – General content editing (CMS, pages, etc.).
-    - `catalog:view` – View catalog/inventory.
-    - `lookbook:edit` – Manage lookbook entries.
-    - `banner:edit` – Edit the top promo banner (used by `Banner Settings`).
-  - **Notes**: No access to finance or user management. This is the primary role that can manage the **promo banner** via RBAC.
-
-- **support**
-  - **Purpose**: Customer support.
-  - **Key permissions**:
-    - `support:ticket:view`, `support:ticket:reply` – Work support tickets.
-    - `orders:view` – View customer orders.
-    - `users:view` – View customer profiles for support.
-  - **Notes**: Cannot edit products, CMS, or financial data.
-
-- **finance**
-  - **Purpose**: Finance / accounting.
-  - **Key permissions**:
-    - `finance:reports` – Access financial reports.
-    - `payouts:view` – View payouts.
-    - `orders:refunds` – Handle refunds.
-    - `finance:reconcile` – Reconciliation workflows.
-  - **Notes**: No access to CMS/editing or user/role management.
-
-### How SEO can edit the banner
-
-- The **Banner Settings** page is at `/admin/settings/banner` and is now gated by the **`banner:edit`** permission in:
-  - `app/admin/AdminShell.tsx` (navigation visibility).
-  - `app/api/admin/site-content/top-bar/route.ts` (server-side permission check).
-- Any role that includes `banner:edit` (currently `content_editor` from the seed) will:
-  - See the **Banner Settings** item in the admin sidebar.
-  - Be able to read and update the promo banner text.
-- **Recommendation**: Assign the `content_editor` role (or a new SEO-focused role, see below) to SEO practitioners who should own the promo banner.
-
-### Implementable / suggested future roles
-
-You can add more roles by inserting new documents into the `roles` collection that follow the `Role` model (`lib/models/Role.ts`). Some suggested roles:
-
-- **seo_specialist** (not yet seeded)
-  - **Intended permissions**:
-    - `seo:view`, `seo:edit`
-    - `site:analytics:view`
-    - `content:edit`
-    - `banner:edit`
-  - **Use case**: Dedicated SEO owner who can manage SEO settings, analytics, and promo messaging without full CMS or user/finance access.
-
-- **analytics_viewer**
-  - **Intended permissions**:
+- `manager`
+  - Purpose: operations manager.
+  - Permissions:
     - `seo:view`
     - `site:analytics:view`
-  - **Use case**: Read-only access to SEO/Site Analysis dashboards (no editing).
-
-- **order_manager**
-  - **Intended permissions**:
-    - `orders:view`, `orders:edit`
-    - `orders:refunds` (optional, or keep for finance-only)
-    - `users:view`
-  - **Use case**: Operations staff focused on orders and customers, no CMS or SEO access.
-
-- **marketing_manager**
-  - **Intended permissions**:
     - `content:edit`
-    - `banner:edit`
+    - `catalog:edit`
+    - `orders:view`, `orders:edit`
+    - `users:view`
+
+- `content_editor`
+  - Purpose: content and merchandising operations.
+  - Permissions:
+    - `content:edit`
+    - `catalog:view`
     - `lookbook:edit`
-    - `email:send`
-  - **Use case**: Campaign/marketing team controlling on-site messaging, lookbooks, and outbound email campaigns.
+    - `banner:edit`
 
-### How permissions are evaluated
+- `support`
+  - Purpose: customer support operations.
+  - Permissions:
+    - `support:ticket:view`, `support:ticket:reply`
+    - `orders:view`
+    - `users:view`
 
-- Permissions for a user are computed in `lib/server/permissionGuard.ts`:
-  - Canonical `role` field of `admin` **or** email in `NEXT_PUBLIC_ADMIN_EMAILS` ⇒ treated as super-admin with `["*"]`.
-  - Otherwise, the server reads the user’s `roles` array (IDs or names), loads matching `Role` documents, and flattens/uniques all `permissions`.
-- The **admin navigation** (`app/admin/AdminShell.tsx`) uses this permission list to decide which sidebar items to show. For example:
-  - **Site Analysis** requires `seo:view`.
-  - **SEO Settings** requires `seo:edit`.
-  - **Banner Settings** requires `banner:edit`.
-  - **Team & Roles / Roles** require `admin:roles:view`.
+- `finance`
+  - Purpose: finance and reconciliation.
+  - Permissions:
+    - `finance:reports`
+    - `payouts:view`
+    - `orders:refunds`
+    - `finance:reconcile`
 
-### Practical notes
+## 2. Permission resolution model
 
-- Users can be assigned **multiple roles**; permissions are merged.
-- The `Team` page (`/admin/settings/team`) is where you:
-  - Invite admins by email.
-  - Attach one or more roles to an admin via the roles modal.
-- The `Roles` page (`/admin/settings/roles`) currently shows a placeholder message while its full management UI is temporarily disabled, but the **underlying RBAC APIs and role model are active**.
+Primary implementation: `lib/server/permissionGuard.ts`
 
+- Super-admin wildcard:
+  - `user.role === "admin"` or email in `NEXT_PUBLIC_ADMIN_EMAILS` => `["*"]`.
+- Otherwise:
+  - resolve assigned role documents and merge unique permissions.
+- Users can hold multiple roles; permissions are unioned.
 
+## 3. Identity and guard model
+
+Primary identity model:
+- server-validated HttpOnly admin session cookie (`temade_admin_session`)
+- session logic in `lib/server/sessionAuth.ts`
+
+Guard types:
+- `requirePermissionFromRequest(...)`
+  - for feature-level permission checks.
+- `requireAdminFromRequest(...)`
+  - for sensitive admin-only operations (seed, invites, etc.).
+
+Legacy fallback:
+- `x-admin-email` / `?email=` fallback exists only when `ALLOW_ADMIN_EMAIL_FALLBACK=true`
+- fallback is forcibly disabled in production.
+
+## 4. Current admin UI role behavior
+
+Sidebar and route visibility:
+- `app/admin/AdminShell.tsx` fetches `/api/admin/me` and filters nav items by permissions.
+- If a nav item has a permission key, user must have that key or `*`.
+
+Roles UI:
+- `app/admin/settings/roles/page.tsx` is active (not placeholder).
+- Supports role CRUD + assignment workflows.
+
+Team UI:
+- `app/admin/settings/team/page.tsx` handles invite and role assignment flows.
+- Invite operations are guarded with strict admin guard on API.
+
+## 5. Current permission highlights
+
+- Banner editing:
+  - nav + API are controlled by `banner:edit`
+  - endpoint: `app/api/admin/site-content/top-bar/route.ts`
+
+- SEO / Site Analysis:
+  - `app/api/admin/site-analysis/route.ts` uses `seo:view`
+  - `app/api/admin/analytics/route.ts` uses `site:analytics:view`
+  - `app/api/admin/clear-analytics/route.ts` uses `site:analytics:manage`
+
+- Orders:
+  - read = `orders:view`
+  - mutate workflow (status/ship/reminders/verify pending) = `orders:edit`
+
+- Users:
+  - read/export/orders export = `users:view`
+  - mutate user = `users:manage`
+  - manual outbound email = `email:send`
+
+## 6. Suggested next role additions
+
+- `seo_specialist`
+  - `seo:view`, `seo:edit`, `site:analytics:view`, `banner:edit`, `content:edit`
+
+- `analytics_viewer`
+  - `seo:view`, `site:analytics:view`
+
+- `order_manager`
+  - `orders:view`, `orders:edit`, optional `orders:refunds`, `users:view`
+
+## 7. Open taxonomy decisions
+
+- Current migration status:
+  - `catalog:edit` is introduced and routes now accept:
+    - `catalog:edit` OR legacy `content:edit` for catalog writes.
+  - `site:analytics:manage` is introduced and required for analytics clear operation.
+- Remaining decision:
+  - when to remove legacy `content:edit` compatibility for catalog mutation routes.

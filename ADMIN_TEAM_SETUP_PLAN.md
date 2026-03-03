@@ -1,222 +1,153 @@
-# Admin Team Setup and Login Welcome Plan
+# Admin Team Setup Plan (Owner-Friendly)
 
-## Goals
-- Send a welcome email whenever a user or admin logs in.
-- Add an Admin Team Setup UI where admins can invite other admins by username + email.
-- Send an email invite link that confirms admin access and verifies email on click.
-- Allow invited admins to log into the admin dashboard after confirmation.
+Last updated: 2026-03-03
 
-## Flow Design
-1. Admin opens `Admin -> Settings -> Team & Roles`.
-2. Admin enters `username` and `email` and clicks `Send Invite`.
-3. Server creates/updates user record and creates an `admin_invites` token record.
-4. Server sends invite link by email (`/auth/admin-invite?token=...`).
-5. Invited user clicks link.
-6. Server validates token, marks invite used, sets user role to `admin`, and verifies email.
-7. Client stores returned user session in `localStorage`.
-8. User can open `/admin` immediately.
+This guide explains how a non-technical site owner can:
+- add team members from the Admin UI,
+- assign and change permissions using Roles,
+- create new roles safely,
+- understand what each permission allows in plain language.
 
-## New/Updated Routes
-- `POST /api/admin/team/invite`
-  - Validates input.
-  - Creates pending invite token.
-  - Sends invite email.
-- `GET /api/admin/team/invite`
-  - Returns current admins + pending invites for Team UI.
-- `GET /api/auth/admin/accept?token=...`
-  - Verifies invite token.
-  - Promotes account to admin.
-  - Marks email verified.
-- `POST /api/auth/login` (updated)
-  - Sends login welcome email to the user/admin email.
-  - Keeps existing admin alert mail to owner address.
+## 1. What is already live
 
-## UI Changes
-- New page: `app/admin/settings/team/page.tsx`
-  - Invite form: username + email.
-  - Pending invites list.
-  - Current admins list.
-- New page: `app/auth/admin-invite/page.tsx`
-  - Confirms invite token.
-  - Shows success/error state.
-  - Redirect options to Admin/Home/Login.
-- Admin nav updated to enable Team link.
+Team and Roles are already available in Admin:
+- Team page: `app/admin/settings/team/page.tsx`
+- Roles page: `app/admin/settings/roles/page.tsx`
 
-## Data and Security Notes
-- Invite tokens are short-lived JWTs with `typ: "admin_invite"`.
-- Invite records are stored in `admin_invites` with `usedAt` + `expiresAt`.
-- Email verification and admin elevation happen only after valid token confirmation.
-- Existing login logic still enforces disabled-account checks.
+Supporting APIs:
+- `GET/POST/PATCH/DELETE /api/admin/team/invite`
+- `GET/POST/PATCH/DELETE /api/admin/roles`
+- `POST/DELETE /api/admin/roles/assign`
+- `POST /api/admin/roles/set`
 
-## Env Variables
-- Reused:
-  - `EMAIL_VERIFICATION_JWT_SECRET`
-  - `NEXT_PUBLIC_BASE_URL`
-  - `RESEND_API_KEY`
-  - `RESEND_FROM` or `RESEND_FROM_EMAIL`
-- New optional:
-  - `ADMIN_INVITE_TOKEN_TTL_MINUTES` (default: `1440`)
+## 2. How to add a team member from UI
 
-## Implemented Files
-- `app/api/auth/login/route.ts`
-- `lib/verificationTokens.ts`
-- `app/api/admin/team/invite/route.ts`
-- `app/api/auth/admin/accept/route.ts`
-- `app/auth/admin-invite/page.tsx`
-- `app/admin/settings/team/page.tsx`
-- `app/admin/AdminShell.tsx`
+Path: `Admin -> Settings -> Team`
 
-## Future Improvements
-- Add API auth/authorization guard on admin team invite endpoints.
-- Add revoke/resend invite actions in Team UI.
-- Add audit logs for invite creation and admin activation.
-- Add rate limiting for invite creation.
+Steps:
+1. Open `Invite New Admin`.
+2. Enter `Full name`, `Username`, `Email`.
+3. Click `Send Invite`.
+4. Confirm the user appears under `Pending Invites`.
+5. User clicks the email invite link and completes verification.
+6. After acceptance, user appears under `Current Admins`.
 
-## Admin Team Setup: How to create and verify admin accounts
+If needed:
+- `Resend` sends a fresh invite link.
+- `Revoke` cancels an active invite.
 
-1. Ensure env vars are set locally or in deployment:
-  - `NEXT_PUBLIC_BASE_URL`, `MONGODB_URI`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`.
-  - Optional: `NEXT_PUBLIC_ADMIN_EMAILS` (comma-separated owner emails).
+## 3. How to add permissions to an existing account (UI)
 
-2. Seed roles and default accounts (recommended):
-  - Call the roles seed endpoint (if present): `POST /api/admin/roles/seed`.
-  - If you have a script, run: `pnpm ts-node ./scripts/seed-admins.ts` or use Mongo to insert an admin user with `roles: ["admin"]`.
+You can do this in two ways.
 
-3. Create a first admin via invite UI or API:
-  - Admin UI: `Admin -> Settings -> Team` -> Send Invite (username + email).
-  - API: `POST /api/admin/team/invite` with `{ name, email }`.
+### Option A: Team page (best for user-by-user edits)
+Path: `Admin -> Settings -> Team -> Current Admins -> Manage`
 
-4. Accept invite:
-  - Click the emailed link or call `GET /api/auth/admin/accept?token=...` to mark verified and elevated.
-  - Confirm user now appears in `GET /api/admin/team/invite` (admins list).
+Steps:
+1. Click `Manage` for the target user.
+2. Check or uncheck roles in the modal.
+3. Click `Save`.
 
-5. Verify the admin session and permissions:
-  - Sign in as the invited admin and open the admin UI.
-  - Confirm `AuthContext` fetches `/api/admin/me` and shows correct roles/permissions.
+### Option B: Roles page (best for role-centric edits)
+Path: `Admin -> Settings -> Roles -> Assign roles`
 
-  ## Creating admin accounts and attaching roles (UI + API)
+Steps:
+1. Search for the user.
+2. Select the user from results.
+3. Check or uncheck roles.
+4. Click `Save assignments`.
 
-  UI support (what's already implemented):
-  - `Admin -> Settings -> Team` — Invite form (username + email). Sends an invite and creates/updates a user record.
-  - `Admin -> Settings -> Roles` — Create roles, Edit role modal, and Manage assignments modal. The Manage modal includes a "Create & Assign" form that will create an invite and immediately assign the selected role to the invited email.
-  - `Admin -> Settings -> Team` — Current admins list with "Manage" button to open the user roles editor; you can assign multiple roles to one user from that modal.
+Important:
+- Users do not get direct permission toggles; they receive permissions through assigned roles.
+- A user can have multiple roles. Permissions are merged.
 
-  How to create & attach an account (UI):
-  1. Create or confirm the required role exists on `Admin -> Settings -> Roles`.
-  2. To create a new admin + assign a role in one step:
-    - Open `Admin -> Settings -> Roles` and click `Manage assignments` on the role.
-    - Use the "Create & Assign" inputs: provide `Username` and `Email`, click `Create & Assign`.
-    - This sends an invite email and assigns the role to that email. Once the invited user accepts the invite they may sign in and will inherit the assigned role(s).
-  3. To attach roles to an existing admin:
-    - Open `Admin -> Settings -> Team` and click `Manage` on the admin card.
-    - Check/uncheck roles in the modal and click `Save` to apply multiple roles to the user.
+## 4. How a site owner creates a new role in UI
 
-  API support (for automation):
-  - Create admin user directly: `POST /api/admin/users` with `{ email, userName, phone? }` (requires `users:manage` permission).
-  - Invite + create pending invite: `POST /api/admin/team/invite` with `{ userName, email }` (requires admin session via header).
-  - Assign/unassign role: `POST /api/admin/roles/assign` to assign, `DELETE /api/admin/roles/assign` to unassign. Body: `{ roleId, email }` (requires `admin:roles:assign`).
-  - Set roles for a user (replace): `POST /api/admin/roles/set` with `{ email, roleIds: string[] }` (requires `admin:roles:assign`).
+Path: `Admin -> Settings -> Roles -> Create role`
 
-  Verifying the account and permissions:
-  1. After creating/inviting and assigning roles, sign in as the user (or accept the invite link). The app stores the session in localStorage and `AuthContext` fetches `/api/admin/me`.
-  2. Confirm the returned `/api/admin/me` payload lists the roles and computed permissions. The UI will reflect available nav items and actions based on the permission guard.
-  3. To force-refresh permissions after role changes, use the existing `AuthContext.refreshUser()` helper (the Roles and Team UIs call this after assignment so changes appear without a full page reload).
+Steps:
+1. Enter role `Name` (example: `seo_specialist`).
+2. Add a short `Description` explaining responsibility.
+3. Add permissions:
+   - one permission per line, or
+   - click quick-add permission chips.
+4. Add email events (optional) for notifications this role should receive.
+5. Click `Save role`.
+6. Open `Assign roles` and attach the new role to users.
 
-  Notes and policy:
-  - Users can have multiple roles; permissions are merged (deduplicated) server-side. If any role grants `*` or the user is an allowlisted owner email, they are treated as super-admin.
-  - Role names in the seed and UI are canonical: `admin`, `manager`, `content_editor`, `support`, `finance`.
-  - The Roles page includes permission labels for readability; adjust `mapPermissionToLabel` in `app/admin/settings/roles/page.tsx` if you add new permission keys.
+Best practice for owners:
+- Start with minimum permissions.
+- Add more only when the user is blocked by missing access.
 
-  If you want, I can now:
-  - Add a `scripts/seed-roles-and-admins.ts` script that upserts these canonical roles and creates a test admin account.
-  - Wire toasts/disabled states to the Team UI's invite/save flows for better UX.
-  - Run an automated verification script that performs the invite -> accept (simulated) -> assign -> verify permission flow and reports results.
+## 5. Plain-English permission glossary
 
-## Verify all admin routes are working (checklist)
+Use this section when deciding what to grant.
 
-- [ ] Run TypeScript checks and Next build:
-```powershell
-pnpm run type-check
-pnpm run build
-```
-- [ ] List API routes under `app/api/admin` and confirm each returns expected status when called with `x-admin-email` header for an admin account.
-- [ ] Quick curl examples:
-```bash
-curl -H "x-admin-email: admin@example.com" \
-  -X GET "${NEXT_PUBLIC_BASE_URL}/api/admin/roles"
+### Role administration
+- `admin:roles:view`: can view all roles.
+- `admin:roles:create`: can create new roles.
+- `admin:roles:edit`: can edit existing roles.
+- `admin:roles:delete`: can delete roles.
+- `admin:roles:assign`: can attach or remove roles for users.
+- `admin:audit:view`: can view admin audit logs.
 
-curl -H "x-admin-email: admin@example.com" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"manager","permissions":["orders:read"]}' \
-  -X POST "${NEXT_PUBLIC_BASE_URL}/api/admin/roles"
-```
-- [ ] Verify UI pages: open `/admin/settings/roles`, `/admin/settings/team`, `/admin/audit` and exercise create/edit/assign flows.
+### User and messaging
+- `users:view`: can view user list and details.
+- `users:manage`: can change user status and details.
+- `email:send`: can send manual emails from admin tools.
 
-## Available Roles & Descriptions (canonical list)
+### Orders and support
+- `orders:view`: can view orders.
+- `orders:edit`: can update order workflow and status.
+- `orders:refunds`: can process and manage refunds.
+- `support:ticket:view`: can view support tickets.
+- `support:ticket:reply`: can reply to support tickets.
 
-- `admin` — Full super-admin. Can manage roles, users, settings, and view all audit logs. Intended for Owner-level accounts.
-- `manager` — Manage content, orders, and customers. Cannot change billing or platform-wide settings.
-- `content_editor` — Manage product pages, lookbook, and site content. No access to financials or user management.
-- `support` — View orders and help customers. Can create tickets and view order history but cannot edit products.
-- `finance` — Access to finance endpoints, payouts, and reconciliation data.
+### Catalog and content
+- `catalog:view`: can view catalog data in admin.
+- `catalog:edit`: can create, update, and delete products and categories.
+- `content:edit`: can edit site content and CMS pages.
+- `lookbook:edit`: can update lookbook content.
+- `banner:edit`: can edit top bar and promo banners.
 
-Notes:
-- Each role carries a `permissions` array (strings like `orders:read`, `orders:write`, `products:edit`).
-- Roles also include `emailSubscriptions`: a list of event keys used by `lib/email.ts` to route notifications.
+### SEO and analytics
+- `seo:view`: can view SEO and site analysis data.
+- `seo:edit`: can change SEO settings and metadata content.
+- `site:analytics:view`: can view analytics dashboards.
+- `site:analytics:manage`: can run high-impact analytics actions (for example clear or reset operations).
 
-## Routes → Required permissions & notification recipients
+### Finance
+- `finance:reports`: can view finance reports.
+- `finance:reconcile`: can perform reconciliation tasks.
+- `payouts:view`: can view payout records.
 
-This project centralizes admin APIs under `app/api/admin/*`. The following table maps common routes to required permission scopes and which role(s) receive notifications when relevant actions occur.
+## 6. Recommended starter role bundles for non-technical owners
 
-- `GET|POST /api/admin/roles` — permission: `roles:manage` — notification: none (role changes may notify `admin` emails)
-- `POST /api/admin/roles/assign` — permission: `roles:assign` — notification: role assignment emails to the assigned user and any roles subscribed to `role:assigned` events
-- `POST /api/admin/team/invite` — permission: `team:invite` — notification: `invite:sent` routed to invited email and `admin` allowlist
-- `GET /api/admin/audit` — permission: `audit:read` — notification: none
-- `POST /api/admin/orders/:id/refund` — permission: `orders:refund` — notification: `finance` and `manager` via `refund:processed` event
+Use these templates when creating roles:
 
-How to map notifications:
-- Events fired from server code (calls to `sendForEvent(eventKey, ...)`) will look up roles whose `emailSubscriptions` include that `eventKey` and send Resend emails to users with those roles.
-- Ensure roles that should receive emails have `emailSubscriptions` populated (e.g., `finance` -> `refund:processed`, `support` -> `order:issue`).
+- Content Manager:
+  - `catalog:view`, `catalog:edit`, `content:edit`, `lookbook:edit`, `banner:edit`
+- Support Agent:
+  - `users:view`, `orders:view`, `support:ticket:view`, `support:ticket:reply`
+- Operations Manager:
+  - `users:view`, `orders:view`, `orders:edit`, `catalog:view`, `site:analytics:view`
+- Finance Analyst:
+  - `finance:reports`, `finance:reconcile`, `payouts:view`, `orders:refunds`
+- SEO Specialist:
+  - `seo:view`, `seo:edit`, `site:analytics:view`, `content:edit`
 
-## How to test email notifications
+## 7. Owner checklist before giving access
 
-1. Create or ensure a role has `emailSubscriptions: ["test:event"]`.
-2. Call the send helper (server-side) or trigger the event endpoint. Example server call:
-```ts
-await sendForEvent("test:event", "Test Subject", "<p>Test</p>", "Test body")
-```
-3. Confirm emails are delivered to users with roles subscribed to that event and any allowlisted owner emails in `NEXT_PUBLIC_ADMIN_EMAILS`.
+1. Confirm the person's business function (support, content, finance, and so on).
+2. Assign only one minimal role first.
+3. Test by asking the user to sign in and confirm they can do their task.
+4. Add more permissions only if needed.
+5. Review assignments monthly and remove stale access.
 
-## Improvements & next work items
+## 8. Next implementation step (to make this easier for owners)
 
-- Add a scripted `scripts/seed-roles-and-admins.ts` to quickly bootstrap environments.
-- Expand `Audit` UI with filters (actor, action, date range) and CSV export.
-- Add automated integration tests that:
-  - Seed roles and admin, run assign/unassign flows.
-  - Exercise `sendForEvent` and assert emails (use a test resend account or mock service).
-- Add optimistic UI updates on role assign/unassign and disable action buttons during network calls.
-- Harden server permission checks: prefer validating JWT-based admin session over `x-admin-email` header in production.
-
-Latest UI updates (what I implemented):
-- `Admin -> Settings -> Roles` now shows a clickable role name or a "Details" button to open a details panel for each role. The panel allows selecting a canonical role to preview plain-English descriptions, example permissions, and email events.
-- The Edit Role modal has been improved: it now includes a description textarea, a scrollable checklist of permissions (with friendly labels), and a scrollable checklist of email events. Admins can select permissions and email events via checkboxes instead of typing CSV strings.
-- The Manage Assignments modal keeps the quick "Create & Assign" flow (invite + immediate role assignment).
-
-What now works:
-- Create/Edit/Delete roles via the Roles UI (permissions and email event checkboxes persist on save).
-- Preview and apply canonical role templates (pre-fills the Edit modal so admins can review before saving).
-- Assign/unassign roles to existing admins and create+assign in one step.
-
-Next recommended steps:
-- Run `pnpm run type-check` and `pnpm run build` locally to ensure no type errors (I can run these for you and fix any issues if you want).
-- Add toasts and disabled states to the Team UI for smoother UX during network calls.
-- Optionally add a one-click seeder script to bootstrap canonical roles and a test admin account.
-
----
-
-If you want, I can:
-- Seed the default roles and a test admin account now.
-- Run `pnpm run build` and a quick route verification script and report any failing endpoints.
-- Add a small `scripts/seed-roles-and-admins.ts` and a README snippet for one-click setup.
-
-
+To reduce owner confusion further, implement:
+1. A read-only "Permission Meaning" panel directly in Roles UI (same wording as this file).
+2. Prebuilt role templates selectable in the `Create role` modal.
+3. Warning badges for high-risk permissions (`users:manage`, `orders:refunds`, `site:analytics:manage`, and role admin permissions).
+4. A "Clone role" action so owners can duplicate and tweak existing roles.

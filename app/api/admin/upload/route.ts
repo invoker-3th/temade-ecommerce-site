@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { v2 as cloudinary } from "cloudinary"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 // Configure Cloudinary
 cloudinary.config({
@@ -9,6 +10,9 @@ cloudinary.config({
 });
 
 export async function POST(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "content:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const formData = await request.formData()
     const files = formData.getAll("files") as File[]

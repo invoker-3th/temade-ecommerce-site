@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { useAuth } from "@/app/context/AuthContext"
 
 type OrderItem = {
   name: string
@@ -40,6 +41,8 @@ type Order = {
 }
 
 export default function AdminOrdersPage() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
   const searchParams = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,24 +54,27 @@ export default function AdminOrdersPage() {
   const orderIdParam = useMemo(() => searchParams.get("orderId") || "", [searchParams])
 
   const loadOrders = useCallback(async () => {
+    if (!adminEmail) return
     const params = new URLSearchParams()
     if (filterUserId) params.set("userId", filterUserId)
     if (orderIdParam) params.set("orderId", orderIdParam)
     const qs = params.toString() ? `?${params.toString()}` : ""
-    const res = await fetch(`/api/admin/orders${qs}`, { cache: "no-store" })
+    const res = await fetch(`/api/admin/orders${qs}`, { cache: "no-store", headers: { "x-admin-email": adminEmail } })
     const data = await res.json()
     setOrders(data.orders || [])
     if (orderIdParam && data.orders?.length) {
       setOpenId(data.orders[0]._id)
     }
-  }, [filterUserId, orderIdParam])
+  }, [adminEmail, filterUserId, orderIdParam])
 
   const verifyPendingAndReminders = useCallback(async () => {
-    await fetch("/api/admin/orders/verify-pending", { method: "POST" })
-    await fetch("/api/admin/orders/process-reminders", { method: "POST" })
-  }, [])
+    if (!adminEmail) return
+    await fetch("/api/admin/orders/verify-pending", { method: "POST", headers: { "x-admin-email": adminEmail } })
+    await fetch("/api/admin/orders/process-reminders", { method: "POST", headers: { "x-admin-email": adminEmail } })
+  }, [adminEmail])
 
   useEffect(() => {
+    if (!adminEmail) return
     const run = async () => {
       setLoading(true)
       try {
@@ -79,14 +85,15 @@ export default function AdminOrdersPage() {
       }
     }
     run()
-  }, [loadOrders, verifyPendingAndReminders])
+  }, [adminEmail, loadOrders, verifyPendingAndReminders])
 
   useEffect(() => {
+    if (!adminEmail) return
     const timer = setInterval(() => {
       verifyPendingAndReminders().catch(() => null)
     }, 30000)
     return () => clearInterval(timer)
-  }, [verifyPendingAndReminders])
+  }, [adminEmail, verifyPendingAndReminders])
 
   return (
     <div className="p-6 md:p-10 font-WorkSans">
@@ -141,7 +148,7 @@ export default function AdminOrdersPage() {
                       onClick={async () => {
                         await fetch("/api/admin/orders", {
                           method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
+                          headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
                           body: JSON.stringify({ orderId: o._id, status: s }),
                         })
                         await loadOrders()
@@ -219,7 +226,7 @@ export default function AdminOrdersPage() {
                       onClick={async () => {
                         await fetch("/api/admin/orders/ship", {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
+                          headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
                           body: JSON.stringify({ orderId: o._id, etaDays: Number(etaDaysInput || 3) }),
                         })
                         setShipTargetId(null)

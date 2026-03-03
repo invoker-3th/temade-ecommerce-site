@@ -9,7 +9,7 @@ type AuthContextType = {
   user: User | null
   isLoading: boolean
   isLoggingOut: boolean
-  login: (email: string, userName: string) => Promise<boolean>
+  login: (email: string, userName: string) => Promise<{ success: boolean; requiresAdminOtp?: boolean; message?: string }>
   register: (userData: RegisterData) => Promise<{ success: boolean; otp?: string; verificationLink?: string; error?: string }>
   logout: () => Promise<void>
   syncUserData: () => Promise<void>
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, userName: string): Promise<boolean> => {
+  const login = async (email: string, userName: string): Promise<{ success: boolean; requiresAdminOtp?: boolean; message?: string }> => {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -65,6 +65,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.ok) {
         const data = await response.json()
+        if (data?.requiresAdminOtp) {
+          return { success: false, requiresAdminOtp: true, message: data?.message || "OTP link sent." }
+        }
         setUser(data.user)
         localStorage.setItem("user", JSON.stringify(data.user))
         identifyPosthogUser(data.user)
@@ -72,12 +75,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Sync local storage data with database
         await syncUserData()
 
-        return true
+        return { success: true }
       }
-      return false
+      const err = await response.json().catch(() => ({}))
+      return { success: false, message: err?.error || "Login failed." }
     } catch (error) {
       console.error("Login error:", error)
-      return false
+      return { success: false, message: "Login failed." }
     }
   }
 

@@ -1,44 +1,65 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useAuth } from "@/app/context/AuthContext"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
-export default function LoginPage() {
+function LoginClient() {
   const [email, setEmail] = useState("")
   const [userName, setUserName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const { login } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const autoLoginAttempted = useRef(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const doLogin = async (emailInput: string, userNameInput: string) => {
     setIsLoading(true)
     setError("")
 
-    const success = await login(email, userName)
+    const result = await login(emailInput, userNameInput)
 
-    if (success) {
-      // Check if user is admin and redirect accordingly
+    if (result.success) {
       const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
         .split(/[,\n;\s]+/)
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean)
-      if (adminEmails.includes(email.toLowerCase())) {
+      if (adminEmails.includes(emailInput.toLowerCase())) {
         router.push("/admin")
       } else {
         router.push("/")
       }
+    } else if (result.requiresAdminOtp) {
+      setError(result.message || "A secure OTP login link has been sent to your verified email.")
     } else {
-      setError("Login failed. Please check your email.")
+      setError(result.message || "Login failed. Please check your email.")
     }
 
     setIsLoading(false)
   }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await doLogin(email, userName)
+  }
+
+  useEffect(() => {
+    const qpEmail = searchParams.get("email") || ""
+    const qpUserName = searchParams.get("userName") || ""
+    const invite = searchParams.get("invite") === "1"
+    const auto = searchParams.get("auto") === "1"
+
+    if (qpEmail) setEmail(qpEmail)
+    if (qpUserName) setUserName(qpUserName)
+    if (!invite || !auto || autoLoginAttempted.current || !qpEmail || !qpUserName) return
+
+    autoLoginAttempted.current = true
+    void doLogin(qpEmail, qpUserName)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   return (
     <>
@@ -93,7 +114,7 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full md:w-fit bg-[#8D2741] text-white p-3 rounded-md hover:bg-[#111] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Signing In..." : "Sign In"}
+              {isLoading ? "Checking..." : "Sign In / Request OTP"}
             </button>
           </form>
 
@@ -110,3 +131,12 @@ export default function LoginPage() {
     </>
   )
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center">Loading login...</div>}>
+      <LoginClient />
+    </Suspense>
+  )
+}
+

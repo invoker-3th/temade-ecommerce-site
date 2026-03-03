@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { v2 as cloudinary } from "cloudinary"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -18,6 +19,9 @@ function getPublicIdFromUrl(url: string) {
 }
 
 export async function POST(req: Request) {
+  const perm = await requirePermissionFromRequest(req, "content:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const body = await req.json()
     const urls: string[] = Array.isArray(body.urls) ? body.urls : [body.url].filter(Boolean)

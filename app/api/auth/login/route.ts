@@ -1,14 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { UserService } from "@/lib/services/userServices"
 import { sendEmail, sendForEvent } from "@/lib/email"
-import { loginWelcomeEmail } from "@/lib/emailTemplates"
+import { adminOtpLoginEmail, loginWelcomeEmail } from "@/lib/emailTemplates"
 import { getDatabase } from "@/lib/mongodb"
+import { ADMIN_SESSION_COOKIE, createAdminSession, getAdminSessionCookieOptions } from "@/lib/server/sessionAuth"
+import { signAdminOtpJwt } from "@/lib/verificationTokens"
 
-function parseEmailList(raw: string) {
-  return String(raw || "")
-    .split(/[,\n;\s]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
+type AdminLoginOtpDoc = {
+  email: string
+  token: string
+  expiresAt: Date
+  usedAt: Date | null
+  createdAt: Date
 }
 
 export async function POST(request: NextRequest) {
@@ -35,7 +38,13 @@ export async function POST(request: NextRequest) {
       .split(/[,\n;\s]+/)
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean)
-    const isAdmin = user.role === "admin" || adminAllow.includes(user.email.toLowerCase())
+    const isOwnerAllowlisted = adminAllow.includes(user.email.toLowerCase())
+    const isAdmin = user.role === "admin" || isOwnerAllowlisted
+    const userRoles = Array.isArray((user as { roles?: unknown }).roles)
+      ? ((user as { roles?: unknown }).roles as unknown[])
+      : []
+    const hasAssignedRbacRoles = userRoles.length > 0
+    const canAccessAdminConsole = isAdmin || hasAssignedRbacRoles
     if (isAdmin) {
       const adminUserName = (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "").trim().toLowerCase()
       if (adminUserName && userName.trim().toLowerCase() !== adminUserName) {
@@ -54,14 +63,6 @@ export async function POST(request: NextRequest) {
     // For this demo, we'll just return user data
 
     const { ...userResponse } = user
-    try {
-      const now = new Date().toISOString()
-      const welcomeTpl = loginWelcomeEmail({ userName: user.userName, email: user.email, isAdmin, timeISO: now })
-      await sendEmail({ to: user.email, subject: welcomeTpl.subject, html: welcomeTpl.html, text: welcomeTpl.text })
-    } catch (error) {
-      console.error("Login welcome email error:", error)
-    }
-
     if (isAdmin) {
       try {
         const db = await getDatabase()
@@ -101,13 +102,83 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(
+    // Owner allowlisted admins can still use direct login.
+    if (canAccessAdminConsole && !isOwnerAllowlisted) {
+      if (!user.isEmailVerified) {
+        return NextResponse.json({ error: "Verified email is required for admin OTP login." }, { status: 403 })
+      }
+
+      const secret = process.env.EMAIL_VERIFICATION_JWT_SECRET
+      if (!secret) {
+        return NextResponse.json({ error: "Email verification secret is missing" }, { status: 500 })
+      }
+
+      const otpTtlMinutes = Number(process.env.ADMIN_LOGIN_OTP_TTL_MINUTES || 15)
+      const { token, payload } = signAdminOtpJwt({
+        userId: user._id ? String(user._id) : "",
+        email: user.email,
+        secret,
+        expiresInSeconds: otpTtlMinutes * 60,
+      })
+
+      const db = await getDatabase()
+      await db.collection<AdminLoginOtpDoc>("admin_login_otps").insertOne({
+        email: user.email.toLowerCase(),
+        token,
+        expiresAt: new Date(payload.exp * 1000),
+        usedAt: null,
+        createdAt: new Date(),
+      })
+
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+      const loginLink = `${baseUrl}/auth/admin-otp?token=${encodeURIComponent(token)}`
+      const otpTpl = adminOtpLoginEmail({
+        userName: user.userName,
+        loginLink,
+        expiresMinutes: otpTtlMinutes,
+      })
+      await sendEmail({
+        to: user.email,
+        subject: otpTpl.subject,
+        html: otpTpl.html,
+        text: otpTpl.text,
+      })
+
+      return NextResponse.json(
+        {
+          message: "OTP link sent to your verified email.",
+          requiresAdminOtp: true,
+        },
+        { status: 200 },
+      )
+    }
+
+    try {
+      const now = new Date().toISOString()
+      const welcomeTpl = loginWelcomeEmail({ userName: user.userName, email: user.email, isAdmin, timeISO: now })
+      await sendEmail({ to: user.email, subject: welcomeTpl.subject, html: welcomeTpl.html, text: welcomeTpl.text })
+    } catch (error) {
+      console.error("Login welcome email error:", error)
+    }
+
+    const response = NextResponse.json(
       {
         message: "Login successful",
         user: userResponse,
       },
       { status: 200 },
     )
+
+    if (canAccessAdminConsole) {
+      const session = await createAdminSession({
+        email: user.email,
+        role: user.role,
+        userId: user._id ? String(user._id) : undefined,
+      })
+      response.cookies.set(ADMIN_SESSION_COOKIE, session.token, getAdminSessionCookieOptions(session.expiresAt))
+    }
+
+    return response
   } catch (error) {
     console.error("Login error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

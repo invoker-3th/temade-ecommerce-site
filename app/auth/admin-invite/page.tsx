@@ -11,7 +11,6 @@ function AdminInviteClient() {
   const token = params.get("token") || ""
   const [state, setState] = useState<InviteState>("loading")
   const [message, setMessage] = useState("Confirming your admin invite...")
-  const [showDialog, setShowDialog] = useState(false)
 
   useEffect(() => {
     const run = async () => {
@@ -30,16 +29,13 @@ function AdminInviteClient() {
           return
         }
 
-        if (data?.user) {
-          localStorage.setItem("user", JSON.stringify(data.user))
-        }
         setState("success")
-        setMessage("Your admin access has been verified. You’ll be redirected to your dashboard shortly.")
-        setShowDialog(true)
+        const acceptedEmail = encodeURIComponent(String(data?.user?.email || ""))
+        const acceptedUserName = encodeURIComponent(String(data?.user?.userName || ""))
+        setMessage("Invite verified. Preparing your secure admin login flow.")
         setTimeout(() => {
-          setShowDialog(false)
-          router.push("/admin")
-        }, 3000)
+          router.push(`/auth/login?email=${acceptedEmail}&userName=${acceptedUserName}&invite=1&auto=1`)
+        }, 1800)
       } catch {
         setState("error")
         setMessage("Invite confirmation failed.")
@@ -54,38 +50,20 @@ function AdminInviteClient() {
       <div className="max-w-md w-full bg-white border border-[#EEE7DA] rounded-xl p-6 text-center font-WorkSans">
         <h1 className="text-2xl font-bold mb-2 font-garamond">Admin Access Confirmed</h1>
         <p className="text-sm text-gray-600 mb-4">{message}</p>
-        {showDialog && (
-          <div className="mx-auto mb-4 max-w-xs rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
-            You have been verified. Redirecting to your admin dashboard...
-          </div>
-        )}
 
         {state === "success" && (
           <div className="flex flex-col items-center justify-center gap-3">
             <button
-              onClick={() => router.push("/admin")}
+              onClick={() => router.push("/auth/login")}
               className="px-4 py-2 rounded bg-[#8D2741] text-white"
             >
-              Go to Admin dashboard
+              Continue to Login
             </button>
-            <p className="text-[11px] text-gray-500">
-              If you are not redirected automatically, click{" "}
-              <button
-                onClick={() => router.push("/admin")}
-                className="underline text-[#8D2741]"
-              >
-                here
-              </button>
-              .
-            </p>
           </div>
         )}
 
         {state === "error" && (
-          <button
-            onClick={() => router.push("/auth/login")}
-            className="px-4 py-2 rounded bg-[#8D2741] text-white"
-          >
+          <button onClick={() => router.push("/auth/login")} className="px-4 py-2 rounded bg-[#8D2741] text-white">
             Back to login
           </button>
         )}

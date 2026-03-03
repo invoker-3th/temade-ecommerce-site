@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
+import {
+  ADMIN_SESSION_COOKIE,
+  getAdminSessionClearCookieOptions,
+  revokeAdminSessionFromRequest,
+} from "@/lib/server/sessionAuth"
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +21,11 @@ export async function POST(request: Request) {
       { upsert: true }
     )
 
-    return NextResponse.json({ success: true })
+    await revokeAdminSessionFromRequest(request)
+
+    const response = NextResponse.json({ success: true })
+    response.cookies.set(ADMIN_SESSION_COOKIE, "", getAdminSessionClearCookieOptions())
+    return response
   } catch (error) {
     console.error("Logout route error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
