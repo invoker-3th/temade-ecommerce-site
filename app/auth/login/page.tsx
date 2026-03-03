@@ -114,7 +114,7 @@ function LoginClient() {
               disabled={isLoading}
               className="w-full md:w-fit bg-[#8D2741] text-white p-3 rounded-md hover:bg-[#111] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Checking..." : "Sign In / Request OTP"}
+              {isLoading ? "Checking..." : "Sign In"}
             </button>
           </form>
 
@@ -139,4 +139,3 @@ export default function LoginPage() {
     </Suspense>
   )
 }
-
