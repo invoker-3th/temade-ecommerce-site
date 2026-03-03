@@ -18,7 +18,7 @@ export async function getPermissionsForUser(userEmail: string) {
   if (!user) return { user: null, permissions: [] as string[], roles: [] }
 
   const allowlisted = getAllowlistedAdmins()
-  const isSuper = user.role === "admin" || allowlisted.includes(String(user.email).toLowerCase())
+  const isSuper = allowlisted.includes(String(user.email).toLowerCase())
   if (isSuper) return { user, permissions: ["*"], roles: [] }
 
   const roleIds = Array.isArray(user.roles) ? user.roles : []

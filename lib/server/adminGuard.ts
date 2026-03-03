@@ -27,7 +27,7 @@ export async function requireAdminFromRequest(request: Request) {
   const db = await getDatabase()
   const user = await db.collection("users").findOne({ email: { $regex: `^${adminEmail}$`, $options: "i" } })
   const allowlisted = getAllowlistedAdmins()
-  const isAdmin = Boolean(user?.role === "admin" || allowlisted.includes(adminEmail))
+  const isAdmin = Boolean(allowlisted.includes(adminEmail))
   if (!isAdmin) return { ok: false as const, status: 403, error: "Admin access required" }
 
   return { ok: true as const, adminEmail, userId: user?._id ? String(user._id) : "" }

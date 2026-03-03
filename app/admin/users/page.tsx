@@ -83,14 +83,42 @@ export default function AdminUsersPage() {
   const [emailSending, setEmailSending] = useState(false)
   const [emailError, setEmailError] = useState("")
   const [emailSuccess, setEmailSuccess] = useState("")
+  const [permissions, setPermissions] = useState<string[] | null>(null)
   const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
+  const hasPermission = (permission: string) =>
+    Array.isArray(permissions) && (permissions.includes("*") || permissions.includes(permission))
+  const canManageUsers = hasPermission("users:manage")
+  const canSendEmail = hasPermission("email:send")
+  const canDeleteUsers = Array.isArray(permissions) && permissions.includes("*")
+
+  useEffect(() => {
+    if (!adminEmail) return
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/admin/me?email=${encodeURIComponent(adminEmail)}`, {
+          cache: "no-store",
+          headers: { "x-admin-email": adminEmail },
+        })
+        if (!res.ok) {
+          setPermissions([])
+          return
+        }
+        const data = await res.json()
+        setPermissions(Array.isArray(data?.permissions) ? data.permissions : [])
+      } catch (error) {
+        console.error(error)
+        setPermissions([])
+      }
+    }
+    run()
+  }, [adminEmail])
 
   useEffect(() => {
     const run = async () => {
       setLoading(true)
       try {
         const qs = query ? `?q=${encodeURIComponent(query)}` : ""
-        const adminEmail = user?.email?.trim().toLowerCase() || ""
         const headers: Record<string, string> = adminEmail ? { "x-admin-email": adminEmail } : {}
         const res = await fetch(`/api/admin/users${qs}`, { cache: "no-store", headers })
         if (!res.ok) throw new Error("Failed to load users")
@@ -107,7 +135,7 @@ export default function AdminUsersPage() {
       }
     }
     run()
-  }, [query, user?.email])
+  }, [adminEmail, query])
 
   const selected = useMemo(
     () => users.find((u) => u._id === selectedId) || null,
@@ -120,7 +148,6 @@ export default function AdminUsersPage() {
         setProfile(null)
         return
       }
-      const adminEmail = user?.email?.trim().toLowerCase() || ""
       if (!adminEmail) return
 
       setProfileLoading(true)
@@ -140,7 +167,7 @@ export default function AdminUsersPage() {
       }
     }
     loadProfile()
-  }, [selectedId, user?.email])
+  }, [adminEmail, selectedId])
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -150,7 +177,6 @@ export default function AdminUsersPage() {
       }
       setOrdersLoading(true)
       try {
-        const adminEmail = user?.email?.trim().toLowerCase() || ""
         const headers: Record<string, string> = adminEmail ? { "x-admin-email": adminEmail } : {}
         const res = await fetch(`/api/admin/users/${selectedId}/orders`, { cache: "no-store", headers })
         if (!res.ok) throw new Error("Failed to load orders")
@@ -164,13 +190,13 @@ export default function AdminUsersPage() {
       }
     }
     loadOrders()
-  }, [selectedId, user?.email])
+  }, [adminEmail, selectedId])
 
   const updateUser = async (payload: { role?: string; disabled?: boolean }) => {
     if (!selectedId) return
+    if (!canManageUsers) return
     setActionLoading(true)
     try {
-      const adminEmail = user?.email?.trim().toLowerCase() || ""
       const headers: Record<string, string> = { "Content-Type": "application/json" }
       if (adminEmail) headers["x-admin-email"] = adminEmail
       const res = await fetch(`/api/admin/users/${selectedId}`, {
@@ -193,9 +219,9 @@ export default function AdminUsersPage() {
 
   const sendEmailToUser = async () => {
     if (!selectedId) return
+    if (!canSendEmail) return
     setEmailError("")
     setEmailSuccess("")
-    const adminEmail = user?.email?.trim().toLowerCase() || ""
     if (!adminEmail) {
       setEmailError("Admin session not ready.")
       return
@@ -222,6 +248,38 @@ export default function AdminUsersPage() {
       setEmailError(e instanceof Error ? e.message : "Failed to send email")
     } finally {
       setEmailSending(false)
+    }
+  }
+
+  const deleteUser = async () => {
+    if (!selectedId) return
+    if (!canDeleteUsers) return
+    const ok = window.confirm("Delete this user permanently? This will also remove related order and invite records.")
+    if (!ok) return
+
+    setActionLoading(true)
+    try {
+      const res = await fetch(`/api/admin/users/${selectedId}`, {
+        method: "DELETE",
+        headers: { "x-admin-email": adminEmail },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to delete user")
+
+      setUsers((prev) => prev.filter((u) => u._id !== selectedId))
+      const remaining = users.filter((u) => u._id !== selectedId)
+      setCount((c) => Math.max(0, c - 1))
+      const next = remaining[0]?._id || null
+      setSelectedId(next)
+      if (!next) {
+        setProfile(null)
+        setOrders([])
+      }
+    } catch (error) {
+      console.error(error)
+      alert(error instanceof Error ? error.message : "Failed to delete user")
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -293,44 +351,47 @@ export default function AdminUsersPage() {
                     <p className="text-sm text-gray-600">{selected.email}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setEmailError("")
-                        setEmailSuccess("")
-                        setEmailOpen(true)
-                      }}
-                      className="px-3 py-2 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
-                    >
-                      Send email
-                    </button>
+                    {canSendEmail && (
+                      <button
+                        onClick={() => {
+                          setEmailError("")
+                          setEmailSuccess("")
+                          setEmailOpen(true)
+                        }}
+                        className="px-3 py-2 text-xs rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
+                      >
+                        Send email
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-4 mt-6">
                   <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Role</p>
-                    <select
-                      value={selected.role || "customer"}
-                      onChange={(e) => updateUser({ role: e.target.value })}
-                      disabled={actionLoading}
-                      className="mt-2 w-full border rounded px-2 py-2 text-sm"
-                    >
-                      <option value="customer">Customer</option>
-                      <option value="viewer">Viewer</option>
-                      <option value="editor">Editor</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                    <p className="text-sm mt-2">{selected.role || "customer"}</p>
                   </div>
                   <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Account Status</p>
                     <p className="text-sm mt-2">{selected.disabled ? "Disabled" : "Active"}</p>
-                    <button
-                      onClick={() => updateUser({ disabled: !selected.disabled })}
-                      disabled={actionLoading}
-                      className="mt-2 px-3 py-2 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      {selected.disabled ? "Enable account" : "Disable account"}
-                    </button>
+                    {canManageUsers && (
+                      <button
+                        onClick={() => updateUser({ disabled: !selected.disabled })}
+                        disabled={actionLoading}
+                        className="mt-2 px-3 py-2 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {selected.disabled ? "Enable account" : "Disable account"}
+                      </button>
+                    )}
+                    {canDeleteUsers && (
+                      <button
+                        onClick={deleteUser}
+                        disabled={actionLoading}
+                        className="mt-2 px-3 py-2 text-xs rounded border border-red-300 text-red-800 hover:bg-red-100 disabled:opacity-50"
+                      >
+                        Delete this user
+                      </button>
+                    )}
                   </div>
                   <div className="bg-[#FBF7F3] border border-[#E4D9C6] rounded-xl p-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Last Order</p>
@@ -570,7 +631,7 @@ export default function AdminUsersPage() {
                 </button>
               </div>
               <p className="text-[11px] text-gray-500">
-                Requires the RBAC permission <span className="font-semibold">email:send</span>.
+                Requires the RBAC permission <span className="font-semibold">email:send</span>. User deletion is super-admin only.
               </p>
             </div>
           </div>

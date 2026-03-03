@@ -7,6 +7,13 @@ import { writeAuditLog } from "@/lib/audit"
 const allowedRoles = ["customer", "admin", "editor", "viewer"] as const
 type AllowedRole = (typeof allowedRoles)[number]
 
+function getAllowlistedAdmins() {
+  return (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+    .split(/[,\n;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -97,6 +104,58 @@ export async function PATCH(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Admin users PATCH error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const perm = await requirePermissionFromRequest(request, "*")
+  if (!perm.ok) return NextResponse.json({ error: "Only super admins can delete users" }, { status: 403 })
+
+  try {
+    const { id } = await params
+    if (!id || !ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Valid user id required" }, { status: 400 })
+    }
+
+    const db = await getDatabase()
+    const user = await db.collection("users").findOne({ _id: new ObjectId(id) })
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
+
+    const targetEmail = String(user.email || "").trim().toLowerCase()
+    const actorEmail = String(perm.adminEmail || "").trim().toLowerCase()
+    if (targetEmail && targetEmail === actorEmail) {
+      return NextResponse.json({ error: "You cannot delete your own account" }, { status: 400 })
+    }
+
+    const allowlisted = getAllowlistedAdmins()
+    if (targetEmail && allowlisted.includes(targetEmail)) {
+      return NextResponse.json({ error: "Cannot delete a super admin account" }, { status: 403 })
+    }
+
+    await db.collection("users").deleteOne({ _id: new ObjectId(id) })
+    await db.collection("orders").deleteMany({ userId: new ObjectId(id) })
+    await db.collection("email_verifications").deleteMany({ userId: new ObjectId(id) })
+    await db.collection("admin_invites").deleteMany({ userId: new ObjectId(id) })
+    await db.collection("admin_login_otps").deleteMany({ email: { $regex: `^${targetEmail}$`, $options: "i" } })
+    await db.collection("admin_login_sessions").deleteMany({ email: { $regex: `^${targetEmail}$`, $options: "i" } })
+
+    await writeAuditLog({
+      actorEmail: perm.adminEmail,
+      action: "user.delete",
+      targetId: id,
+      targetEmail: targetEmail || undefined,
+      metadata: {
+        deletedCollections: ["users", "orders", "email_verifications", "admin_invites", "admin_login_otps", "admin_login_sessions"],
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Admin users DELETE error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

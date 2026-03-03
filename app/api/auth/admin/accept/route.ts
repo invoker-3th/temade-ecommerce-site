@@ -34,16 +34,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Invite is no longer valid" }, { status: 400 })
     }
 
+    const updateDoc: {
+      $set: { isEmailVerified: boolean; emailVerifiedAt: Date; updatedAt: Date }
+      $addToSet?: { roles: string }
+    } = {
+      $set: {
+        isEmailVerified: true,
+        emailVerifiedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    }
+    if (String(invite.roleId || "").trim()) {
+      updateDoc.$addToSet = { roles: String(invite.roleId).trim() }
+    }
+
     await db.collection("users").updateOne(
       { _id: new ObjectId(payload.sub) },
-      {
-        $set: {
-          role: "admin",
-          isEmailVerified: true,
-          emailVerifiedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      }
+      updateDoc
     )
 
     await db.collection("admin_invites").updateOne(

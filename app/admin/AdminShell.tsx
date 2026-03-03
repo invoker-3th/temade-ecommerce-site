@@ -7,7 +7,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
 
-type NavItem = { label: string; href: string; disabled?: boolean; permission?: string }
+type NavItem = { label: string; href: string; disabled?: boolean; permission?: string | string[] }
 type NavSection = { title: string; items: NavItem[] }
 
 const nav: NavSection[] = [
@@ -29,8 +29,8 @@ const nav: NavSection[] = [
   {
     title: "Catalog & CMS",
     items: [
-      { label: "Inventory", href: "/admin/inventory", permission: "catalog:view" },
-      { label: "Lookbook", href: "/admin/lookbook", permission: "content:edit" },
+      { label: "Inventory", href: "/admin/inventory", permission: ["catalog:view", "catalog:edit"] },
+      { label: "Lookbook", href: "/admin/lookbook", permission: ["lookbook:edit", "content:edit"] },
       { label: "CMS Pages", href: "/admin/cms/pages", permission: "content:edit" },
     ],
   },
@@ -39,11 +39,26 @@ const nav: NavSection[] = [
     items: [
       { label: "Banner Settings", href: "/admin/settings/banner", permission: "banner:edit" },
       { label: "SEO Settings", href: "/admin/settings/seo", permission: "seo:edit" },
-      { label: "Team & Roles", href: "/admin/settings/team", permission: "team:view" },
+      { label: "Team & Roles", href: "/admin/settings/team", permission: ["team:view", "users:view"] },
       { label: "Roles", href: "/admin/settings/roles", permission: "admin:roles:view" },
       { label: "Admin Logs", href: "/admin/audit", permission: "admin:audit:view" },
     ],
   },
+]
+
+const routeAccessRules: Array<{ prefix: string; anyOf: string[] }> = [
+  { prefix: "/admin/site-analysis", anyOf: ["seo:view"] },
+  { prefix: "/admin/users", anyOf: ["users:view"] },
+  { prefix: "/admin/orders", anyOf: ["orders:view"] },
+  { prefix: "/admin/finance", anyOf: ["finance:reports"] },
+  { prefix: "/admin/inventory", anyOf: ["catalog:view", "catalog:edit"] },
+  { prefix: "/admin/lookbook", anyOf: ["lookbook:edit", "content:edit"] },
+  { prefix: "/admin/cms/pages", anyOf: ["content:edit"] },
+  { prefix: "/admin/settings/banner", anyOf: ["banner:edit"] },
+  { prefix: "/admin/settings/seo", anyOf: ["seo:edit"] },
+  { prefix: "/admin/settings/team", anyOf: ["team:view", "users:view"] },
+  { prefix: "/admin/settings/roles", anyOf: ["admin:roles:view"] },
+  { prefix: "/admin/audit", anyOf: ["admin:audit:view"] },
 ]
 
 export default function AdminShell({ children }: { children: ReactNode }) {
@@ -96,20 +111,39 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }, [mobileOpen])
 
   const [permissions, setPermissions] = useState<string[] | null>(null)
-  const isAdminPrincipal = useMemo(() => {
+  const allowlistedAdmins = useMemo(
+    () =>
+      (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+        .split(/[,\n;\s]+/)
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    []
+  )
+  const isSuperAdmin = useMemo(() => {
     if (!user?.email) return false
-    if (user.role === "admin") return true
-    const allow = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-      .split(/[,\n;\s]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean)
-    return allow.includes(user.email.toLowerCase())
-  }, [user?.email, user?.role])
+    return allowlistedAdmins.includes(user.email.toLowerCase())
+  }, [allowlistedAdmins, user?.email])
+  const hasAnyPermission = useMemo(
+    () => (required: string | string[]) => {
+      if (!permissions) return false
+      if (permissions.includes("*")) return true
+      const requiredSet = Array.isArray(required) ? required : [required]
+      return requiredSet.some((p) => permissions.includes(p))
+    },
+    [permissions]
+  )
   const canAccessAdmin = useMemo(() => {
-    if (isAdminPrincipal) return true
+    if (isSuperAdmin) return true
     if (!permissions) return false
     return permissions.length > 0
-  }, [isAdminPrincipal, permissions])
+  }, [isSuperAdmin, permissions])
+  const routeAccessRule = useMemo(() => {
+    return routeAccessRules.find((rule) => pathname === rule.prefix || pathname.startsWith(`${rule.prefix}/`))
+  }, [pathname])
+  const hasRouteAccess = useMemo(() => {
+    if (!routeAccessRule) return true
+    return hasAnyPermission(routeAccessRule.anyOf)
+  }, [hasAnyPermission, routeAccessRule])
 
   useEffect(() => {
     if (!user?.email) return
@@ -138,7 +172,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!isAdminPrincipal && permissions === null) {
+  if (!isSuperAdmin && permissions === null) {
     return (
       <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center font-WorkSans">
         Loading...
@@ -151,6 +185,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <div className="min-h-screen bg-[#FFFBEB] flex flex-col items-center justify-center gap-3 font-WorkSans">
         <p className="text-lg">Access denied</p>
         <Link href="/" className="text-[#CA6F86] underline">Go home</Link>
+      </div>
+    )
+  }
+
+  if (!hasRouteAccess) {
+    return (
+      <div className="min-h-screen bg-[#FFFBEB] flex flex-col items-center justify-center gap-3 font-WorkSans">
+        <p className="text-lg">Permission denied for this section.</p>
+        <Link href="/admin" className="text-[#CA6F86] underline">Go to dashboard</Link>
       </div>
     )
   }
@@ -187,7 +230,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                   // hide item if permission required and not present (permissions null -> loading -> hide until known)
                   if (item.permission) {
                     if (!permissions) return null
-                    if (!(permissions.includes("*") || permissions.includes(item.permission))) return null
+                    if (!hasAnyPermission(item.permission)) return null
                   }
 
                   return (
@@ -301,7 +344,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
                       if (item.permission) {
                         if (!permissions) return null
-                        if (!(permissions.includes("*") || permissions.includes(item.permission))) return null
+                        if (!hasAnyPermission(item.permission)) return null
                       }
 
                       return (
