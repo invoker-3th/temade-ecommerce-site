@@ -26,6 +26,10 @@ export async function POST(request: Request) {
       if (!customerEmail) continue
 
       try {
+        console.info("[admin.orders.reminders] Sending delivery reminder email", {
+          orderId: String(order._id),
+          to: customerEmail.toLowerCase(),
+        })
         await sendEmail({
           to: customerEmail,
           subject: `Delivery check-in for order ${String(order._id)}`,
@@ -37,6 +41,10 @@ export async function POST(request: Request) {
             </div>
           `,
           text: `Your order ${String(order._id)} should have arrived. If you have any challenges, contact Orders@temadestudios.com.`,
+        })
+        console.info("[admin.orders.reminders] Delivery reminder email sent", {
+          orderId: String(order._id),
+          to: customerEmail.toLowerCase(),
         })
 
         await db.collection("orders").updateOne(

@@ -48,20 +48,39 @@ export async function POST(request: Request) {
     )
 
     const customerEmail = String(order.shippingAddress?.email || "")
+    let shippedEmailSent = false
     if (customerEmail) {
-      await sendEmail({
-        to: customerEmail,
-        subject: `Your order ${String(order._id)} has been shipped`,
-        html: `
-          <div style="font-family: Arial, sans-serif; color: #222;">
-            <h2>Your order has been shipped</h2>
-            <p>Order ID: <strong>${String(order._id)}</strong></p>
-            <p>Estimated delivery: <strong>${etaDays} day(s)</strong></p>
-            <p>If you need support, please contact Orders@temadestudios.com.</p>
-          </div>
-        `,
-        text: `Your order ${String(order._id)} has been shipped. Estimated delivery: ${etaDays} day(s). Contact Orders@temadestudios.com for support.`,
-      })
+      try {
+        console.info("[admin.orders.ship] Sending shipped email", {
+          orderId: String(order._id),
+          to: customerEmail.toLowerCase(),
+          etaDays,
+        })
+        await sendEmail({
+          to: customerEmail,
+          subject: `Your order ${String(order._id)} has been shipped`,
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #222;">
+              <h2>Your order has been shipped</h2>
+              <p>Order ID: <strong>${String(order._id)}</strong></p>
+              <p>Estimated delivery: <strong>${etaDays} day(s)</strong></p>
+              <p>If you need support, please contact Orders@temadestudios.com.</p>
+            </div>
+          `,
+          text: `Your order ${String(order._id)} has been shipped. Estimated delivery: ${etaDays} day(s). Contact Orders@temadestudios.com for support.`,
+        })
+        shippedEmailSent = true
+        console.info("[admin.orders.ship] Shipped email sent", {
+          orderId: String(order._id),
+          to: customerEmail.toLowerCase(),
+        })
+      } catch (emailError) {
+        console.error("[admin.orders.ship] Shipped email failed", {
+          orderId: String(order._id),
+          to: customerEmail.toLowerCase(),
+          error: emailError instanceof Error ? emailError.message : String(emailError),
+        })
+      }
     }
 
     await db.collection("notifications").insertOne({
@@ -73,7 +92,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
     })
 
-    return NextResponse.json({ ok: true, etaAt })
+    return NextResponse.json({ ok: true, etaAt, shippedEmailSent })
   } catch (error) {
     console.error("Ship order route error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

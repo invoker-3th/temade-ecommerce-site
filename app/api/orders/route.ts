@@ -68,6 +68,10 @@ export async function POST(request: NextRequest) {
       const orderLink = `${baseUrl}/admin/orders?orderId=${encodeURIComponent(String(newOrder._id))}`
       for (const email of adminEmails) {
         try {
+          console.info("[orders.create] Sending admin new-order email", {
+            orderId: String(newOrder._id),
+            to: email.toLowerCase(),
+          })
           await sendEmail({
             to: email,
             subject: `New Order Received (${String(newOrder._id)})`,
@@ -86,8 +90,16 @@ export async function POST(request: NextRequest) {
             `,
             text: `New order ${String(newOrder._id)} from ${shippingAddress?.userName || "-"}. Open: ${orderLink}`,
           })
+          console.info("[orders.create] Admin new-order email sent", {
+            orderId: String(newOrder._id),
+            to: email.toLowerCase(),
+          })
         } catch (mailErr) {
-          console.error("Admin order email error:", mailErr)
+          console.error("[orders.create] Admin new-order email failed", {
+            orderId: String(newOrder._id),
+            to: email.toLowerCase(),
+            error: mailErr instanceof Error ? mailErr.message : String(mailErr),
+          })
         }
       }
     } catch (notificationError) {

@@ -98,15 +98,26 @@ export async function POST(request: NextRequest) {
 
     let emailSent = true
     try {
+      console.info("[auth.register] Sending verification email", {
+        email: newUser.email.toLowerCase(),
+        otpExpiresAt: otpExpiresAt.toISOString(),
+        tokenExpiresAt: expiresAt.toISOString(),
+      })
       await sendEmail({
         to: newUser.email,
         subject: verificationTemplate.subject,
         html: verificationTemplate.html,
         text: verificationTemplate.text,
       })
+      console.info("[auth.register] Verification email sent", {
+        email: newUser.email.toLowerCase(),
+      })
     } catch (error) {
       emailSent = false
-      console.error("Verification email error:", error)
+      console.error("[auth.register] Verification email failed", {
+        email: newUser.email.toLowerCase(),
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
 
     // Notify admins via email about new user signups (in addition to in-app notification)
@@ -123,14 +134,24 @@ export async function POST(request: NextRequest) {
         const adminTemplate = adminNewUserEmail({ userName: newUser.userName, email: newUser.email, userId: String(newUser._id), userLink: adminLink })
         for (const a of adminEmails) {
           try {
+            console.info("[auth.register] Sending admin new-user notification email", {
+              recipient: a.toLowerCase(),
+              newUserEmail: newUser.email.toLowerCase(),
+            })
             await sendEmail({ to: a, subject: adminTemplate.subject, html: adminTemplate.html, text: adminTemplate.text })
+            console.info("[auth.register] Admin new-user notification sent", {
+              recipient: a.toLowerCase(),
+            })
           } catch (mailErr) {
-            console.error("Admin new user email error:", mailErr)
+            console.error("[auth.register] Admin new-user notification failed", {
+              recipient: a.toLowerCase(),
+              error: mailErr instanceof Error ? mailErr.message : String(mailErr),
+            })
           }
         }
       }
     } catch (err) {
-      console.error("Failed to send admin new user emails:", err)
+      console.error("[auth.register] Failed while processing admin new-user notifications", err)
     }
 
     // Remove sensitive data before sending response
