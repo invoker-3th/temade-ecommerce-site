@@ -42,8 +42,6 @@ type NewArrivalItem = {
 
 type ToastType = 'success' | 'error';
 
-type AnalyticsTopProduct = { id: string; name: string; image: string; quantitySold: number; revenue: number };
-
 function firstImageOf(product: ApiProduct): string {
   const uiImage = getUIImage(product.colorVariants)
   return uiImage?.src || '/placeholder.svg'
@@ -89,7 +87,7 @@ export default function NewArrivals() {
   useEffect(() => {
     const build = async () => {
       try {
-        const res = await fetch('/api/admin/products', { cache: 'no-store' })
+        const res = await fetch('/api/products/search', { cache: 'no-store' })
         if (!res.ok) return
         const data = await res.json()
         const products: ApiProduct[] = Array.isArray(data) ? data : (data.items || [])
@@ -105,18 +103,7 @@ export default function NewArrivals() {
           byCategory.set(p.category, list)
         }
 
-        let topFirst: ApiProduct | undefined
-        try {
-          const ares = await fetch('/api/admin/analytics', { cache: 'no-store' })
-          if (ares.ok) {
-            const adata = await ares.json()
-            const top: AnalyticsTopProduct[] = adata?.topProducts || []
-            const topName = top[0]?.name?.toLowerCase()
-            if (topName) {
-              topFirst = products.find(p => p.name?.toLowerCase() === topName)
-            }
-          }
-        } catch {}
+        const topFirst: ApiProduct | undefined = products[0]
 
         const reps: ApiProduct[] = []
         for (const list of byCategory.values()) {

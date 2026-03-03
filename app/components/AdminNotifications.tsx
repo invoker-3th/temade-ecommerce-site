@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useAuth } from "@/app/context/AuthContext"
 
 type Notification = {
   _id: string
@@ -18,16 +19,20 @@ type Notification = {
 }
 
 export default function AdminNotifications() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!adminEmail) return
     fetchNotifications()
-  }, [])
+  }, [adminEmail])
 
   const fetchNotifications = async () => {
+    if (!adminEmail) return
     try {
-      const response = await fetch('/api/admin/notifications')
+      const response = await fetch('/api/admin/notifications', { headers: { "x-admin-email": adminEmail } })
       if (response.ok) {
         const data = await response.json()
         setNotifications(data.notifications || [])
@@ -40,10 +45,11 @@ export default function AdminNotifications() {
   }
 
   const markAsRead = async (notificationId: string) => {
+    if (!adminEmail) return
     try {
       await fetch('/api/admin/notifications', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', "x-admin-email": adminEmail },
         body: JSON.stringify({ notificationId })
       })
       setNotifications(prev => 

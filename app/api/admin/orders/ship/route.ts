@@ -2,8 +2,12 @@ import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import { getDatabase } from "@/lib/mongodb"
 import { sendEmail } from "@/lib/email"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 export async function POST(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "orders:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const body = await request.json()
     const orderId = String(body.orderId || "").trim()

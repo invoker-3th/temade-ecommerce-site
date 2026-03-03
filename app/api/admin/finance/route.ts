@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 type OrderRow = {
   _id: unknown
@@ -35,6 +36,9 @@ function getDateRange(range: string) {
 }
 
 export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "finance:reports")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const { searchParams } = new URL(request.url)
     const range = searchParams.get("range") || "30d"

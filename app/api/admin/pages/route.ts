@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import { getDatabase } from "@/lib/mongodb"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 type PageDoc = {
   _id?: ObjectId
@@ -28,7 +29,10 @@ function normalizeSlug(value: string) {
     .replace(/^-+|-+$/g, "")
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "content:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const db = await getDatabase()
     const pages = await db
@@ -45,6 +49,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "content:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const body = await request.json()
     const title = String(body.title || "").trim()

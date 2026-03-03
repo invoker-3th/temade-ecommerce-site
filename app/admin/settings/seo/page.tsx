@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useAuth } from "@/app/context/AuthContext"
 
 type SeoHealth = {
   sitemap?: { url: string; status: number | null; ok: boolean }
@@ -18,16 +19,22 @@ type SeoApiResponse = {
 }
 
 export default function AdminSeoSettingsPage() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<SeoApiResponse | null>(null)
   const [error, setError] = useState("")
 
   useEffect(() => {
+    if (!adminEmail) return
     const run = async () => {
       setLoading(true)
       setError("")
       try {
-        const res = await fetch("/api/admin/site-analysis?range=30d", { cache: "no-store" })
+        const res = await fetch("/api/admin/site-analysis?range=30d", {
+          cache: "no-store",
+          headers: { "x-admin-email": adminEmail },
+        })
         const payload = await res.json()
         if (!res.ok) throw new Error(payload?.error || "Failed to load SEO settings")
         setData(payload)
@@ -38,7 +45,7 @@ export default function AdminSeoSettingsPage() {
       }
     }
     run()
-  }, [])
+  }, [adminEmail])
 
   return (
     <div className="p-6 md:p-10 font-WorkSans">

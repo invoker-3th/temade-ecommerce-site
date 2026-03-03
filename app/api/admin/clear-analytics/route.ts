@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "site:analytics:manage")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const db = await getDatabase()
     const ordersCol = db.collection("orders")

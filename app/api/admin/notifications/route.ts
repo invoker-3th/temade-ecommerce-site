@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 type Notification = {
   _id?: ObjectId
@@ -16,7 +17,10 @@ type Notification = {
   createdAt: Date
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "orders:view")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const db = await getDatabase()
     const notifications = await db.collection<Notification>("notifications")
@@ -33,6 +37,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const perm = await requirePermissionFromRequest(request, "orders:edit")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const body = await request.json()
     const { type, title, message, orderId, paymentReference, amount } = body
@@ -59,6 +66,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const perm = await requirePermissionFromRequest(request, "orders:view")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const body = await request.json()
     const { notificationId } = body

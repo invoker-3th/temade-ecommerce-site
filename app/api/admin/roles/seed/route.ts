@@ -12,7 +12,7 @@ const defaults = [
   {
     name: "manager",
     description: "Manage content overview (SEO analytics & CMS pages), orders, and customers. Cannot change billing or assign roles or platform-wide settings.",
-    permissions: ["seo:view","site:analytics:view","content:edit","orders:view","orders:edit","users:view"],
+    permissions: ["seo:view","site:analytics:view","content:edit","catalog:edit","orders:view","orders:edit","users:view"],
     emailSubscriptions: ["order.created","seo.report.available","admin.login"]
   },
   {

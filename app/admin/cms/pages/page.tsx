@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
+import { useAuth } from "@/app/context/AuthContext"
 
 type PageRow = {
   _id: string
@@ -37,6 +38,8 @@ const emptyPage: PageRow = {
 }
 
 export default function AdminCmsPages() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
   const [pages, setPages] = useState<PageRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -122,9 +125,10 @@ export default function AdminCmsPages() {
   )
 
   const loadPages = useCallback(async () => {
+    if (!adminEmail) return
     setLoading(true)
     try {
-      const res = await fetch("/api/admin/pages", { cache: "no-store" })
+      const res = await fetch("/api/admin/pages", { cache: "no-store", headers: { "x-admin-email": adminEmail } })
       if (!res.ok) throw new Error("Failed to load pages")
       const data = await res.json()
       setPages(data.pages || [])
@@ -136,7 +140,7 @@ export default function AdminCmsPages() {
     } finally {
       setLoading(false)
     }
-  }, [selectedId])
+  }, [adminEmail, selectedId])
 
   useEffect(() => {
     loadPages()
@@ -178,14 +182,14 @@ export default function AdminCmsPages() {
       if (selectedId) {
         const res = await fetch(`/api/admin/pages/${selectedId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
           body: JSON.stringify(payload),
         })
         if (!res.ok) throw new Error("Failed to update page")
       } else {
         const res = await fetch("/api/admin/pages", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
           body: JSON.stringify(payload),
         })
         if (!res.ok) throw new Error("Failed to create page")
@@ -204,7 +208,7 @@ export default function AdminCmsPages() {
     if (!selectedId) return
     if (!confirm("Delete this page?")) return
     try {
-      const res = await fetch(`/api/admin/pages/${selectedId}`, { method: "DELETE" })
+      const res = await fetch(`/api/admin/pages/${selectedId}`, { method: "DELETE", headers: { "x-admin-email": adminEmail } })
       if (!res.ok) throw new Error("Failed to delete page")
       setSelectedId(null)
       setForm(emptyPage)
@@ -247,6 +251,7 @@ export default function AdminCmsPages() {
       files.forEach((file) => formData.append("files", file))
       const res = await fetch("/api/admin/upload", {
         method: "POST",
+        headers: { "x-admin-email": adminEmail },
         body: formData,
       })
       if (!res.ok) {

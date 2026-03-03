@@ -3,6 +3,7 @@ import { UserService } from "@/lib/services/userServices"
 import { sendEmail, sendForEvent } from "@/lib/email"
 import { loginWelcomeEmail } from "@/lib/emailTemplates"
 import { getDatabase } from "@/lib/mongodb"
+import { ADMIN_SESSION_COOKIE, createAdminSession, getAdminSessionCookieOptions } from "@/lib/server/sessionAuth"
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +30,11 @@ export async function POST(request: NextRequest) {
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean)
     const isAdmin = user.role === "admin" || adminAllow.includes(user.email.toLowerCase())
+    const userRoles = Array.isArray((user as { roles?: unknown }).roles)
+      ? ((user as { roles?: unknown }).roles as unknown[])
+      : []
+    const hasAssignedRbacRoles = userRoles.length > 0
+    const canAccessAdminConsole = isAdmin || hasAssignedRbacRoles
     if (isAdmin) {
       const adminUserName = (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "").trim().toLowerCase()
       if (adminUserName && userName.trim().toLowerCase() !== adminUserName) {
@@ -94,13 +100,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message: "Login successful",
         user: userResponse,
       },
       { status: 200 },
     )
+
+    if (canAccessAdminConsole) {
+      const session = await createAdminSession({
+        email: user.email,
+        role: user.role,
+        userId: user._id ? String(user._id) : undefined,
+      })
+      response.cookies.set(ADMIN_SESSION_COOKIE, session.token, getAdminSessionCookieOptions(session.expiresAt))
+    }
+
+    return response
   } catch (error) {
     console.error("Login error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

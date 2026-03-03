@@ -5,10 +5,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { baseCategoryImages } from "@/app/data/shopCategories"
 import FileUploadZone from "@/app/components/FileUploadZone"
+import { useAuth } from "@/app/context/AuthContext"
 import { sizeOptions, type ProductForm, type CategoryForm, type Product, type Category } from "./modules"
 import { fetchInventoryLists, createOrUpdateProduct, deleteProduct } from "./modules"
 
 export default function InventoryManagerPage() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
   const categoryFileInput = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products')
   const [creating, setCreating] = useState(false)
@@ -28,13 +31,15 @@ export default function InventoryManagerPage() {
   })
 
   useEffect(() => {
+    if (!adminEmail) return
     fetchData()
-  }, [])
+  }, [adminEmail])
 
   const fetchData = async () => {
+    if (!adminEmail) return
     setLoading(true)
     try {
-      const { products, categories } = await fetchInventoryLists()
+      const { products, categories } = await fetchInventoryLists(adminEmail)
       setProducts(products)
       setCategories(categories)
     } catch (error) {
@@ -67,7 +72,7 @@ export default function InventoryManagerPage() {
   const onSubmitProduct = async () => {
     setCreating(true)
     try {
-      await createOrUpdateProduct(editing, productForm)
+      await createOrUpdateProduct(editing, productForm, adminEmail)
       alert(`Product ${editing ? 'updated' : 'created'} successfully`)
       setProductForm({ name: "", sku: "", description: "", categoryId: "", price: 0, sizes: "8,10,12,14,16,18", colorName: "", colorHex: "#000000", images: [] })
       setEditing(null)
@@ -95,7 +100,7 @@ export default function InventoryManagerPage() {
       
       const res = await fetch(url, { 
         method, 
-        headers: { "Content-Type": "application/json" }, 
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail }, 
         body: JSON.stringify(body) 
       })
       
@@ -117,7 +122,7 @@ export default function InventoryManagerPage() {
     try {
       const res = await fetch("/api/admin/delete-image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
         body: JSON.stringify({ urls: list }),
       })
       return await res.json()
@@ -136,7 +141,7 @@ export default function InventoryManagerPage() {
         await deleteCloudinaryUrls(imageUrls)
       }
 
-      await deleteProduct(id)
+      await deleteProduct(id, adminEmail)
       await fetchData()
     } catch (e) {
       console.error("onDeleteProduct error:", e)
@@ -152,7 +157,7 @@ export default function InventoryManagerPage() {
         await deleteCloudinaryUrls([category.image])
       }
 
-      const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" })
+      const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE", headers: { "x-admin-email": adminEmail } })
       if (!res.ok) throw new Error("Failed deleting category")
       await fetchData()
     } catch (e) {
@@ -230,6 +235,7 @@ export default function InventoryManagerPage() {
     try {
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
+        headers: { "x-admin-email": adminEmail },
         body: formData
       })
 
@@ -536,6 +542,7 @@ export default function InventoryManagerPage() {
                 onUploadSuccess={handleUploadSuccess}
                 onUploadError={handleUploadError}
                 maxFiles={5}
+                adminEmail={adminEmail}
               />
 
               {/* Previews for images already added to the product form */}

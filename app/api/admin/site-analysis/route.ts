@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { getDatabase } from "@/lib/mongodb"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 export const runtime = "nodejs"
 
@@ -210,6 +211,9 @@ async function runPosthogQuery(posthogHost: string, projectId: string, apiKey: s
 }
 
 export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "seo:view")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   const { searchParams } = new URL(request.url)
   const range = searchParams.get("range") || "30d"
   const granularity = searchParams.get("granularity") || "daily"

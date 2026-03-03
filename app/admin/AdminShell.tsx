@@ -95,7 +95,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }, [mobileOpen])
 
   const [permissions, setPermissions] = useState<string[] | null>(null)
-  const isAdmin = useMemo(() => {
+  const isAdminPrincipal = useMemo(() => {
     if (!user?.email) return false
     if (user.role === "admin") return true
     const allow = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
@@ -104,12 +104,20 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       .filter(Boolean)
     return allow.includes(user.email.toLowerCase())
   }, [user?.email, user?.role])
+  const canAccessAdmin = useMemo(() => {
+    if (isAdminPrincipal) return true
+    if (!permissions) return false
+    return permissions.length > 0
+  }, [isAdminPrincipal, permissions])
 
   useEffect(() => {
     if (!user?.email) return
     const fetchPerms = async () => {
       try {
-        const res = await fetch(`/api/admin/me?email=${encodeURIComponent(user.email)}`)
+        const adminEmail = user.email.trim().toLowerCase()
+        const res = await fetch(`/api/admin/me?email=${encodeURIComponent(adminEmail)}`, {
+          headers: { "x-admin-email": adminEmail },
+        })
         if (!res.ok) return setPermissions([])
         const data = await res.json()
         setPermissions(Array.isArray(data.permissions) ? data.permissions : [])
@@ -129,7 +137,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!isAdmin) {
+  if (!isAdminPrincipal && permissions === null) {
+    return (
+      <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center font-WorkSans">
+        Loading...
+      </div>
+    )
+  }
+
+  if (!canAccessAdmin) {
     return (
       <div className="min-h-screen bg-[#FFFBEB] flex flex-col items-center justify-center gap-3 font-WorkSans">
         <p className="text-lg">Access denied</p>
@@ -280,6 +296,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                             <span className="text-[10px] uppercase tracking-wide">Soon</span>
                           </div>
                         )
+                      }
+
+                      if (item.permission) {
+                        if (!permissions) return null
+                        if (!(permissions.includes("*") || permissions.includes(item.permission))) return null
                       }
 
                       return (

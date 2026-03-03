@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { baseCategoryImages } from "@/app/data/shopCategories"
+import { requireAdminFromRequest } from "@/lib/server/adminGuard"
 
-export async function POST() {
+export async function POST(request: Request) {
+  const admin = await requireAdminFromRequest(request)
+  if (!admin.ok) return NextResponse.json({ error: admin.error }, { status: admin.status })
+
   try {
     const db = await getDatabase()
     const products = db.collection("products")

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
+import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 
 function escapeCsv(value: string) {
   if (value.includes("\"") || value.includes(",") || value.includes("\n")) {
@@ -9,6 +10,9 @@ function escapeCsv(value: string) {
 }
 
 export async function GET(request: Request) {
+  const perm = await requirePermissionFromRequest(request, "users:view")
+  if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: perm.status })
+
   try {
     const { searchParams } = new URL(request.url)
     const q = searchParams.get("q")?.trim()

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useAuth } from "@/app/context/AuthContext"
 
 type FinanceData = {
   range: { startDate: string; endDate: string }
@@ -54,17 +55,23 @@ function buildDateKeys(range: string) {
 }
 
 export default function AdminFinancePage() {
+  const { user } = useAuth()
+  const adminEmail = user?.email?.trim().toLowerCase() || ""
   const [range, setRange] = useState("30d")
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<FinanceData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!adminEmail) return
     const run = async () => {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/admin/finance?range=${range}`, { cache: "no-store" })
+        const res = await fetch(`/api/admin/finance?range=${range}`, {
+          cache: "no-store",
+          headers: { "x-admin-email": adminEmail },
+        })
         if (!res.ok) throw new Error("Failed to load finance data")
         const payload = await res.json()
         setData(payload)
@@ -75,7 +82,7 @@ export default function AdminFinancePage() {
       }
     }
     run()
-  }, [range])
+  }, [adminEmail, range])
 
   const chartSeries = useMemo(() => {
     if (!data) return []
@@ -105,7 +112,7 @@ export default function AdminFinancePage() {
             </button>
           ))}
           <a
-            href={`/api/admin/finance?range=${range}&format=csv`}
+            href={`/api/admin/finance?range=${range}&format=csv&email=${encodeURIComponent(adminEmail)}`}
             className="px-3 py-2 text-sm rounded border border-[#EEE7DA] text-gray-700 hover:bg-gray-50"
           >
             Export CSV
