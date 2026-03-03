@@ -1,13 +1,7 @@
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 import { getAdminSessionFromRequest } from "@/lib/server/sessionAuth"
-
-function getAllowlistedAdmins() {
-  return (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-    .split(/[,\n;\s]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-}
+import { getAllowlistedAdmins, normalizeEmail } from "@/lib/server/adminAllowlist"
 
 export async function getPermissionsForUser(userEmail: string) {
   const db = await getDatabase()
@@ -18,7 +12,7 @@ export async function getPermissionsForUser(userEmail: string) {
   if (!user) return { user: null, permissions: [] as string[], roles: [] }
 
   const allowlisted = getAllowlistedAdmins()
-  const isSuper = allowlisted.includes(String(user.email).toLowerCase())
+  const isSuper = allowlisted.includes(normalizeEmail(user.email))
   if (isSuper) return { user, permissions: ["*"], roles: [] }
 
   const roleIds = Array.isArray(user.roles) ? user.roles : []

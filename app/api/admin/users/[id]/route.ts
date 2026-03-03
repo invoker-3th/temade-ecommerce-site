@@ -3,16 +3,10 @@ import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 import { requirePermissionFromRequest } from "@/lib/server/permissionGuard"
 import { writeAuditLog } from "@/lib/audit"
+import { getAllowlistedAdmins } from "@/lib/server/adminAllowlist"
 
 const allowedRoles = ["customer", "admin", "editor", "viewer"] as const
 type AllowedRole = (typeof allowedRoles)[number]
-
-function getAllowlistedAdmins() {
-  return (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-    .split(/[,\n;\s]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-}
 
 export async function GET(
   request: Request,

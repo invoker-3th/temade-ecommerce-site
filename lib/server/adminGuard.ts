@@ -1,12 +1,6 @@
 import { getDatabase } from "@/lib/mongodb"
 import { getAdminSessionFromRequest } from "@/lib/server/sessionAuth"
-
-function getAllowlistedAdmins() {
-  return (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-    .split(/[,\n;\s]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-}
+import { isAllowlistedAdmin } from "@/lib/server/adminAllowlist"
 
 function allowLegacyIdentityFallback() {
   if (process.env.NODE_ENV === "production") return false
@@ -26,8 +20,7 @@ export async function requireAdminFromRequest(request: Request) {
 
   const db = await getDatabase()
   const user = await db.collection("users").findOne({ email: { $regex: `^${adminEmail}$`, $options: "i" } })
-  const allowlisted = getAllowlistedAdmins()
-  const isAdmin = Boolean(allowlisted.includes(adminEmail))
+  const isAdmin = Boolean(isAllowlistedAdmin(adminEmail))
   if (!isAdmin) return { ok: false as const, status: 403, error: "Admin access required" }
 
   return { ok: true as const, adminEmail, userId: user?._id ? String(user._id) : "" }

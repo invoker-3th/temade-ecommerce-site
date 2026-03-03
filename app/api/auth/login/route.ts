@@ -5,6 +5,7 @@ import { adminOtpLoginAlertEmail, adminOtpLoginEmail, loginWelcomeEmail } from "
 import { getDatabase } from "@/lib/mongodb"
 import { ADMIN_SESSION_COOKIE, createAdminSession, getAdminSessionCookieOptions } from "@/lib/server/sessionAuth"
 import { signAdminOtpJwt } from "@/lib/verificationTokens"
+import { isAllowlistedAdmin, normalizeEmail } from "@/lib/server/adminAllowlist"
 
 type AdminLoginOtpDoc = {
   email: string
@@ -34,11 +35,7 @@ export async function POST(request: NextRequest) {
     if (user.disabled) {
       return NextResponse.json({ error: "Account is disabled" }, { status: 403 })
     }
-    const adminAllow = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-      .split(/[,\n;\s]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean)
-    const isOwnerAllowlisted = adminAllow.includes(user.email.toLowerCase())
+    const isOwnerAllowlisted = isAllowlistedAdmin(user.email)
     const isAdmin = user.role === "admin" || isOwnerAllowlisted
     const userRoles = Array.isArray((user as { roles?: unknown }).roles)
       ? ((user as { roles?: unknown }).roles as unknown[])
@@ -115,7 +112,7 @@ export async function POST(request: NextRequest) {
     // Owner allowlisted admins can still use direct login.
     if (requiresAdminOtp) {
       console.info("[auth.login] Admin OTP flow starting", {
-        email: user.email.toLowerCase(),
+        email: normalizeEmail(user.email),
         isAdmin,
         hasAssignedRbacRoles,
         canAccessAdminConsole,
@@ -124,7 +121,7 @@ export async function POST(request: NextRequest) {
 
       if (!user.isEmailVerified) {
         console.warn("[auth.login] Admin OTP blocked because email is not verified", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
         })
         return NextResponse.json({ error: "Verified email is required for admin OTP login." }, { status: 403 })
       }
@@ -132,7 +129,7 @@ export async function POST(request: NextRequest) {
       const secret = process.env.EMAIL_VERIFICATION_JWT_SECRET
       if (!secret) {
         console.error("[auth.login] Admin OTP failed because EMAIL_VERIFICATION_JWT_SECRET is missing", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
         })
         return NextResponse.json({ error: "Email verification secret is missing" }, { status: 500 })
       }
@@ -147,14 +144,14 @@ export async function POST(request: NextRequest) {
 
       const db = await getDatabase()
       await db.collection<AdminLoginOtpDoc>("admin_login_otps").insertOne({
-        email: user.email.toLowerCase(),
+        email: normalizeEmail(user.email),
         token,
         expiresAt: new Date(payload.exp * 1000),
         usedAt: null,
         createdAt: new Date(),
       })
       console.info("[auth.login] Admin OTP token persisted", {
-        email: user.email.toLowerCase(),
+        email: normalizeEmail(user.email),
         expiresAt: new Date(payload.exp * 1000).toISOString(),
       })
 
@@ -180,23 +177,23 @@ export async function POST(request: NextRequest) {
 
       try {
         console.info("[auth.login] Triggering OTP admin alert event", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
           userName: user.userName,
         })
         await sendForEvent("admin.login", otpAlertTpl.subject, otpAlertTpl.html, otpAlertTpl.text)
         console.info("[auth.login] OTP admin alert event completed", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
         })
       } catch (eventErr) {
         console.error("[auth.login] OTP admin alert event failed", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
           error: eventErr instanceof Error ? eventErr.message : String(eventErr),
         })
       }
 
       try {
         console.info("[auth.login] Sending admin OTP email", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
           expiresMinutes: otpTtlMinutes,
         })
         await sendEmail({
@@ -206,11 +203,11 @@ export async function POST(request: NextRequest) {
           text: otpTpl.text,
         })
         console.info("[auth.login] Admin OTP email sent", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
         })
       } catch (otpEmailError) {
         console.error("[auth.login] Admin OTP email failed", {
-          email: user.email.toLowerCase(),
+          email: normalizeEmail(user.email),
           error: otpEmailError instanceof Error ? otpEmailError.message : String(otpEmailError),
         })
         return NextResponse.json(

@@ -4,6 +4,7 @@ type SendEmailParams = {
   html: string
   text?: string
 }
+import { getAllowlistedAdmins } from "./server/adminAllowlist"
 
 function maskEmail(value: string) {
   const email = String(value || "").trim().toLowerCase()
@@ -97,10 +98,7 @@ export async function sendForEvent(eventKey: string, subject: string, html: stri
   const roleIds = roles.map((r: { _id: unknown }) => String(r._id))
 
   // allowlist super-admin emails
-  const allowlist = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-    .split(/[,\n;\s]+/)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
+  const allowlist = getAllowlistedAdmins()
 
   // find users who are super-admins (role === 'admin' or in allowlist) or have the role id in their roles array
   const orArray: Array<Record<string, unknown>> = [

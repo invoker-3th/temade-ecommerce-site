@@ -110,18 +110,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }, [mobileOpen])
 
   const [permissions, setPermissions] = useState<string[] | null>(null)
-  const allowlistedAdmins = useMemo(
-    () =>
-      (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-        .split(/[,\n;\s]+/)
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean),
-    []
-  )
-  const isSuperAdmin = useMemo(() => {
-    if (!user?.email) return false
-    return allowlistedAdmins.includes(user.email.toLowerCase())
-  }, [allowlistedAdmins, user?.email])
+  const isSuperAdmin = useMemo(() => Boolean(permissions?.includes("*")), [permissions])
   const hasAnyPermission = useMemo(
     () => (required: string | string[]) => {
       if (!permissions) return false
@@ -171,7 +160,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!isSuperAdmin && permissions === null) {
+  if (permissions === null) {
     return (
       <div className="min-h-screen bg-[#FFFBEB] flex items-center justify-center font-WorkSans">
         Loading...
