@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { UserService } from "@/lib/services/userServices"
 import { sendEmail, sendForEvent } from "@/lib/email"
-import { adminOtpLoginEmail, loginWelcomeEmail } from "@/lib/emailTemplates"
+import { adminOtpLoginAlertEmail, adminOtpLoginEmail, loginWelcomeEmail } from "@/lib/emailTemplates"
 import { getDatabase } from "@/lib/mongodb"
 import { ADMIN_SESSION_COOKIE, createAdminSession, getAdminSessionCookieOptions } from "@/lib/server/sessionAuth"
 import { signAdminOtpJwt } from "@/lib/verificationTokens"
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       : []
     const hasAssignedRbacRoles = userRoles.length > 0
     const canAccessAdminConsole = isAdmin || hasAssignedRbacRoles
+    const requiresAdminOtp = canAccessAdminConsole && !isOwnerAllowlisted
     if (isOwnerAllowlisted) {
       const adminUserName = (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "").trim().toLowerCase()
       if (adminUserName && userName.trim().toLowerCase() !== adminUserName) {
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
     // For this demo, we'll just return user data
 
     const { ...userResponse } = user
-    if (isAdmin) {
+    if (isAdmin && !requiresAdminOtp) {
       try {
         const db = await getDatabase()
         const sessionEmail = user.email.toLowerCase()
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Owner allowlisted admins can still use direct login.
-    if (canAccessAdminConsole && !isOwnerAllowlisted) {
+    if (requiresAdminOtp) {
       console.info("[auth.login] Admin OTP flow starting", {
         email: user.email.toLowerCase(),
         isAdmin,
@@ -164,6 +165,35 @@ export async function POST(request: NextRequest) {
         loginLink,
         expiresMinutes: otpTtlMinutes,
       })
+      const forwardedFor = request.headers.get("x-forwarded-for") || "unknown"
+      const ua = request.headers.get("user-agent") || "unknown"
+      const now = new Date().toISOString()
+      const otpAlertTpl = adminOtpLoginAlertEmail({
+        userName: user.userName,
+        email: user.email,
+        loginLink,
+        expiresMinutes: otpTtlMinutes,
+        timeISO: now,
+        ip: forwardedFor,
+        userAgent: ua,
+      })
+
+      try {
+        console.info("[auth.login] Triggering OTP admin alert event", {
+          email: user.email.toLowerCase(),
+          userName: user.userName,
+        })
+        await sendForEvent("admin.login", otpAlertTpl.subject, otpAlertTpl.html, otpAlertTpl.text)
+        console.info("[auth.login] OTP admin alert event completed", {
+          email: user.email.toLowerCase(),
+        })
+      } catch (eventErr) {
+        console.error("[auth.login] OTP admin alert event failed", {
+          email: user.email.toLowerCase(),
+          error: eventErr instanceof Error ? eventErr.message : String(eventErr),
+        })
+      }
+
       try {
         console.info("[auth.login] Sending admin OTP email", {
           email: user.email.toLowerCase(),

@@ -76,3 +76,33 @@ export function adminOtpLoginEmail(opts: { userName?: string; loginLink: string;
     text: `Hi ${name}, use this one-time link to log in: ${opts.loginLink}. It expires in ${opts.expiresMinutes} minutes.`,
   }
 }
+
+export function adminOtpLoginAlertEmail(opts: {
+  userName?: string
+  email: string
+  loginLink: string
+  expiresMinutes: number
+  timeISO: string
+  ip?: string
+  userAgent?: string
+}): EmailTemplate {
+  const name = opts.userName || "admin user"
+  return {
+    subject: "Admin OTP login verification requested",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #222;">
+        <h2>Admin OTP login requested</h2>
+        <p>User: <strong>${name}</strong></p>
+        <p>Email: <strong>${opts.email}</strong></p>
+        <p>Time: ${opts.timeISO}</p>
+        <p>IP: ${opts.ip || "unknown"}</p>
+        <p>User-Agent: ${opts.userAgent || "unknown"}</p>
+        <p>Verification link (expires in ${opts.expiresMinutes} minutes):</p>
+        <p><a href="${opts.loginLink}" style="background:#8D2741;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Open OTP Verification Link</a></p>
+        <p>If the button does not work, open this link:</p>
+        <p>${opts.loginLink}</p>
+      </div>
+    `,
+    text: `Admin OTP login requested for ${name} (${opts.email}) at ${opts.timeISO}. IP: ${opts.ip || "unknown"}. UA: ${opts.userAgent || "unknown"}. Verification link (expires in ${opts.expiresMinutes} minutes): ${opts.loginLink}`,
+  }
+}
