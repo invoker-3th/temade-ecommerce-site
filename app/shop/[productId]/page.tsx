@@ -83,7 +83,7 @@ export default function ProductDetailPage({ params }: Props) {
     useEffect(() => {
         const fetchProduct = async () => {
             try {
-                const res = await fetch(`/api/admin/products/${productId}`);
+                const res = await fetch(`/api/products/${productId}`);
                 if (res.ok) {
                     const data = await res.json();
                     setProduct(data);

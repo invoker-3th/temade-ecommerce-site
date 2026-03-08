@@ -42,7 +42,7 @@ function Shop() {
     const fetchDb = async () => {
       setLoadingProducts(true)
       try {
-        const res = await fetch("/api/admin/products", { cache: "no-store" })
+        const res = await fetch("/api/products", { cache: "no-store" })
         if (res.ok) {
           const data = await res.json()
           setDbProducts(Array.isArray(data) ? data : (data.items || []))

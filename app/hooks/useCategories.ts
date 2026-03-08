@@ -22,7 +22,7 @@ export function useCategories(options?: { pollMs?: number }) {
 
     const load = async () => {
       try {
-        const res = await fetch("/api/admin/categories", { cache: "no-store" })
+        const res = await fetch("/api/categories", { cache: "no-store" })
         if (!res.ok) return
         const data = await res.json()
         if (!cancelled) setDynamicCategories(Array.isArray(data) ? data : (data.items || []))
